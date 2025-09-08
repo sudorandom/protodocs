@@ -292,7 +292,7 @@ const ProtoDetailView = ({ item, type, onSelect, proto }: ProtoDetailViewProps) 
                     <a href={getFieldAnchorId(type!, item.name, rpc.name)} className="hover:underline" onClick={(e) => e.stopPropagation()}>{rpc.name}</a>
                   </div>
                 </div>
-                <svg className={`h-6 w-6 transform text-gray-500 dark:text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className={`h-6 w-6 transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
