@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import * as protobuf from 'protobufjs';
 
 // --- Data Types ---
 interface Annotation extends String {}
@@ -30,7 +31,7 @@ interface Enum {
 }
 
 interface Rpc {
-  name: string;
+  name:string;
   request: string;
   response: string;
   description: string;
@@ -54,106 +55,15 @@ interface ProtoFile {
   enums: Enum[];
 }
 
-
-// --- Data for the E-commerce Module ---
-const ecommerceProto: ProtoFile = {
-  fileName: "ecommerce.proto",
-  package: "ecommerce",
-  description: "This file defines the core messages and services for an e-commerce platform, including product management, shopping cart operations, and the checkout process.",
-  messages: [
-    {
-      name: "Product",
-      description: "Represents a single product in the catalog.",
-      fields: [
-        { name: "id", type: "string", tag: 1, description: "Unique identifier for the product." },
-        { name: "name", type: "string", tag: 2, description: "The product's name." },
-        {
-          name: "sku",
-          type: "string",
-          tag: 3,
-          description: "Stock Keeping Unit.",
-          annotations: [
-            "(buf.validate.field).string.min_len = 10",
-            "(buf.validate.field).string.max_len = 50",
-            "(google.api.field_behavior) = REQUIRED",
-            "deprecated = true"
-          ]
-        },
-        { name: "price_usd_cents", type: "int64", tag: 4, description: "Price in cents for USD." },
-        { name: "description", type: "string", tag: 5, description: "A detailed product description." },
-        { name: "category", type: "Category", tag: 6, description: "The product's category." },
-        { name: "is_available", type: "bool", tag: 7, description: "Indicates if the product is currently available." }
-      ]
-    },
-    { name: "CartItem", description: "An item added to the shopping cart.", fields: [{ name: "product_id", type: "string", tag: 1, description: "The ID of the product." },{ name: "quantity", type: "int32", tag: 2, description: "The number of this item in the cart." }] },
-    { name: "CheckoutRequest", description: "Request to process a checkout.", fields: [{ name: "items", type: "CartItem", tag: 1, isRepeated: true, description: "The list of items to be purchased." },{ name: "currency_code", type: "string", tag: 2, description: "The currency for the transaction (e.g., USD)." }] },
-    { name: "CheckoutResponse", description: "Response after a checkout is processed.", fields: [{ name: "order_id", type: "string", tag: 1, description: "The ID of the new order." }] },
-    { name: "GetProductRequest", description: "Request to get a product.", fields: [{ name: "product_id", type: "string", tag: 1, description: "The ID of the product to retrieve." }] },
-    { name: "ListProductsRequest", description: "Request to list all products.", fields: [{ name: "page_token", type: "string", tag: 1, description: "A token for pagination." }] },
-    { name: "ChatMessage", description: "A message sent in the chat.", fields: [{ name: "sender", type: "string", tag: 1, description: "The name of the sender." },{ name: "message", type: "string", tag: 2, description: "The text of the message." },{ name: "timestamp", type: "int64", tag: 3, description: "Timestamp of the message creation." }] },
-    { name: "LogEvent", description: "A single log event to be streamed to the server.", fields: [{ name: "severity", type: "string", tag: 1, description: "The log severity level." },{ name: "message", type: "string", tag: 2, description: "The log message." },{ name: "timestamp", type: "int64", tag: 3, description: "Timestamp of the event." }] },
-    { name: "LogResponse", description: "Response after logs have been received.", fields: [{ name: "received_count", type: "int32", tag: 1, description: "The number of log events received." }] }
-  ],
-  services: [
-    { name: "ProductService", description: "Manages product catalog and inventory.", rpcs: [{ name: "GetProduct", request: "GetProductRequest", response: "Product", description: "Retrieves a product by its ID." },{ name: "ListProducts", request: "ListProductsRequest", response: "Product", isServerStream: true, description: "Lists all available products." }] },
-    { name: "CheckoutService", description: "Handles the checkout process.", rpcs: [{ name: "Checkout", request: "CheckoutRequest", response: "CheckoutResponse", description: "Processes the purchase of all items in the cart." }] },
-    { name: "CommunicationService", description: "Handles real-time communication.", rpcs: [{ name: "Chat", request: "ChatMessage", response: "ChatMessage", isBidi: true, description: "A bidirectional streaming chat." }] },
-    { name: "AnalyticsService", description: "Manages streaming log data.", rpcs: [{ name: "LogEvents", request: "LogEvent", response: "LogResponse", isClientStream: true, description: "Streams log events to the server." }] }
-  ],
-  enums: [
-    { name: "Category", description: "Defines the product categories.", values: [{ name: "CATEGORY_UNSPECIFIED", value: 0 },{ name: "ELECTRONICS", value: 1 },{ name: "BOOKS", value: 2 },{ name: "HOME_GOODS", value: 3 }] }
-  ]
-};
-
-// --- Data for the Orders Module ---
-const ordersProto: ProtoFile = {
-  fileName: "orders.proto",
-  package: "ecommerce",
-  description: "Defines messages and services related to order management.",
-  messages: [
-    { name: "Order", description: "Represents a customer order.", fields: [
-        { name: "order_id", type: "string", tag: 1, description: "Unique identifier for the order." },
-        { name: "user_id", type: "string", tag: 2, description: "The ID of the user who placed the order." },
-        { name: "items", type: "CartItem", tag: 3, isRepeated: true, description: "The items included in the order." },
-        { name: "total_price_usd_cents", type: "int64", tag: 4, description: "Total price of the order in USD cents." }
-    ]},
-    { name: "GetOrderRequest", description: "Request to retrieve an order.", fields: [
-        { name: "order_id", type: "string", tag: 1, description: "The ID of the order to retrieve." }
-    ]}
-  ],
-  services: [
-    { name: "OrderService", description: "Manages customer orders.", rpcs: [
-        { name: "GetOrder", request: "GetOrderRequest", response: "Order", description: "Retrieves an order by its ID." }
-    ]}
-  ],
-  enums: []
-};
-
-// --- Data for the Identity Module ---
-const identityProto: ProtoFile = {
-  fileName: "identity.proto",
-  package: "identity",
-  description: "This file handles user authentication, authorization, and profile management within the system.",
-  messages: [
-    { name: "User", description: "Represents a user account.", fields: [{ name: "id", type: "string", tag: 1, description: "Unique user ID." },{ name: "email", type: "string", tag: 2, description: "User's email address." }] },
-    { name: "LoginRequest", description: "Request to log in.", fields: [{ name: "email", type: "string", tag: 1, description: "User's email." },{ name: "password", type: "string", tag: 2, description: "User's password." }] },
-    { name: "LoginResponse", description: "Response for a login request.", fields: [{ name: "auth_token", type: "string", tag: 1, description: "JWT authentication token." }] }
-  ],
-  services: [
-    { name: "AuthService", description: "Handles user authentication.", rpcs: [{ name: "Login", request: "LoginRequest", response: "LoginResponse", description: "Authenticates a user and returns a token." }] }
-  ],
-  enums: []
-};
-
-// --- List of all available proto files ---
-const mockFiles: ProtoFile[] = [ecommerceProto, identityProto, ordersProto];
-
+// --- Utility Functions ---
 const getAnchorId = (type: string, name: string) => `#${type}-${name}`;
 const getFieldAnchorId = (type: string, name: string, fieldName: string) => `#${type}-${name}--${fieldName}`;
 
 const scalarDocUrls: Record<string, string> = {
   'double': 'https://protobuf.dev/programming-guides/proto3/#scalar-double', 'float': 'https://protobuf.dev/programming-guides/proto3/#scalar-float', 'int32': 'https://protobuf.dev/programming-guides/proto3/#scalar-int32', 'int64': 'https://protobuf.dev/programming-guides/proto3/#scalar-int64', 'uint32': 'https://protobuf.dev/programming-guides/proto3/#scalar-uint32', 'uint64': 'https://protobuf.dev/programming-guides/proto3/#scalar-uint64', 'sint32': 'https://protobuf.dev/programming-guides/proto3/#scalar-sint32', 'sint64': 'https://protobuf.dev/programming-guides/proto3/#scalar-sint64', 'fixed32': 'https://protobuf.dev/programming-guides/proto3/#scalar-fixed32', 'fixed64': 'https://protobuf.dev/programming-guides/proto3/#scalar-fixed64', 'sfixed32': 'https://protobuf.dev/programming-guides/proto3/#scalar-sfixed32', 'sfixed64': 'https://protobuf.dev/programming-guides/proto3/#scalar-sfixed64', 'bool': 'https://protobuf.dev/programming-guides/proto3/#scalar-bool', 'string': 'https://protobuf.dev/programming-guides/proto3/#scalar-string', 'bytes': 'https://protobuf.dev/programming-guides/proto3/#scalar-bytes'
 };
+
+// --- UI Components ---
 
 interface CompactMessageViewProps {
   message: Message;
@@ -435,9 +345,10 @@ interface PackageListViewProps {
     onSelectFile: (file: ProtoFile) => void;
     isDarkMode: boolean;
     toggleDarkMode: () => void;
+    onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const PackageListView = ({ files, onSelectFile, isDarkMode, toggleDarkMode }: PackageListViewProps) => {
+const PackageListView = ({ files, onSelectFile, isDarkMode, toggleDarkMode, onFileChange }: PackageListViewProps) => {
   const packages = files.reduce((acc: Record<string, ProtoFile[]>, file) => {
     if (!acc[file.package]) {
       acc[file.package] = [];
@@ -453,6 +364,12 @@ const PackageListView = ({ files, onSelectFile, isDarkMode, toggleDarkMode }: Pa
         <button onClick={toggleDarkMode} className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200">{isDarkMode ? '☀️' : '🌙'}</button>
       </header>
       <div className="container mx-auto p-8 pt-4">
+        <div className="flex justify-center mb-8">
+            <label htmlFor="file-upload" className="bg-blue-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-blue-700 transition-colors duration-300 cursor-pointer">
+                Upload Descriptor Files
+            </label>
+            <input id="file-upload" type="file" multiple className="hidden" onChange={onFileChange} />
+        </div>
         <h2 className="text-5xl font-extrabold text-center mb-4 text-gray-900 dark:text-gray-100">Available Packages</h2>
         <p className="text-center text-lg text-gray-600 dark:text-gray-400 mb-12">Select a package to view its documentation.</p>
         <div className="max-w-2xl mx-auto space-y-8">
@@ -484,8 +401,110 @@ const PackageListView = ({ files, onSelectFile, isDarkMode, toggleDarkMode }: Pa
 };
 
 export default function App() {
+  const [files, setFiles] = useState<ProtoFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<ProtoFile | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const transformToProtoFile = (fileDescriptor: any): ProtoFile => {
+    const messages: Message[] = (fileDescriptor.messageType || []).map((msg: any) => {
+        const fields: Field[] = (msg.field || []).map((field: any) => {
+            let typeName = '';
+            if (field.typeName) {
+                typeName = field.typeName.startsWith('.') ? field.typeName.substring(1) : field.typeName;
+            } else if (field.type && protobuf.types.basic[field.type]) {
+                typeName = protobuf.types.basic[field.type];
+            }
+            return {
+                name: field.name || '',
+                type: typeName,
+                tag: field.number || 0,
+                description: '',
+                isRepeated: field.label === 3, // LABEL_REPEATED
+            };
+        });
+        return { name: msg.name || '', description: '', fields };
+    });
+
+    const enums: Enum[] = (fileDescriptor.enumType || []).map((enumType: any) => {
+        const values: EnumValue[] = (enumType.value || []).map((val: any) => ({
+            name: val.name || '',
+            value: val.number || 0,
+        }));
+        return { name: enumType.name || '', description: '', values };
+    });
+
+    const services: Service[] = (fileDescriptor.service || []).map((service: any) => {
+        const rpcs: Rpc[] = (service.method || []).map((method: any) => ({
+            name: method.name || '',
+            request: method.inputType?.startsWith('.') ? method.inputType.substring(1) : method.inputType,
+            response: method.outputType?.startsWith('.') ? method.outputType.substring(1) : method.outputType,
+            description: '',
+            isClientStream: method.clientStreaming || false,
+            isServerStream: method.serverStreaming || false,
+            isBidi: (method.clientStreaming || false) && (method.serverStreaming || false),
+        }));
+        return { name: service.name || '', description: '', rpcs };
+    });
+
+    return {
+        fileName: fileDescriptor.name || '',
+        package: fileDescriptor.package || '',
+        description: '',
+        messages,
+        services,
+        enums,
+    };
+  };
+
+  const loadDescriptors = async (buffer: ArrayBuffer) => {
+    try {
+        const root = protobuf.Root.fromJSON(await import('protobufjs/google/protobuf/descriptor.json'));
+        const FileDescriptorSet = root.lookupType("google.protobuf.FileDescriptorSet");
+        const descriptorSet = FileDescriptorSet.decode(new Uint8Array(buffer));
+        const descriptorSetJSON = descriptorSet.toJSON();
+
+        const protoFiles = (descriptorSetJSON.file || []).map((file: any) => {
+          return transformToProtoFile(file);
+        });
+
+        setFiles(prevFiles => [...prevFiles, ...protoFiles]);
+    } catch (err) {
+        setError('Failed to parse descriptor file.');
+        console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    const fetchDefaultDescriptors = async () => {
+      try {
+        const response = await fetch('/buf.registry.binpb');
+        if (!response.ok) {
+          throw new Error('Failed to fetch default descriptors');
+        }
+        const buffer = await response.arrayBuffer();
+        await loadDescriptors(buffer);
+      } catch (err) {
+        setError('Failed to load default descriptors.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDefaultDescriptors();
+  }, []);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+        setLoading(true);
+        for (const file of e.target.files) {
+            const buffer = await file.arrayBuffer();
+            await loadDescriptors(buffer);
+        }
+        setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (isDarkMode) {
@@ -497,9 +516,17 @@ export default function App() {
 
   const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
 
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+
   if (!selectedFile) {
     return (
-      <PackageListView files={mockFiles} onSelectFile={setSelectedFile} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
+      <PackageListView files={files} onSelectFile={setSelectedFile} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} onFileChange={handleFileChange} />
     );
   }
 
