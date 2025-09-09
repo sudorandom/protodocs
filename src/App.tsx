@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import * as protobuf from 'protobufjs';
-import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, Link, NavLink } from 'react-router-dom';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -564,7 +564,7 @@ const PackageNav = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoP
     };
 
     return (
-        <div className="flex-shrink-0 w-full md:w-96 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 p-4 shadow-xl transition-all duration-300 ease-in-out md:block overflow-y-auto">
+        <div className="flex-shrink-0 w-full md:w-96 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 p-4 shadow-xl transition-all duration-300 ease-in-out md:block">
             <div className="flex items-center justify-between p-2 mb-4">
                 <div className="flex items-center space-x-2">
                     <Link to={`/`} className="text-2xl font-bold text-blue-600">ProtoDocs</Link>
@@ -655,9 +655,9 @@ const FileTreeView = ({ files, packageName }: { files: ProtoFile[], packageName:
         <ul className="space-y-1 mt-2">
             {files.map(file => (
                 <li key={file.fileName}>
-                    <Link to={`/package/${packageName}/files/${file.fileName.replace(/\//g, '+')}`} className={`w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800`}>
+                    <NavLink to={`/package/${packageName}/files/${file.fileName.replace(/\//g, '+')}`} className={({ isActive }) => `w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block ${ isActive ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' }`}>
                         {file.fileName}
-                    </Link>
+                    </NavLink>
                 </li>
             ))}
             </ul>
@@ -759,16 +759,18 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
 
   return (
     <div className={`font-sans antialiased text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col md:flex-row transition-colors duration-500`}>
-        <div className="flex-shrink-0 w-full md:w-96 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 p-4 shadow-xl transition-all duration-300 ease-in-out md:block overflow-y-auto">
+        <div className="flex-shrink-0 w-full md:w-96 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 p-4 shadow-xl transition-all duration-300 ease-in-out md:flex flex-col h-screen">
             <PackageNav packages={packages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
-            <div className="p-2 mb-4">
-                <input type="text" placeholder="Filter definitions..." value={filterQuery} onChange={(e) => setFilterQuery(e.target.value)} className="w-full px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div className="space-y-6">
-                <FileTreeView files={protoPackage.files} packageName={packageName!} />
-                <Section title="Services" items={filteredServices} selectedItem={selectedItem} itemType="services" packageName={packageName!} />
-                <Section title="Messages" items={filteredMessages} selectedItem={selectedItem} itemType="messages" packageName={packageName!} />
-                <Section title="Enums" items={filteredEnums} selectedItem={selectedItem} itemType="enums" packageName={packageName!} />
+            <div className="flex-grow overflow-y-auto">
+              <div className="p-2 mb-4">
+                  <input type="text" placeholder="Filter definitions..." value={filterQuery} onChange={(e) => setFilterQuery(e.target.value)} className="w-full px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div className="space-y-6">
+                  <FileTreeView files={protoPackage.files} packageName={packageName!} />
+                  <Section title="Services" items={filteredServices} selectedItem={selectedItem} itemType="services" packageName={packageName!} />
+                  <Section title="Messages" items={filteredMessages} selectedItem={selectedItem} itemType="messages" packageName={packageName!} />
+                  <Section title="Enums" items={filteredEnums} selectedItem={selectedItem} itemType="enums" packageName={packageName!} />
+              </div>
             </div>
         </div>
       <main ref={mainRef} className="flex-1 w-full bg-white dark:bg-gray-900 md:rounded-l-3xl shadow-xl z-20 overflow-y-auto transition-colors duration-500">
