@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
 import * as protobuf from 'protobufjs';
 import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, Link } from 'react-router-dom';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 // --- Data Types ---
 interface Annotation extends String {}
@@ -27,6 +30,7 @@ interface Message {
 interface EnumValue {
   name: string;
   value: number;
+  description: string;
 }
 
 interface Enum {
@@ -58,6 +62,7 @@ interface ProtoFile {
   messages: Message[];
   services: Service[];
   enums: Enum[];
+  options?: Record<string, any>;
 }
 
 interface ProtoPackage {
@@ -110,13 +115,6 @@ const wellKnownTypeUrls: Record<string, string> = {
 
 // --- UI Components ---
 
-interface CompactMessageViewProps {
-  message: Message;
-  title: string;
-  renderFieldType: (field: Field, messagePackage: string) => React.ReactNode;
-  messagePackage: string;
-}
-
 const CompactMessageView = ({ message, title, renderFieldType, messagePackage }: CompactMessageViewProps) => {
   if (!message) return null;
   return (
@@ -126,7 +124,7 @@ const CompactMessageView = ({ message, title, renderFieldType, messagePackage }:
         {message.fields.map((field: Field) => (
           <li key={field.tag} className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded-md">
             <div className="flex items-center justify-between text-sm">
-              <p className="font-mono text-purple-600 dark:text-purple-400 font-medium">
+              <p className="font-mono text-purple-600 dark:text-purple-300 font-medium">
                 {field.name}
               </p>
               <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -134,12 +132,93 @@ const CompactMessageView = ({ message, title, renderFieldType, messagePackage }:
                 {renderFieldType(field, messagePackage)}
               </span>
             </div>
-            {field.description && <p className="text-gray-600 dark:text-gray-300 mt-1 text-xs">{field.description}</p>}
+            {field.description && <div className="prose dark:prose-invert max-w-none text-xs"><ReactMarkdown>{field.description}</ReactMarkdown></div>}
           </li>
         ))}
       </ul>
     </div>
   );
+};
+
+const formatProtobufOptions = (options: Record<string, any>, indent = '') => {
+    return Object.entries(options).map(([key, value]) => {
+        let valueStr;
+        if (typeof value === 'string') {
+            valueStr = `"${value}"`;
+        } else if (typeof value === 'object' && value !== null) {
+            valueStr = `{
+${formatProtobufOptions(value, indent + '  ')}${indent}}`;
+        } else {
+            valueStr = value.toString();
+        }
+        return `${indent}option (${key}) = ${valueStr};`;
+    }).join('\n');
+};
+
+const ProtoSourceView = ({ item, type, proto }: { item: Message | Service | Enum, type: string, proto: ProtoFile }) => {
+    const generateSource = () => {
+        if (!item) return '';
+
+        let source = ``;
+        if (item.description) {
+            source += `// ${item.description.replace(/\n/g, '\n// ')}\n`;
+        }
+
+        if (type === 'messages') {
+            const message = item as Message;
+            source += `message ${message.name} {\n`;
+            if(message.fields) {
+                message.fields.forEach(field => {
+                    if (field.description) {
+                        source += `  // ${field.description.replace(/\n/g, '\n  // ')}\n`;
+                    }
+                    const repeated = field.isRepeated && !field.isMap ? 'repeated ' : '';
+                    const fieldType = field.isMap ? `map<${field.keyType}, ${field.valueType}>` : field.type;
+                    source += `  ${repeated}${fieldType} ${field.name} = ${field.tag};
+`;
+                });
+            }
+            source += '}';
+        } else if (type === 'enums') {
+            const enumItem = item as Enum;
+            source += `enum ${enumItem.name} {\n`;
+            if(enumItem.values) {
+                enumItem.values.forEach(value => {
+                    if (value.description) {
+                        source += `  // ${value.description.replace(/\n/g, '\n  // ')}\n`;
+                    }
+                    source += `  ${value.name} = ${value.value};
+`;
+                });
+            }
+            source += '}';
+        } else if (type === 'services') {
+            const service = item as Service;
+            source += `service ${service.name} {\n`;
+            if(service.rpcs) {
+                service.rpcs.forEach(rpc => {
+                    if (rpc.description) {
+                        source += `  // ${rpc.description.replace(/\n/g, '\n  // ')}\n`;
+                    }
+                    const clientStream = rpc.isClientStream ? 'stream ' : '';
+                    const serverStream = rpc.isServerStream ? 'stream ' : '';
+                    source += `  rpc ${rpc.name} (${clientStream}${rpc.request}) returns (${serverStream}${rpc.response});
+`;
+                });
+            }
+            source += '}';
+        }
+
+        return source;
+    };
+
+    return (
+        <div className="p-8">
+            <SyntaxHighlighter language="protobuf" style={atomDark} customStyle={{ background: 'transparent' }}>
+                {generateSource()}
+            </SyntaxHighlighter>
+        </div>
+    );
 };
 
 interface ProtoDetailViewProps {
@@ -150,18 +229,20 @@ interface ProtoDetailViewProps {
 }
 
 const ProtoDetailView = ({ item, type, proto, allTypes }: ProtoDetailViewProps) => {
+  const { packageName } = useParams();
   const [expandedRpc, setExpandedRpc] = useState<string | null>(null);
+  const [showSource, setShowSource] = useState(false);
   const navigate = useNavigate();
 
   if (!item) {
     return (
-      <div className="flex items-start justify-center h-full text-center text-gray-500 dark:text-gray-400 p-8 pt-16">
-        <div>
-            <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2 font-mono">{proto.package}</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">{proto.description}</p>
-            <p className="text-xl font-semibold">Select a definition from the sidebar to view its details.</p>
+        <div className="flex items-start justify-center h-full text-center text-gray-500 dark:text-gray-400 p-8 pt-16">
+            <div>
+                <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2 font-mono">{proto.package}</h2>
+                <div className="prose dark:prose-invert max-w-none"><ReactMarkdown>{proto.description}</ReactMarkdown></div>
+                <p className="text-xl font-semibold mt-8">Select a definition from the sidebar to view its details, or <Link to={`/package/${packageName}`} className="text-blue-600 dark:text-blue-400 hover:underline">browse the package files</Link>.</p>
+            </div>
         </div>
-      </div>
     );
   }
 
@@ -169,7 +250,7 @@ const ProtoDetailView = ({ item, type, proto, allTypes }: ProtoDetailViewProps) 
     const found = allTypes.get(typeName);
     if (found) {
         const { pkg, item, type } = found;
-        navigate(`/package/${pkg.name}/${type}/${item.name}`);
+        navigate(`/package/${pkg.name}/doc/${type}/${item.name}`);
     }
   };
 
@@ -208,8 +289,8 @@ const ProtoDetailView = ({ item, type, proto, allTypes }: ProtoDetailViewProps) 
     }
 
     return (
-      <button onClick={() => findAndSelect(type)} className="font-semibold text-purple-600 hover:text-purple-400 underline transition-colors duration-200">
-        {typeName} {JSON.stringify(type)}
+      <button onClick={() => findAndSelect(type)} className="font-semibold text-purple-600 dark:text-purple-300 hover:text-purple-400 dark:hover:text-purple-200 underline transition-colors duration-200">
+        {typeName}
       </button>
     );
   }
@@ -221,13 +302,13 @@ const ProtoDetailView = ({ item, type, proto, allTypes }: ProtoDetailViewProps) 
         {(item as Message).fields.map((field: Field) => (
           <li key={field.tag} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm" id={getFieldAnchorId(type!, item.name, field.name)}>
             <div className="flex items-center justify-between">
-              <p className="font-mono text-sm text-purple-600 font-semibold"><a href={`#${getFieldAnchorId(type!, item.name, field.name)}`} className="hover:underline">{field.tag}. {field.name}</a></p>
+              <p className="font-mono text-sm text-purple-600 dark:text-purple-300 font-semibold"><a href={`#${getFieldAnchorId(type!, item.name, field.name)}`} className="hover:underline">{field.tag}. {field.name}</a></p>
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {field.isRepeated && !field.isMap ? 'repeated ' : ''}
                 {renderFieldType(field, proto.package)}
               </span>
             </div>
-            <p className="text-gray-700 dark:text-gray-300 mt-1 text-sm">{field.description}</p>
+            <div className="prose dark:prose-invert max-w-none text-sm"><ReactMarkdown>{field.description}</ReactMarkdown></div>
             {field.annotations && field.annotations.length > 0 && (
               <div className="mt-3 p-2 bg-gray-200 dark:bg-gray-700 rounded-md">
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-200">Annotations:</span>
@@ -249,9 +330,10 @@ const ProtoDetailView = ({ item, type, proto, allTypes }: ProtoDetailViewProps) 
         {(item as Enum).values.map((value: EnumValue) => (
           <li key={value.value} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm" id={getFieldAnchorId(type!, item.name, value.name)}>
             <div className="flex items-center justify-between">
-              <p className="font-mono text-sm text-purple-600 font-semibold"><a href={`#${getFieldAnchorId(type!, item.name, value.name)}`} className="hover:underline">{value.name}</a></p>
+              <p className="font-mono text-sm text-purple-600 dark:text-purple-300 font-semibold"><a href={`#${getFieldAnchorId(type!, item.name, value.name)}`} className="hover:underline">{value.name}</a></p>
               <span className="text-xs text-gray-500 dark:text-gray-400"> = {value.value}</span>
             </div>
+			<div className="prose dark:prose-invert max-w-none text-sm"><ReactMarkdown>{value.description}</ReactMarkdown></div>
           </li>
         ))}
       </ul>
@@ -286,11 +368,11 @@ const ProtoDetailView = ({ item, type, proto, allTypes }: ProtoDetailViewProps) 
               </div>
 
               <div className="text-sm text-gray-600 dark:text-gray-300 mt-1 flex items-center">
-                  {rpc.isClientStream ? (<><span className="font-mono text-gray-500 dark:text-gray-400">stream</span><button onClick={(e) => { e.stopPropagation(); findAndSelect(rpc.request); }} className="font-mono text-purple-600 hover:text-purple-400 underline transition-colors duration-200 ml-1">{rpc.request.startsWith(proto.package) ? rpc.request.split('.').pop() : rpc.request}</button></>) : (<button onClick={(e) => { e.stopPropagation(); findAndSelect(rpc.request); }} className="font-mono text-purple-600 hover:text-purple-400 underline transition-colors duration-200">{rpc.request.startsWith(proto.package) ? rpc.request.split('.').pop() : rpc.request}</button>)}
+                  {rpc.isClientStream ? (<><span className="font-mono text-gray-500 dark:text-gray-400">stream</span><button onClick={(e) => { e.stopPropagation(); findAndSelect(rpc.request); }} className="font-mono text-purple-600 dark:text-purple-300 hover:text-purple-400 dark:hover:text-purple-200 underline transition-colors duration-200 ml-1">{rpc.request.startsWith(proto.package) ? rpc.request.split('.').pop() : rpc.request}</button></>) : (<button onClick={(e) => { e.stopPropagation(); findAndSelect(rpc.request); }} className="font-mono text-purple-600 dark:text-purple-300 hover:text-purple-400 dark:hover:text-purple-200 underline transition-colors duration-200">{rpc.request.startsWith(proto.package) ? rpc.request.split('.').pop() : rpc.request}</button>)}
                   <span className="mx-2">&rarr;</span>
                   {rpc.isServerStream || rpc.isBidi ? (<><span className="font-mono text-gray-500 dark:text-gray-400">stream</span><button onClick={(e) => { e.stopPropagation(); findAndSelect(rpc.response); }} className="font-mono text-green-600 hover:text-green-400 underline transition-colors duration-200 ml-1">{rpc.response.startsWith(proto.package) ? rpc.response.split('.').pop() : rpc.response}</button></>) : (<button onClick={(e) => { e.stopPropagation(); findAndSelect(rpc.response); }} className="font-mono text-green-600 hover:text-green-400 underline transition-colors duration-200">{rpc.response.startsWith(proto.package) ? rpc.response.split('.').pop() : rpc.response}</button>)}
               </div>
-              <p className="text-gray-700 dark:text-gray-300 mt-2 text-sm">{rpc.description}</p>
+              <div className="prose dark:prose-invert max-w-none text-sm"><ReactMarkdown>{rpc.description}</ReactMarkdown></div>
 
               <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isExpanded ? 'max-h-[1000px] mt-4 pt-4 border-t border-gray-200 dark:border-gray-700' : 'max-h-0'}`}>
                   {requestMessage && <CompactMessageView message={requestMessage} title="Request" renderFieldType={renderFieldType} messagePackage={requestInfo!.pkg.name} />}
@@ -305,13 +387,24 @@ const ProtoDetailView = ({ item, type, proto, allTypes }: ProtoDetailViewProps) 
 
   return (
     <div className="p-8 space-y-6">
-      <div className="border-b dark:border-gray-700 pb-4" id={getAnchorId(type!, item.name)}>
-        <h2 className="text-4xl font-extrabold text-gray-900 dark:text-gray-100">{item.name}</h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">{item.description}</p>
+      <div className="border-b dark:border-gray-700 pb-4 flex justify-between items-center" id={getAnchorId(type!, item.name)}>
+          <div>
+              <h2 className="text-4xl font-extrabold text-gray-900 dark:text-gray-100">{item.name}</h2>
+              <div className="prose dark:prose-invert max-w-none"><ReactMarkdown>{item.description}</ReactMarkdown></div>
+          </div>
+          <button onClick={() => setShowSource(!showSource)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline ml-4">
+              {showSource ? 'View Details' : 'View Source'}
+          </button>
       </div>
-      {type === 'messages' && renderFields()}
-      {type === 'enums' && renderEnums()}
-      {type === 'services' && renderRpcs()}
+      {showSource ? (
+          <ProtoSourceView item={item} type={type!} proto={proto} />
+      ) : (
+          <>
+              {type === 'messages' && renderFields()}
+              {type === 'enums' && renderEnums()}
+              {type === 'services' && renderRpcs()}
+          </>
+      )}
     </div>
   );
 };
@@ -336,7 +429,7 @@ const Section = ({ title, items, selectedItem, itemType, packageName }: SectionP
         <ul className="space-y-1 mt-2">
           {items.map(item => (
             <li key={item.name}>
-                <Link to={`/package/${packageName}/${itemType}/${item.name}`} className={`w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block ${ selectedItem && selectedItem.name === item.name ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' }`}>
+                <Link to={`/package/${packageName}/doc/${itemType}/${item.name}`} className={`w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block ${ selectedItem && selectedItem.name === item.name ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' }`}>
                     {item.name}
                 </Link>
             </li>
@@ -346,6 +439,225 @@ const Section = ({ title, items, selectedItem, itemType, packageName }: SectionP
     </div>
   );
 };
+
+const FileSourceView = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoPackage[], isDarkMode: boolean, toggleDarkMode: () => void }) => {
+    const { packageName, fileName } = useParams();
+    const protoPackage = packages.find(p => p.name === packageName);
+    const protoFile = protoPackage?.files.find(f => f.fileName.replace(/\//g, '+') === fileName);
+
+    if (!protoFile) {
+        return <div>File not found</div>;
+    }
+
+    const generateFileSource = (file: ProtoFile) => {
+        let source = `syntax = "proto3";\n\n`;
+        source += `package ${file.package};\n\n`;
+
+        if (file.options) {
+            source += formatProtobufOptions(file.options) + '\n\n';
+        }
+
+        file.services.forEach(service => {
+            if (service.description) {
+                source += `// ${service.description.replace(/\n/g, '\n// ')}\n`;
+            }
+            source += `service ${service.name} {\n`;
+            service.rpcs.forEach(rpc => {
+                if (rpc.description) {
+                    source += `  // ${rpc.description.replace(/\n/g, '\n  // ')}\n`;
+                }
+                const clientStream = rpc.isClientStream ? 'stream ' : '';
+                const serverStream = rpc.isServerStream ? 'stream ' : '';
+                source += `  rpc ${rpc.name} (${clientStream}${rpc.request}) returns (${serverStream}${rpc.response});\n`;
+            });
+            source += '}\n\n';
+        });
+
+        file.messages.forEach(message => {
+            if (message.isMapEntry) return;
+            if (message.description) {
+                source += `// ${message.description.replace(/\n/g, '\n// ')}\n`;
+            }
+            source += `message ${message.name} {\n`;
+            message.fields.forEach(field => {
+                if (field.description) {
+                    source += `  // ${field.description.replace(/\n/g, '\n  // ')}\n`;
+                }
+                const repeated = field.isRepeated && !field.isMap ? 'repeated ' : '';
+                const fieldType = field.isMap ? `map<${field.keyType}, ${field.valueType}>` : field.type;
+                source += `  ${repeated}${fieldType} ${field.name} = ${field.tag};\n`;
+            });
+            source += '}\n\n';
+        });
+
+        file.enums.forEach(enumItem => {
+            if (enumItem.description) {
+                source += `// ${enumItem.description.replace(/\n/g, '\n// ')}\n`;
+            }
+            source += `enum ${enumItem.name} {\n`;
+            enumItem.values.forEach(value => {
+                if (value.description) {
+                    source += `  // ${value.description.replace(/\n/g, '\n  // ')}\n`;
+                }
+                source += `  ${value.name} = ${value.value};\n`;
+            });
+            source += '}\n\n';
+        });
+
+        return source;
+    }
+
+    return (
+        <div className={`font-sans antialiased text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col md:flex-row transition-colors duration-500`}>
+            <PackageNav packages={packages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
+            <main className="flex-1 w-full bg-white dark:bg-gray-900 md:rounded-l-3xl shadow-xl z-10 overflow-y-auto transition-colors duration-500 p-8">
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">{protoFile.fileName}</h2>
+                <SyntaxHighlighter language="protobuf" style={atomDark}>
+                    {generateFileSource(protoFile)}
+                </SyntaxHighlighter>
+            </main>
+        </div>
+    );
+}
+
+const PackageNav = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoPackage[], isDarkMode: boolean, toggleDarkMode: () => void }) => {
+    const { packageName } = useParams();
+    const navigate = useNavigate();
+    const [isPackageDropdownOpen, setIsPackageDropdownOpen] = useState(false);
+    const [packageFilter, setPackageFilter] = useState('');
+    const [selectedPackageIndex, setSelectedPackageIndex] = useState(0);
+    const packageFilterInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (isPackageDropdownOpen) {
+          packageFilterInputRef.current?.focus();
+        }
+    }, [isPackageDropdownOpen]);
+
+    const filteredPackages = packages.filter((p) =>
+        p.name.toLowerCase().includes(packageFilter.toLowerCase())
+    );
+
+    const handlePackageFilterKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSelectedPackageIndex((prevIndex) =>
+            Math.min(prevIndex + 1, filteredPackages.length - 1)
+          );
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSelectedPackageIndex((prevIndex) => Math.max(prevIndex - 1, 0));
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (filteredPackages[selectedPackageIndex]) {
+            navigate(`/package/${filteredPackages[selectedPackageIndex].name}`);
+            setIsPackageDropdownOpen(false);
+          }
+        }
+    };
+
+    return (
+        <div className="flex-shrink-0 w-full md:w-96 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 p-4 shadow-xl transition-all duration-300 ease-in-out md:block overflow-y-auto">
+            <div className="flex items-center justify-between p-2 mb-4">
+                <div className="flex items-center space-x-2">
+                    <Link to={`/`} className="text-2xl font-bold text-blue-600">ProtoDocs</Link>
+                </div>
+                <button onClick={toggleDarkMode} className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200">{isDarkMode ? '☀️' : '🌙'}</button>
+            </div>
+            <div className="space-y-6">
+                <div className="relative">
+                    <button
+                    onClick={() => setIsPackageDropdownOpen(!isPackageDropdownOpen)}
+                    className="w-full p-4 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex justify-between items-center"
+                    >
+                    <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Package</p>
+                        <h2 className="font-mono text-base font-semibold text-gray-800 dark:text-gray-100 mt-1 break-words">
+                            {packageName}
+                        </h2>
+                    </div>
+                    <svg
+                        className={`h-5 w-5 transform transition-transform duration-200 ${isPackageDropdownOpen ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 9l-7 7-7-7"
+                        />
+                    </svg>
+                    </button>
+                    {isPackageDropdownOpen && (
+                    <div className="absolute z-10 mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+                        <div className="p-2">
+                        <input
+                            ref={packageFilterInputRef}
+                            type="text"
+                            placeholder="Filter packages..."
+                            value={packageFilter}
+                            onChange={(e) => setPackageFilter(e.target.value)}
+                            onKeyDown={handlePackageFilterKeyDown}
+                            className="w-full px-3 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        </div>
+                        <ul className="max-h-60 overflow-y-auto">
+                        {filteredPackages.map((p, index) => (
+                            <li key={p.name} className={selectedPackageIndex === index ? 'bg-gray-200 dark:bg-gray-700' : ''}>
+                                <button
+                                onClick={() => {
+                                    navigate(`/package/${p.name}`);
+                                    setIsPackageDropdownOpen(false);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 truncate"
+                                title={p.name}
+                                >
+                                {p.name}
+                                </button>
+                            </li>
+                            ))}
+                        </ul>
+                    </div>
+                    )}
+                </div>
+                <div className="px-4 py-2">
+                    <Link to={`/package/${packageName}/doc`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                        View Documentation &rarr;
+                    </Link>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+const FileBrowserView = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoPackage[], isDarkMode: boolean, toggleDarkMode: () => void }) => {
+    const { packageName } = useParams();
+    const protoPackage = packages.find(p => p.name === packageName);
+
+    if (!protoPackage) {
+        return <div>Package not found</div>;
+    }
+
+    return (
+        <div className={`font-sans antialiased text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col md:flex-row transition-colors duration-500`}>
+            <PackageNav packages={packages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
+            <main className="flex-1 w-full bg-white dark:bg-gray-900 md:rounded-l-3xl shadow-xl z-10 overflow-y-auto transition-colors duration-500 p-8">
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Files in {packageName}</h1>
+                <ul className="space-y-2">
+                    {protoPackage.files.map(file => (
+                        <li key={file.fileName}>
+                            <Link to={`/package/${packageName}/files/${file.fileName.replace(/\//g, '+')}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                                {file.fileName}
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+            </main>
+        </div>
+    );
+}
 
 interface PackageDocumentationViewProps {
     packages: ProtoPackage[];
@@ -371,29 +683,29 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
   const [selectedItem, setSelectedItem] = useState<Message | Service | Enum | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState('');
-  const [isPackageDropdownOpen, setIsPackageDropdownOpen] = useState(false);
-  const [packageFilter, setPackageFilter] = useState('');
-  const [selectedPackageIndex, setSelectedPackageIndex] = useState(0);
   const mainRef = useRef<HTMLDivElement>(null);
-  const packageFilterInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isPackageDropdownOpen) {
-      packageFilterInputRef.current?.focus();
-    }
-  }, [isPackageDropdownOpen]);
 
   const protoPackage = packages.find(p => p.name === packageName);
 
   const mergedProtoFile = useMemo(() => {
     if (!protoPackage) return null;
+
+    const description = protoPackage.files.map(f => f.description).filter(d => d).join('\n\n');
+    const options = protoPackage.files.reduce((acc, file) => {
+        if (file.options) {
+            return {...acc, ...file.options};
+        }
+        return acc;
+    }, {});
+
     return {
         fileName: '',
         package: protoPackage.name,
-        description: '',
+        description: description,
         messages: uniqueBy(protoPackage.files.flatMap(f => f.messages)).filter(m => !m.isMapEntry),
         services: uniqueBy(protoPackage.files.flatMap(f => f.services)),
         enums: uniqueBy(protoPackage.files.flatMap(f => f.enums)),
+        options: options,
     };
   }, [protoPackage]);
 
@@ -445,103 +757,19 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
   const filteredMessages = mergedProtoFile.messages.filter((msg) => msg.name.toLowerCase().includes(filterQuery.toLowerCase()));
   const filteredEnums = mergedProtoFile.enums.filter((enm) => enm.name.toLowerCase().includes(filterQuery.toLowerCase()));
 
-  const filteredPackages = packages.filter((p) =>
-    p.name.toLowerCase().includes(packageFilter.toLowerCase())
-  );
-
-  const handlePackageFilterKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setSelectedPackageIndex((prevIndex) =>
-        Math.min(prevIndex + 1, filteredPackages.length - 1)
-      );
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setSelectedPackageIndex((prevIndex) => Math.max(prevIndex - 1, 0));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (filteredPackages[selectedPackageIndex]) {
-        navigate(`/package/${filteredPackages[selectedPackageIndex].name}`);
-        setIsPackageDropdownOpen(false);
-      }
-    }
-  };
-
   return (
     <div className={`font-sans antialiased text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col md:flex-row transition-colors duration-500`}>
-      <div className="flex-shrink-0 w-full md:w-96 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 p-4 shadow-xl transition-all duration-300 ease-in-out md:block overflow-y-auto">
-        <div className="flex items-center justify-between p-2 mb-4">
-          <div className="flex items-center space-x-2">
-            <Link to="/" className="text-2xl font-bold text-blue-600">ProtoDocs</Link>
-          </div>
-          <button onClick={toggleDarkMode} className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200">{isDarkMode ? '☀️' : '🌙'}</button>
+        <div className="flex-shrink-0 w-full md:w-96 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 p-4 shadow-xl transition-all duration-300 ease-in-out md:block overflow-y-auto">
+            <PackageNav packages={packages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
+            <div className="p-2 mb-4">
+                <input type="text" placeholder="Filter definitions..." value={filterQuery} onChange={(e) => setFilterQuery(e.target.value)} className="w-full px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div className="space-y-6">
+                <Section title="Services" items={filteredServices} selectedItem={selectedItem} itemType="services" packageName={packageName!} />
+                <Section title="Messages" items={filteredMessages} selectedItem={selectedItem} itemType="messages" packageName={packageName!} />
+                <Section title="Enums" items={filteredEnums} selectedItem={selectedItem} itemType="enums" packageName={packageName!} />
+            </div>
         </div>
-        <div className="p-2 mb-4">
-          <input type="text" placeholder="Filter definitions..." value={filterQuery} onChange={(e) => setFilterQuery(e.target.value)} className="w-full px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-        <div className="space-y-6">
-          <div className="relative">
-            <button
-              onClick={() => setIsPackageDropdownOpen(!isPackageDropdownOpen)}
-              className="w-full p-4 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex justify-between items-center"
-            >
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Package</p>
-                <h2 className="font-mono text-base font-semibold text-gray-800 dark:text-gray-100 mt-1 break-words">
-                  {mergedProtoFile.package}
-                </h2>
-              </div>
-              <svg
-                className={`h-5 w-5 transform transition-transform duration-200 ${isPackageDropdownOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
-            {isPackageDropdownOpen && (
-              <div className="absolute z-10 mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-                <div className="p-2">
-                  <input
-                    ref={packageFilterInputRef}
-                    type="text"
-                    placeholder="Filter packages..."
-                    value={packageFilter}
-                    onChange={(e) => setPackageFilter(e.target.value)}
-                    onKeyDown={handlePackageFilterKeyDown}
-                    className="w-full px-3 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <ul className="max-h-60 overflow-y-auto">
-                  {filteredPackages.map((p, index) => (
-                      <li key={p.name} className={selectedPackageIndex === index ? 'bg-gray-200 dark:bg-gray-700' : ''}>
-                        <button
-                          onClick={() => {
-                            navigate(`/package/${p.name}`);
-                            setIsPackageDropdownOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 truncate"
-                          title={p.name}
-                        >
-                          {p.name}
-                        </button>
-                      </li>
-                    ))}
-                </ul>
-              </div>
-            )}
-          </div>
-          <Section title="Services" items={filteredServices} selectedItem={selectedItem} itemType="services" packageName={packageName!} />
-          <Section title="Messages" items={filteredMessages} selectedItem={selectedItem} itemType="messages" packageName={packageName!} />
-          <Section title="Enums" items={filteredEnums} selectedItem={selectedItem} itemType="enums" packageName={packageName!} />
-        </div>
-      </div>
       <main ref={mainRef} className="flex-1 w-full bg-white dark:bg-gray-900 md:rounded-l-3xl shadow-xl z-10 overflow-y-auto transition-colors duration-500">
         <ProtoDetailView item={selectedItem} type={selectedItemType} proto={mergedProtoFile} allTypes={allTypes} />
       </main>
@@ -591,7 +819,7 @@ const PackageListView = ({ packages, isDarkMode, toggleDarkMode, onFileChange }:
                 <button
                   onClick={() => navigate(`/package/${pkg.name}`)}
                   className="mt-4 md:mt-0 bg-blue-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-blue-700 transition-colors duration-300 self-start md:self-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm">
-                  View Documentation
+                  View Files
                 </button>
               </div>
             );
@@ -619,18 +847,35 @@ export default function App() {
   }, []);
 
   const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<string, any>): ProtoFile => {
+    const locations = new Map<string, any>();
+    if (fileDescriptor.sourceCodeInfo) {
+        for (const loc of fileDescriptor.sourceCodeInfo.location) {
+            if (loc.path) {
+                locations.set(loc.path.join(','), loc);
+            }
+        }
+    }
+
+    const getComment = (path: number[]) => {
+        const loc = locations.get(path.join(','));
+        if (!loc) return '';
+        return (loc.leadingComments || loc.trailingComments || '').trim();
+    };
+
     const typeStringMap: { [key: number]: string } = {};
     for (const key in protobuf.types.basic) {
         typeStringMap[protobuf.types.basic[key]] = key;
     }
     const resolveType = (type: number) => typeStringMap[type] || 'unknown';
 
-    const transformMessages = (messageDescriptors: any[], prefix: string): Message[] => {
+    const transformMessages = (messageDescriptors: any[], prefix: string, path: number[]): Message[] => {
         if (!messageDescriptors) return [];
         let messages: Message[] = [];
-        messageDescriptors.forEach(msg => {
+        messageDescriptors.forEach((msg, i) => {
             const messageName = prefix ? `${prefix}.${msg.name}` : msg.name;
-            const fields: Field[] = (msg.field || []).map((field: any) => {
+            const msgPath = path.concat(i);
+
+            const fields: Field[] = (msg.field || []).map((field: any, j: number) => {
                 let typeName = '';
                 let isMap = false;
                 let keyType: string | undefined;
@@ -665,51 +910,55 @@ export default function App() {
                     name: field.name || '',
                     type: typeName,
                     tag: field.number || 0,
-                    description: '',
+                    description: getComment(msgPath.concat(2, j)), // 2 is for fields
                     isRepeated: field.label === 3,
                     isMap,
                     keyType,
                     valueType,
                 };
             });
-            messages.push({ name: msg.name, description: '', fields, isMapEntry: msg.options?.mapEntry });
+            messages.push({ name: msg.name, description: getComment(msgPath), fields, isMapEntry: msg.options?.mapEntry });
             if (msg.nestedType) {
-                messages = messages.concat(transformMessages(msg.nestedType, messageName));
+                messages = messages.concat(transformMessages(msg.nestedType, messageName, msgPath.concat(3))); // 3 is for nested types
             }
         });
         return messages;
     }
 
-    const messages: Message[] = transformMessages(fileDescriptor.messageType, fileDescriptor.package);
+    const messages: Message[] = transformMessages(fileDescriptor.messageType, fileDescriptor.package, [4]); // 4 is for messages
 
-    const enums: Enum[] = (fileDescriptor.enumType || []).map((enumType: any) => {
-        const values: EnumValue[] = (enumType.value || []).map((val: any) => ({
+    const enums: Enum[] = (fileDescriptor.enumType || []).map((enumType: any, i: number) => {
+        const enumPath = [5, i]; // 5 is for enums
+        const values: EnumValue[] = (enumType.value || []).map((val: any, j: number) => ({
             name: val.name || '',
             value: val.number || 0,
+            description: getComment(enumPath.concat(2, j)), // 2 is for values
         }));
-        return { name: enumType.name || '', description: '', values };
+        return { name: enumType.name || '', description: getComment(enumPath), values };
     });
 
-    const services: Service[] = (fileDescriptor.service || []).map((service: any) => {
-        const rpcs: Rpc[] = (service.method || []).map((method: any) => ({
+    const services: Service[] = (fileDescriptor.service || []).map((service: any, i: number) => {
+        const servicePath = [6, i]; // 6 is for services
+        const rpcs: Rpc[] = (service.method || []).map((method: any, j: number) => ({
             name: method.name || '',
             request: method.inputType?.startsWith('.') ? method.inputType.substring(1) : method.inputType,
             response: method.outputType?.startsWith('.') ? method.outputType.substring(1) : method.outputType,
-            description: '',
+            description: getComment(servicePath.concat(2, j)), // 2 is for methods
             isClientStream: method.clientStreaming || false,
             isServerStream: method.serverStreaming || false,
             isBidi: (method.clientStreaming || false) && (method.serverStreaming || false),
         }));
-        return { name: service.name || '', description: '', rpcs };
+        return { name: service.name || '', description: getComment(servicePath), rpcs };
     });
 
     return {
         fileName: fileDescriptor.name || '',
         package: fileDescriptor.package || '',
-        description: '',
+        description: getComment([2]), // 2 is for package
         messages,
         services,
         enums,
+        options: fileDescriptor.options,
     };
   };
 
@@ -718,10 +967,10 @@ export default function App() {
         const root = protobuf.Root.fromJSON(await import('protobufjs/google/protobuf/descriptor.json'));
         const FileDescriptorSet = root.lookupType("google.protobuf.FileDescriptorSet");
         const descriptorSet = FileDescriptorSet.decode(new Uint8Array(buffer));
-        const descriptorSetJSON = descriptorSet.toJSON();
+        const descriptorSetObject = FileDescriptorSet.toObject(descriptorSet, { enums: String });
 
         const allMessageDescriptors = new Map<string, any>();
-        (descriptorSetJSON.file || []).forEach((file: any) => {
+        (descriptorSetObject.file || []).forEach((file: any) => {
             const processMessages = (messages: any[], prefix: string) => {
                 if (!messages) return;
                 messages.forEach(msg => {
@@ -735,7 +984,7 @@ export default function App() {
             processMessages(file.messageType, file.package);
         });
 
-        const protoFiles = (descriptorSetJSON.file || []).map((file: any) => {
+        const protoFiles = (descriptorSetObject.file || []).map((file: any) => {
           return transformToProtoFile(file, allMessageDescriptors);
         });
 
@@ -810,8 +1059,10 @@ export default function App() {
     <Router>
         <Routes>
             <Route path="/" element={<PackageListView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} onFileChange={handleFileChange} />} />
-            <Route path="/package/:packageName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
-            <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/package/:packageName" element={<FileBrowserView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/package/:packageName/doc" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/package/:packageName/doc/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/package/:packageName/files/:fileName" element={<FileSourceView packages={packages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
         </Routes>
     </Router>
   );
