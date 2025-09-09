@@ -247,7 +247,7 @@ const ProtoDetailView = ({ item, type, proto, allTypes }: ProtoDetailViewProps) 
             <div>
                 <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2 font-mono">{proto.package}</h2>
                 <div className="prose dark:prose-invert max-w-none"><ReactMarkdown>{proto.description}</ReactMarkdown></div>
-                <p className="text-xl font-semibold mt-8">Select a definition from the sidebar to view its details, or <Link to={`/package/${packageName}/files`} className="text-blue-600 dark:text-blue-400 hover:underline">browse the package files</Link>.</p>
+                <p className="text-xl font-semibold mt-8">Select a definition from the sidebar to view its details.</p>
             </div>
         </div>
     );
@@ -257,7 +257,7 @@ const ProtoDetailView = ({ item, type, proto, allTypes }: ProtoDetailViewProps) 
     const found = allTypes.get(typeName);
     if (found) {
         const { pkg, item, type } = found;
-        navigate(`/package/${pkg.name}/doc/${type}/${item.name}`);
+        navigate(`/package/${pkg.name}/${type}/${item.name}`);
     }
   };
 
@@ -598,7 +598,7 @@ const PackageNav = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoP
                     </svg>
                     </button>
                     {isPackageDropdownOpen && (
-                    <div className="absolute z-10 mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+                    <div className="absolute z-20 mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
                         <div className="p-2">
                         <input
                             ref={packageFilterInputRef}
@@ -629,48 +629,42 @@ const PackageNav = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoP
                     </div>
                     )}
                 </div>
-                <div className="px-4 py-2">
-                    <Link to={`/package/${packageName}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                        View Documentation &rarr;
-                    </Link>
-                </div>
+                
             </div>
         </div>
     )
 }
 
-const FileBrowserView = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoPackage[], isDarkMode: boolean, toggleDarkMode: () => void }) => {
-    const { packageName } = useParams();
-    const protoPackage = packages.find(p => p.name === packageName);
 
-    if (!protoPackage) {
-        return <div>Package not found</div>;
-    }
-
-    return (
-        <div className={`font-sans antialiased text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col md:flex-row transition-colors duration-500`}>
-            <PackageNav packages={packages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
-            <main className="flex-1 w-full bg-white dark:bg-gray-900 md:rounded-l-3xl shadow-xl z-10 overflow-y-auto transition-colors duration-500 p-8">
-                <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Files in {packageName}</h1>
-                <ul className="space-y-2">
-                    {protoPackage.files.map(file => (
-                        <li key={file.fileName}>
-                            <Link to={`/package/${packageName}/files/${file.fileName.replace(/\//g, '+')}`} className="text-blue-600 dark:text-blue-400 hover:underline">
-                                {file.fileName}
-                            </Link>
-                        </li>
-                    ))}
-                </ul>
-            </main>
-        </div>
-    );
-}
 
 interface PackageDocumentationViewProps {
     packages: ProtoPackage[];
     isDarkMode: boolean;
     toggleDarkMode: () => void;
 }
+
+const FileTreeView = ({ files, packageName }: { files: ProtoFile[], packageName: string }) => {
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    return (
+        <div className="w-full">
+        <button onClick={() => setIsCollapsed(!isCollapsed)} className="flex items-center justify-between w-full py-2 px-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none rounded-lg">
+            <span>Files</span>
+            <svg className={`h-5 w-5 transform transition-transform duration-200 ${isCollapsed ? 'rotate-0' : '-rotate-90'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+        </button>
+        <div className={`transition-max-h duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'max-h-0' : 'max-h-screen'}`}>
+        <ul className="space-y-1 mt-2">
+            {files.map(file => (
+                <li key={file.fileName}>
+                    <Link to={`/package/${packageName}/files/${file.fileName.replace(/\//g, '+')}`} className={`w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800`}>
+                        {file.fileName}
+                    </Link>
+                </li>
+            ))}
+            </ul>
+        </div>
+        </div>
+    );
+};
 
 const uniqueBy = <T extends { name: string }>(arr: T[]): T[] => {
     const seen = new Set<string>();
@@ -771,12 +765,13 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
                 <input type="text" placeholder="Filter definitions..." value={filterQuery} onChange={(e) => setFilterQuery(e.target.value)} className="w-full px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="space-y-6">
+                <FileTreeView files={protoPackage.files} packageName={packageName!} />
                 <Section title="Services" items={filteredServices} selectedItem={selectedItem} itemType="services" packageName={packageName!} />
                 <Section title="Messages" items={filteredMessages} selectedItem={selectedItem} itemType="messages" packageName={packageName!} />
                 <Section title="Enums" items={filteredEnums} selectedItem={selectedItem} itemType="enums" packageName={packageName!} />
             </div>
         </div>
-      <main ref={mainRef} className="flex-1 w-full bg-white dark:bg-gray-900 md:rounded-l-3xl shadow-xl z-10 overflow-y-auto transition-colors duration-500">
+      <main ref={mainRef} className="flex-1 w-full bg-white dark:bg-gray-900 md:rounded-l-3xl shadow-xl z-20 overflow-y-auto transition-colors duration-500">
         <ProtoDetailView item={selectedItem} type={selectedItemType} proto={mergedProtoFile} allTypes={allTypes} />
       </main>
     </div>
@@ -1068,7 +1063,7 @@ export default function App() {
         <Routes>
             <Route path="/" element={<PackageListView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} onFileChange={handleFileChange} />} />
             <Route path="/package/:packageName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
-            <Route path="/package/:packageName/files" element={<FileBrowserView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            
             <Route path="/package/:packageName/files/:fileName" element={<FileSourceView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
             <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
         </Routes>
