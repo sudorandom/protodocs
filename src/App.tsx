@@ -115,6 +115,13 @@ const wellKnownTypeUrls: Record<string, string> = {
 
 // --- UI Components ---
 
+interface CompactMessageViewProps {
+  message: Message;
+  title: string;
+  renderFieldType: (field: Field, messagePackage: string) => React.ReactNode;
+  messagePackage: string;
+}
+
 const CompactMessageView = ({ message, title, renderFieldType, messagePackage }: CompactMessageViewProps) => {
   if (!message) return null;
   return (
@@ -140,8 +147,8 @@ const CompactMessageView = ({ message, title, renderFieldType, messagePackage }:
   );
 };
 
-const formatProtobufOptions = (options: Record<string, any>, indent = '') => {
-    return Object.entries(options).map(([key, value]) => {
+const formatProtobufOptions = (options: Record<string, any>, indent = ''): string => {
+    return Object.entries(options).map(([key, value]): string => {
         let valueStr;
         if (typeof value === 'string') {
             valueStr = `"${value}"`;
@@ -155,8 +162,8 @@ ${formatProtobufOptions(value, indent + '  ')}${indent}}`;
     }).join('\n');
 };
 
-const ProtoSourceView = ({ item, type, proto }: { item: Message | Service | Enum, type: string, proto: ProtoFile }) => {
-    const generateSource = () => {
+const ProtoSourceView = ({ item, type }: { item: Message | Service | Enum, type: string }) => {
+    const generateSource = (): string => {
         if (!item) return '';
 
         let source = ``;
@@ -240,7 +247,7 @@ const ProtoDetailView = ({ item, type, proto, allTypes }: ProtoDetailViewProps) 
             <div>
                 <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2 font-mono">{proto.package}</h2>
                 <div className="prose dark:prose-invert max-w-none"><ReactMarkdown>{proto.description}</ReactMarkdown></div>
-                <p className="text-xl font-semibold mt-8">Select a definition from the sidebar to view its details, or <Link to={`/package/${packageName}`} className="text-blue-600 dark:text-blue-400 hover:underline">browse the package files</Link>.</p>
+                <p className="text-xl font-semibold mt-8">Select a definition from the sidebar to view its details, or <Link to={`/package/${packageName}/files`} className="text-blue-600 dark:text-blue-400 hover:underline">browse the package files</Link>.</p>
             </div>
         </div>
     );
@@ -397,7 +404,7 @@ const ProtoDetailView = ({ item, type, proto, allTypes }: ProtoDetailViewProps) 
           </button>
       </div>
       {showSource ? (
-          <ProtoSourceView item={item} type={type!} proto={proto} />
+          <ProtoSourceView item={item} type={type!} />
       ) : (
           <>
               {type === 'messages' && renderFields()}
@@ -429,7 +436,7 @@ const Section = ({ title, items, selectedItem, itemType, packageName }: SectionP
         <ul className="space-y-1 mt-2">
           {items.map(item => (
             <li key={item.name}>
-                <Link to={`/package/${packageName}/doc/${itemType}/${item.name}`} className={`w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block ${ selectedItem && selectedItem.name === item.name ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' }`}>
+                <Link to={`/package/${packageName}/${itemType}/${item.name}`} className={`w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block ${ selectedItem && selectedItem.name === item.name ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' }`}>
                     {item.name}
                 </Link>
             </li>
@@ -623,7 +630,7 @@ const PackageNav = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoP
                     )}
                 </div>
                 <div className="px-4 py-2">
-                    <Link to={`/package/${packageName}/doc`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                    <Link to={`/package/${packageName}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                         View Documentation &rarr;
                     </Link>
                 </div>
@@ -679,7 +686,6 @@ const uniqueBy = <T extends { name: string }>(arr: T[]): T[] => {
 
 const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: PackageDocumentationViewProps) => {
   const { packageName, itemType, itemName } = useParams();
-  const navigate = useNavigate();
   const [selectedItem, setSelectedItem] = useState<Message | Service | Enum | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState('');
@@ -819,7 +825,7 @@ const PackageListView = ({ packages, isDarkMode, toggleDarkMode, onFileChange }:
                 <button
                   onClick={() => navigate(`/package/${pkg.name}`)}
                   className="mt-4 md:mt-0 bg-blue-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-blue-700 transition-colors duration-300 self-start md:self-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm">
-                  View Files
+                  View Documentation
                 </button>
               </div>
             );
@@ -864,7 +870,9 @@ export default function App() {
 
     const typeStringMap: { [key: number]: string } = {};
     for (const key in protobuf.types.basic) {
-        typeStringMap[protobuf.types.basic[key]] = key;
+        if (Object.prototype.hasOwnProperty.call(protobuf.types.basic, key)) {
+            typeStringMap[(protobuf.types.basic as any)[key]] = key;
+        }
     }
     const resolveType = (type: number) => typeStringMap[type] || 'unknown';
 
@@ -1059,10 +1067,10 @@ export default function App() {
     <Router>
         <Routes>
             <Route path="/" element={<PackageListView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} onFileChange={handleFileChange} />} />
-            <Route path="/package/:packageName" element={<FileBrowserView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
-            <Route path="/package/:packageName/doc" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
-            <Route path="/package/:packageName/doc/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
-            <Route path="/package/:packageName/files/:fileName" element={<FileSourceView packages={packages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/package/:packageName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/package/:packageName/files" element={<FileBrowserView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/package/:packageName/files/:fileName" element={<FileSourceView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
         </Routes>
     </Router>
   );
