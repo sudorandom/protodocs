@@ -75,6 +75,23 @@ interface ProtoPackage {
 const getAnchorId = (type: string, name: string) => `${type}-${name}`;
 const getFieldAnchorId = (type: string, name: string, fieldName: string) => `${type}-${name}--${fieldName}`;
 
+const getCommonPathPrefix = (paths: string[]): string => {
+    if (!paths || paths.length < 2) return '';
+    const sortedPaths = [...paths].sort();
+    const first = sortedPaths[0];
+    const last = sortedPaths[sortedPaths.length - 1];
+    let i = 0;
+    while (i < first.length && first.charAt(i) === last.charAt(i)) {
+        i++;
+    }
+    let prefix = first.substring(0, i);
+    const lastSlash = prefix.lastIndexOf('/');
+    if (lastSlash === -1) {
+        return '';
+    }
+    return prefix.substring(0, lastSlash + 1);
+};
+
 const scalarDocUrls: Record<string, string> = {
   'double': 'https://protobuf.dev/programming-guides/proto3/#scalar',
   'float': 'https://protobuf.dev/programming-guides/proto3/#scalar',
@@ -233,21 +250,78 @@ interface ProtoDetailViewProps {
     type: string | null;
     proto: ProtoFile;
     allTypes: Map<string, {pkg: ProtoPackage, item: Message | Enum, type: string}>;
+    protoPackage: ProtoPackage;
 }
 
-const ProtoDetailView = ({ item, type, proto, allTypes }: ProtoDetailViewProps) => {
+const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDetailViewProps) => {
   const { packageName } = useParams();
   const [expandedRpc, setExpandedRpc] = useState<string | null>(null);
   const [showSource, setShowSource] = useState(false);
   const navigate = useNavigate();
 
   if (!item) {
+    const fileNames = protoPackage.files.map(f => f.fileName);
+    const commonPrefix = getCommonPathPrefix(fileNames);
     return (
-        <div className="flex items-start justify-center h-full text-center text-gray-500 dark:text-gray-400 p-8 pt-16">
-            <div>
-                <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2 font-mono">{proto.package}</h2>
-                <div className="prose dark:prose-invert max-w-none"><ReactMarkdown>{proto.description}</ReactMarkdown></div>
-                <p className="text-xl font-semibold mt-8">Select a definition from the sidebar to view its details.</p>
+        <div className="p-8">
+            <div className="border-b dark:border-gray-700 pb-4">
+                <h2 className="text-4xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{proto.package}</h2>
+                {proto.description && <div className="prose dark:prose-invert max-w-none mt-2"><ReactMarkdown>{proto.description}</ReactMarkdown></div>}
+            </div>
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Files</h3>
+                    {commonPrefix && (
+                        <div className="px-1 py-1 text-xs text-gray-500 dark:text-gray-400 truncate" title={commonPrefix}>
+                            {commonPrefix}
+                        </div>
+                    )}
+                    <ul className="space-y-2">
+                        {protoPackage.files.map(file => (
+                            <li key={file.fileName} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+                                <Link to={`/package/${protoPackage.name}/files/${file.fileName.replace(/\//g, '+')}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline break-all">{file.fileName.substring(commonPrefix.length)}</Link>
+                                <div className="flex space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-2">
+                                    <span>{file.services.length} services</span>
+                                    <span>{file.messages.length} messages</span>
+                                    <span>{file.enums.length} enums</span>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                <div>
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Services</h3>
+                    <ul className="space-y-2">
+                        {proto.services.map(service => (
+                            <li key={service.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm flex justify-between items-center">
+                                <Link to={`/package/${protoPackage.name}/services/${service.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{service.name}</Link>
+                                <span className="text-sm text-gray-500 dark:text-gray-400">{service.rpcs.length} methods</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                <div>
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Messages</h3>
+                    <ul className="space-y-2">
+                        {proto.messages.map(message => (
+                            <li key={message.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm flex justify-between items-center">
+                                <Link to={`/package/${protoPackage.name}/messages/${message.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{message.name}</Link>
+                                <span className="text-sm text-gray-500 dark:text-gray-400">{message.fields.length} fields</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                <div>
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Enums</h3>
+                    <ul className="space-y-2">
+                        {proto.enums.map(enumItem => (
+                            <li key={enumItem.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm flex justify-between items-center">
+                                <Link to={`/package/${protoPackage.name}/enums/${enumItem.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{enumItem.name}</Link>
+                                <span className="text-sm text-gray-500 dark:text-gray-400">{enumItem.values.length} values</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
             </div>
         </div>
     );
@@ -452,6 +526,64 @@ const Section = ({ title, items, selectedItem, itemType, packageName }: SectionP
 };
 
 
+const generateFileSource = (file: ProtoFile) => {
+    let source = `syntax = "proto3";\n\n`;
+    source += `package ${file.package};\n\n`;
+
+    if (file.options) {
+        source += formatProtobufOptions(file.options) + '\n\n';
+    }
+
+    file.services.forEach(service => {
+        if (service.description) {
+            source += `// ${service.description.replace(/\n/g, '\n// ')}\n`;
+        }
+        source += `service ${service.name} {\n`;
+        service.rpcs.forEach(rpc => {
+            if (rpc.description) {
+                source += `  // ${rpc.description.replace(/\n/g, '\n  // ')}\n`;
+            }
+            const clientStream = rpc.isClientStream ? 'stream ' : '';
+            const serverStream = rpc.isServerStream ? 'stream ' : '';
+            source += `  rpc ${rpc.name} (${clientStream}${rpc.request}) returns (${serverStream}${rpc.response});\n`;
+        });
+        source += '}\n\n';
+    });
+
+    file.messages.forEach(message => {
+        if (message.isMapEntry) return;
+        if (message.description) {
+            source += `// ${message.description.replace(/\n/g, '\n// ')}\n`;
+        }
+        source += `message ${message.name} {\n`;
+        message.fields.forEach(field => {
+            if (field.description) {
+                source += `  // ${field.description.replace(/\n/g, '\n  // ')}\n`;
+            }
+            const repeated = field.isRepeated && !field.isMap ? 'repeated ' : '';
+            const fieldType = field.isMap ? `map<${field.keyType}, ${field.valueType}>` : field.type;
+            source += `  ${repeated}${fieldType} ${field.name} = ${field.tag};\n`;
+        });
+        source += '}\n\n';
+    });
+
+    file.enums.forEach(enumItem => {
+        if (enumItem.description) {
+            source += `// ${enumItem.description.replace(/\n/g, '\n// ')}\n`;
+        }
+        source += `enum ${enumItem.name} {\n`;
+        enumItem.values.forEach(value => {
+            if (value.description) {
+                source += `  // ${value.description.replace(/\n/g, '\n  // ')}\n`;
+            }
+            source += `  ${value.name} = ${value.value};\n`;
+        });
+        source += '}\n\n';
+    });
+
+    return source;
+}
+
 const FileSourceContentView = ({ packages }: { packages: ProtoPackage[] }) => {
     const { packageName, fileName } = useParams();
     const protoPackage = packages.find(p => p.name === packageName);
@@ -459,64 +591,6 @@ const FileSourceContentView = ({ packages }: { packages: ProtoPackage[] }) => {
 
     if (!protoFile) {
         return <div className="p-8">File not found</div>;
-    }
-
-    const generateFileSource = (file: ProtoFile) => {
-        let source = `syntax = "proto3";\n\n`;
-        source += `package ${file.package};\n\n`;
-
-        if (file.options) {
-            source += formatProtobufOptions(file.options) + '\n\n';
-        }
-
-        file.services.forEach(service => {
-            if (service.description) {
-                source += `// ${service.description.replace(/\n/g, '\n// ')}\n`;
-            }
-            source += `service ${service.name} {\n`;
-            service.rpcs.forEach(rpc => {
-                if (rpc.description) {
-                    source += `  // ${rpc.description.replace(/\n/g, '\n  // ')}\n`;
-                }
-                const clientStream = rpc.isClientStream ? 'stream ' : '';
-                const serverStream = rpc.isServerStream ? 'stream ' : '';
-                source += `  rpc ${rpc.name} (${clientStream}${rpc.request}) returns (${serverStream}${rpc.response});\n`;
-            });
-            source += '}\n\n';
-        });
-
-        file.messages.forEach(message => {
-            if (message.isMapEntry) return;
-            if (message.description) {
-                source += `// ${message.description.replace(/\n/g, '\n// ')}\n`;
-            }
-            source += `message ${message.name} {\n`;
-            message.fields.forEach(field => {
-                if (field.description) {
-                    source += `  // ${field.description.replace(/\n/g, '\n  // ')}\n`;
-                }
-                const repeated = field.isRepeated && !field.isMap ? 'repeated ' : '';
-                const fieldType = field.isMap ? `map<${field.keyType}, ${field.valueType}>` : field.type;
-                source += `  ${repeated}${fieldType} ${field.name} = ${field.tag};\n`;
-            });
-            source += '}\n\n';
-        });
-
-        file.enums.forEach(enumItem => {
-            if (enumItem.description) {
-                source += `// ${enumItem.description.replace(/\n/g, '\n// ')}\n`;
-            }
-            source += `enum ${enumItem.name} {\n`;
-            enumItem.values.forEach(value => {
-                if (value.description) {
-                    source += `  // ${value.description.replace(/\n/g, '\n  // ')}\n`;
-                }
-                source += `  ${value.name} = ${value.value};\n`;
-            });
-            source += '}\n\n';
-        });
-
-        return source;
     }
 
     return (
@@ -566,7 +640,7 @@ const PackageNav = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoP
     };
 
     return (
-        <div className="flex-shrink-0 w-full md:w-96 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 p-4 shadow-xl transition-all duration-300 ease-in-out md:block">
+        <div>
             <div className="flex items-center justify-between p-2 mb-4">
                 <div className="flex items-center space-x-2">
                     <Link to={`/`} className="text-2xl font-bold text-blue-600">ProtoDocs</Link>
@@ -581,7 +655,7 @@ const PackageNav = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoP
                     >
                     <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">Package</p>
-                        <h2 className="font-mono text-base font-semibold text-gray-800 dark:text-gray-100 mt-1 break-words">
+                        <h2 className="font-mono text-base font-semibold text-gray-800 dark:text-gray-100 mt-1 break-all">
                             {packageName}
                         </h2>
                     </div>
@@ -647,23 +721,6 @@ interface PackageDocumentationViewProps {
 
 const FileTreeView = ({ files, packageName }: { files: ProtoFile[], packageName: string }) => {
     const [isCollapsed, setIsCollapsed] = useState(true);
-
-    const getCommonPathPrefix = (paths: string[]): string => {
-        if (!paths || paths.length < 2) return '';
-        const sortedPaths = [...paths].sort();
-        const first = sortedPaths[0];
-        const last = sortedPaths[sortedPaths.length - 1];
-        let i = 0;
-        while (i < first.length && first.charAt(i) === last.charAt(i)) {
-            i++;
-        }
-        let prefix = first.substring(0, i);
-        const lastSlash = prefix.lastIndexOf('/');
-        if (lastSlash === -1) {
-            return '';
-        }
-        return prefix.substring(0, lastSlash + 1);
-    };
 
     const fileNames = files.map(f => f.fileName);
     const commonPrefix = getCommonPathPrefix(fileNames);
@@ -792,7 +849,7 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
 
   return (
     <div className={`font-sans antialiased text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col md:flex-row transition-colors duration-500`}>
-        <div className="flex-shrink-0 w-full md:w-96 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 p-4 shadow-xl transition-all duration-300 ease-in-out md:flex flex-col h-screen">
+        <div className="flex-shrink-0 w-full md:w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 p-4 shadow-xl transition-all duration-300 ease-in-out md:flex flex-col h-screen">
             <PackageNav packages={packages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
             <div className="flex-grow overflow-y-auto">
               <div className="p-2 mb-4">
@@ -810,7 +867,7 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
         {fileName ? (
             <FileSourceContentView packages={packages} />
         ) : (
-            <ProtoDetailView item={selectedItem} type={selectedItemType} proto={mergedProtoFile} allTypes={allTypes} />
+            <ProtoDetailView item={selectedItem} type={selectedItemType} proto={mergedProtoFile} allTypes={allTypes} protoPackage={protoPackage!} />
         )}
       </main>
     </div>
@@ -1030,7 +1087,11 @@ export default function App() {
           return transformToProtoFile(file, allMessageDescriptors);
         });
 
-        setFiles(prevFiles => [...prevFiles, ...protoFiles]);
+        setFiles(prevFiles => {
+            const existingFileNames = new Set(prevFiles.map(f => f.fileName));
+            const newFiles = protoFiles.filter(pf => !existingFileNames.has(pf.fileName));
+            return [...prevFiles, ...newFiles];
+        });
     } catch (err) {
         setError('Failed to parse descriptor file.');
         console.error(err);
