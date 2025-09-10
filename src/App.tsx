@@ -269,7 +269,7 @@ const DetailSection = <T,>({ title, items, renderItem, titleAddon }: { title: st
                 {title}
                 {titleAddon}
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-1 xl:grid-cols-2 gap-6">
                 {items.map(renderItem)}
             </div>
         </div>
@@ -517,33 +517,36 @@ interface NavSectionProps {
     selectedItem: Message | Service | Enum | null;
     itemType: string;
     packageName: string;
+    isExpanded: boolean;
+    onToggle: () => void;
 }
 
-const NavSection = ({ title, items, selectedItem, itemType, packageName }: NavSectionProps) => {
-  const [isCollapsed, setIsCollapsed] = useState(true);
-  if (!items || items.length === 0) return null;
-  return (
-    <div className="w-full">
-      <button onClick={() => setIsCollapsed(!isCollapsed)} className="flex items-center justify-between w-full py-2 px-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none rounded-lg">
-        <div className="flex items-center">
-          <span>{title}</span>
-          <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">({items.length})</span>
+const NavSection = ({ title, items, selectedItem, itemType, packageName, isExpanded, onToggle }: NavSectionProps) => {
+    if (!items || items.length === 0) return null;
+    const isItemSelected = items.some(item => selectedItem && selectedItem.name === item.name && itemType === selectedItemType);
+
+    return (
+        <div className="w-full">
+            <button onClick={onToggle} className="flex items-center justify-between w-full py-2 px-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none rounded-lg">
+                <div className="flex items-center">
+                    <span>{title}</span>
+                    <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">({items.length})</span>
+                </div>
+                <svg className={`h-5 w-5 transform transition-transform duration-200 ${!isExpanded && !isItemSelected ? 'rotate-0' : '-rotate-90'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            <div className={`transition-max-h duration-300 ease-in-out overflow-hidden ${!isExpanded && !isItemSelected ? 'max-h-0' : 'max-h-screen'}`}>
+                <ul className="space-y-1 mt-2">
+                    {items.map(item => (
+                        <li key={item.name}>
+                            <Link to={`/package/${packageName}/${itemType}/${item.name}`} className={`w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block ${ selectedItem && selectedItem.name === item.name ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' }`}>
+                                {item.name}
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+            </div>
         </div>
-        <svg className={`h-5 w-5 transform transition-transform duration-200 ${isCollapsed ? 'rotate-0' : '-rotate-90'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-      </button>
-      <div className={`transition-max-h duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'max-h-0' : 'max-h-screen'}`}>
-        <ul className="space-y-1 mt-2">
-          {items.map(item => (
-            <li key={item.name}>
-                <Link to={`/package/${packageName}/${itemType}/${item.name}`} className={`w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block ${ selectedItem && selectedItem.name === item.name ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' }`}>
-                    {item.name}
-                </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
+    );
 };
 
 
@@ -688,30 +691,32 @@ const PackageNav = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoP
             </div>
             <div className="space-y-6">
                 <div className="relative">
-                    <button
-                    onClick={() => setIsPackageDropdownOpen(!isPackageDropdownOpen)}
-                    className="w-full p-4 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex justify-between items-center"
-                    >
-                    <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Package</p>
-                        <h2 className="font-mono text-base font-semibold text-gray-800 dark:text-gray-100 mt-1 break-all">
-                            {packageName}
-                        </h2>
+                    <div className="w-full p-4 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Package</p>
+                            <Link to={`/package/${packageName}`} className="font-mono text-base font-semibold text-gray-800 dark:text-gray-100 mt-1 break-all hover:underline">
+                                {packageName}
+                            </Link>
+                        </div>
+                        <button
+                            onClick={() => setIsPackageDropdownOpen(!isPackageDropdownOpen)}
+                            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+                        >
+                            <svg
+                                className={`h-5 w-5 transform transition-transform duration-200 ${isPackageDropdownOpen ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M19 9l-7 7-7-7"
+                                />
+                            </svg>
+                        </button>
                     </div>
-                    <svg
-                        className={`h-5 w-5 transform transition-transform duration-200 ${isPackageDropdownOpen ? 'rotate-180' : ''}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M19 9l-7 7-7-7"
-                        />
-                    </svg>
-                    </button>
                     {isPackageDropdownOpen && (
                     <div className="absolute z-20 mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
                         <div className="p-2">
@@ -758,8 +763,9 @@ interface PackageDocumentationViewProps {
     toggleDarkMode: () => void;
 }
 
-const FileTreeView = ({ files, packageName }: { files: ProtoFile[], packageName: string }) => {
-    const [isCollapsed, setIsCollapsed] = useState(true);
+const FileTreeView = ({ files, packageName, isExpanded, onToggle }: { files: ProtoFile[], packageName: string, isExpanded: boolean, onToggle: () => void }) => {
+    const { fileName } = useParams();
+    const isFileActive = files.some(f => f.fileName.replace(/\//g, '+') === fileName);
 
     const fileNames = files.map(f => f.fileName);
     const commonPrefix = getCommonPathPrefix(fileNames);
@@ -768,29 +774,29 @@ const FileTreeView = ({ files, packageName }: { files: ProtoFile[], packageName:
 
     return (
         <div className="w-full">
-        <button onClick={() => setIsCollapsed(!isCollapsed)} className="flex items-center justify-between w-full py-2 px-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none rounded-lg">
-            <div className="flex items-center">
-                <span>Files</span>
-                <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">({files.length})</span>
-            </div>
-            <svg className={`h-5 w-5 transform transition-transform duration-200 ${isCollapsed ? 'rotate-0' : '-rotate-90'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-        </button>
-        <div className={`transition-max-h duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'max-h-0' : 'max-h-screen'}`}>
-            {commonPrefix && (
-                <div className="px-6 py-1 text-xs text-gray-500 dark:text-gray-400 truncate" title={commonPrefix}>
-                    {commonPrefix}
+            <button onClick={onToggle} className="flex items-center justify-between w-full py-2 px-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none rounded-lg">
+                <div className="flex items-center">
+                    <span>Files</span>
+                    <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">({files.length})</span>
                 </div>
-            )}
-            <ul className="space-y-1 mt-2">
-                {files.map(file => (
-                    <li key={file.fileName}>
-                        <NavLink to={`/package/${packageName}/files/${file.fileName.replace(/\//g, '+')}`} className={({ isActive }) => `w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block ${ isActive ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' }`}>
-                            {file.fileName.substring(commonPrefix.length)}
-                        </NavLink>
-                    </li>
-                ))}
-            </ul>
-        </div>
+                <svg className={`h-5 w-5 transform transition-transform duration-200 ${!isExpanded && !isFileActive ? 'rotate-0' : '-rotate-90'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            <div className={`transition-max-h duration-300 ease-in-out overflow-hidden ${!isExpanded && !isFileActive ? 'max-h-0' : 'max-h-screen'}`}>
+                {commonPrefix && (
+                    <div className="px-6 py-1 text-xs text-gray-500 dark:text-gray-400 truncate" title={commonPrefix}>
+                        {commonPrefix}
+                    </div>
+                )}
+                <ul className="space-y-1 mt-2 list-none">
+                    {files.map(file => (
+                        <li key={file.fileName}>
+                            <NavLink to={`/package/${packageName}/files/${file.fileName.replace(/\//g, '+')}`} className={({ isActive }) => `w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block ${ isActive ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' }`}>
+                                {file.fileName.substring(commonPrefix.length)}
+                            </NavLink>
+                        </li>
+                    ))}
+                </ul>
+            </div>
         </div>
     );
 };
@@ -813,6 +819,8 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
   const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState('');
   const mainRef = useRef<HTMLDivElement>(null);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const protoPackage = packages.find(p => p.name === packageName);
 
@@ -878,6 +886,18 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
     }
   }, [selectedItem, selectedItemType]);
 
+  useEffect(() => {
+      if (itemType) {
+          setExpandedSection(itemType);
+      } else if (fileName) {
+          setExpandedSection('files');
+      }
+  }, [itemType, fileName]);
+
+  const handleSectionToggle = (section: string) => {
+      setExpandedSection(prev => (prev === section ? null : section));
+  };
+
   if (!mergedProtoFile) {
       return <div>Package not found</div>
   }
@@ -886,29 +906,54 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
   const filteredMessages = mergedProtoFile.messages.filter((msg) => msg.name.toLowerCase().includes(filterQuery.toLowerCase()));
   const filteredEnums = mergedProtoFile.enums.filter((enm) => enm.name.toLowerCase().includes(filterQuery.toLowerCase()));
 
-  return (
-    <div className={`font-sans antialiased text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col md:flex-row transition-colors duration-500`}>
-        <div className="flex-shrink-0 w-full md:w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 p-4 shadow-xl transition-all duration-300 ease-in-out md:flex flex-col h-screen">
-            <PackageNav packages={packages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
-            <div className="flex-grow overflow-y-auto">
-              <div className="p-2 mb-4">
-                  <input type="text" placeholder="Filter definitions..." value={filterQuery} onChange={(e) => setFilterQuery(e.target.value)} className="w-full px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div className="space-y-6">
-                  <FileTreeView files={protoPackage.files} packageName={packageName!} />
-                  <NavSection title="Services" items={filteredServices} selectedItem={selectedItem} itemType="services" packageName={packageName!} />
-                  <NavSection title="Messages" items={filteredMessages} selectedItem={selectedItem} itemType="messages" packageName={packageName!} />
-                  <NavSection title="Enums" items={filteredEnums} selectedItem={selectedItem} itemType="enums" packageName={packageName!} />
-              </div>
+  const sidebarContent = (
+    <>
+        <PackageNav packages={packages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
+        <div className="flex-grow overflow-y-auto">
+            <div className="p-2 mb-4">
+                <input type="text" placeholder="Filter definitions..." value={filterQuery} onChange={(e) => setFilterQuery(e.target.value)} className="w-full px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div className="space-y-6">
+                <NavSection title="Services" items={filteredServices} selectedItem={selectedItem} itemType="services" packageName={packageName!} isExpanded={expandedSection === 'services'} onToggle={() => handleSectionToggle('services')} />
+                <NavSection title="Messages" items={filteredMessages} selectedItem={selectedItem} itemType="messages" packageName={packageName!} isExpanded={expandedSection === 'messages'} onToggle={() => handleSectionToggle('messages')} />
+                <NavSection title="Enums" items={filteredEnums} selectedItem={selectedItem} itemType="enums" packageName={packageName!} isExpanded={expandedSection === 'enums'} onToggle={() => handleSectionToggle('enums')} />
+                <FileTreeView files={protoPackage.files} packageName={packageName!} isExpanded={expandedSection === 'files'} onToggle={() => handleSectionToggle('files')} />
             </div>
         </div>
-      <main ref={mainRef} className="flex-1 w-full bg-white dark:bg-gray-900 md:rounded-l-3xl shadow-xl z-20 overflow-y-auto transition-colors duration-500">
-        {fileName ? (
-            <FileSourceContentView packages={packages} />
-        ) : (
-            <ProtoDetailView item={selectedItem} type={selectedItemType} proto={mergedProtoFile} allTypes={allTypes} protoPackage={protoPackage!} />
-        )}
-      </main>
+    </>
+  );
+
+  return (
+    <div className={`font-sans antialiased text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col md:flex-row transition-colors duration-500`}>
+        <div className="md:hidden flex items-center justify-between p-4 border-b dark:border-gray-700 sticky top-0 bg-gray-50 dark:bg-gray-900 z-30">
+            <Link to={`/package/${packageName}`} className="text-xl font-bold text-blue-600 truncate">{packageName}</Link>
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-md text-gray-500 dark:text-gray-400">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+            </button>
+        </div>
+
+        {/* Sidebar for mobile */}
+        <div className={`fixed inset-0 z-40 flex md:hidden ${isSidebarOpen ? '' : 'pointer-events-none'}`}>
+            <div className="fixed inset-0 bg-black/20" onClick={() => setIsSidebarOpen(false)}></div>
+            <div className={`relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-gray-950 shadow-xl p-4 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                {sidebarContent}
+            </div>
+        </div>
+
+        {/* Sidebar for desktop */}
+        <div className="hidden md:flex flex-shrink-0 w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 p-4 shadow-xl flex-col h-screen">
+            {sidebarContent}
+        </div>
+
+        <main ref={mainRef} className="flex-1 w-full bg-white dark:bg-gray-900 md:rounded-l-3xl shadow-xl z-20 overflow-y-auto transition-colors duration-500">
+            {fileName ? (
+                <FileSourceContentView packages={packages} />
+            ) : (
+                <ProtoDetailView item={selectedItem} type={selectedItemType} proto={mergedProtoFile} allTypes={allTypes} protoPackage={protoPackage!} />
+            )}
+        </main>
     </div>
   );
 };
