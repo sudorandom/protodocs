@@ -2,5 +2,8 @@ default:
     @just --list
 
 # Run playwright tests and generate screenshots
-screenshots:
+playwright:
     npx playwright test
+
+run:
+    npm run dev

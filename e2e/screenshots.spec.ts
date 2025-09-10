@@ -15,7 +15,7 @@ test.describe('Screenshot tests', () => {
 
   test('message detail page', async ({ page }) => {
     await page.goto('/package/buf.registry.owner.v1/messages/Owner');
-    await expect(page.getByRole('heading', { name: 'Owner' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Owner', exact: true })).toBeVisible();
     await page.screenshot({ path: 'e2e/screenshots/03-message-detail.png', fullPage: true });
   });
 
@@ -26,8 +26,8 @@ test.describe('Screenshot tests', () => {
   });
 
   test('file source page', async ({ page }) => {
-    await page.goto('/package/buf.registry.owner.v1/files/buf.registry.owner.v1%2Fowner.proto');
-    await expect(page.getByRole('heading', { name: 'buf.registry.owner.v1/owner.proto' })).toBeVisible();
+    await page.goto('/package/buf.registry.owner.v1/files/buf+registry+owner+v1+owner.proto');
+    await expect(page.getByRole('heading', { name: 'buf/registry/owner/v1/owner.proto' })).toBeVisible();
     await page.screenshot({ path: 'e2e/screenshots/05-file-source.png', fullPage: true });
   });
 });

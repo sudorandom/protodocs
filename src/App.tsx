@@ -175,7 +175,8 @@ ${formatProtobufOptions(value, indent + '  ')}${indent}}`;
         } else {
             valueStr = value.toString();
         }
-        return `${indent}option (${key}) = ${valueStr};`;
+        return `${indent}option (${key}) = ${valueStr};
+`;
     }).join('\n');
 };
 
@@ -185,16 +186,19 @@ const ProtoSourceView = ({ item, type }: { item: Message | Service | Enum, type:
 
         let source = ``;
         if (item.description) {
-            source += `// ${item.description.replace(/\n/g, '\n// ')}\n`;
+            source += `// ${item.description.replace(/\n/g, '\n// ')}
+`;
         }
 
         if (type === 'messages') {
             const message = item as Message;
-            source += `message ${message.name} {\n`;
+            source += `message ${message.name} {
+`;
             if(message.fields) {
                 message.fields.forEach(field => {
                     if (field.description) {
-                        source += `  // ${field.description.replace(/\n/g, '\n  // ')}\n`;
+                        source += `  // ${field.description.replace(/\n/g, '\n  // ')}
+`;
                     }
                     const repeated = field.isRepeated && !field.isMap ? 'repeated ' : '';
                     const fieldType = field.isMap ? `map<${field.keyType}, ${field.valueType}>` : field.type;
@@ -205,11 +209,13 @@ const ProtoSourceView = ({ item, type }: { item: Message | Service | Enum, type:
             source += '}';
         } else if (type === 'enums') {
             const enumItem = item as Enum;
-            source += `enum ${enumItem.name} {\n`;
+            source += `enum ${enumItem.name} {
+`;
             if(enumItem.values) {
                 enumItem.values.forEach(value => {
                     if (value.description) {
-                        source += `  // ${value.description.replace(/\n/g, '\n  // ')}\n`;
+                        source += `  // ${value.description.replace(/\n/g, '\n  // ')}
+`;
                     }
                     source += `  ${value.name} = ${value.value};
 `;
@@ -218,11 +224,13 @@ const ProtoSourceView = ({ item, type }: { item: Message | Service | Enum, type:
             source += '}';
         } else if (type === 'services') {
             const service = item as Service;
-            source += `service ${service.name} {\n`;
+            source += `service ${service.name} {
+`;
             if(service.rpcs) {
                 service.rpcs.forEach(rpc => {
                     if (rpc.description) {
-                        source += `  // ${rpc.description.replace(/\n/g, '\n  // ')}\n`;
+                        source += `  // ${rpc.description.replace(/\n/g, '\n  // ')}
+`;
                     }
                     const clientStream = rpc.isClientStream ? 'stream ' : '';
                     const serverStream = rpc.isServerStream ? 'stream ' : '';
@@ -253,6 +261,21 @@ interface ProtoDetailViewProps {
     protoPackage: ProtoPackage;
 }
 
+const DetailSection = <T,>({ title, items, renderItem, titleAddon }: { title: string, items: T[], renderItem: (item: T) => React.ReactNode, titleAddon?: React.ReactNode }) => {
+    if (!items || items.length === 0) return null;
+    return (
+        <div className="mt-8">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center">
+                {title}
+                {titleAddon}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {items.map(renderItem)}
+            </div>
+        </div>
+    );
+};
+
 const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDetailViewProps) => {
   const { packageName } = useParams();
   const [expandedRpc, setExpandedRpc] = useState<string | null>(null);
@@ -268,61 +291,59 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
                 <h2 className="text-4xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{proto.package}</h2>
                 {proto.description && <div className="prose dark:prose-invert max-w-none mt-2"><ReactMarkdown>{proto.description}</ReactMarkdown></div>}
             </div>
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Files</h3>
-                    {commonPrefix && (
-                        <div className="px-1 py-1 text-xs text-gray-500 dark:text-gray-400 truncate" title={commonPrefix}>
-                            {commonPrefix}
+
+            <DetailSection
+                title="Services"
+                items={proto.services}
+                renderItem={service => (
+                    <li key={service.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm flex justify-between items-center">
+                        <Link to={`/package/${protoPackage.name}/services/${service.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{service.name}</Link>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">{service.rpcs.length} methods</span>
+                    </li>
+                )}
+            />
+
+            <DetailSection
+                title="Messages"
+                items={proto.messages}
+                renderItem={message => (
+                    <li key={message.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm flex justify-between items-center">
+                        <Link to={`/package/${protoPackage.name}/messages/${message.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{message.name}</Link>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">{message.fields.length} fields</span>
+                    </li>
+                )}
+            />
+
+            <DetailSection
+                title="Enums"
+                items={proto.enums}
+                renderItem={enumItem => (
+                    <li key={enumItem.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm flex justify-between items-center">
+                        <Link to={`/package/${protoPackage.name}/enums/${enumItem.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{enumItem.name}</Link>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">{enumItem.values.length} values</span>
+                    </li>
+                )}
+            />
+
+            <DetailSection
+                title="Files"
+                items={protoPackage.files}
+                titleAddon={commonPrefix && (
+                    <span className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400 truncate" title={commonPrefix}>
+                        {commonPrefix}
+                    </span>
+                )}
+                renderItem={file => (
+                    <li key={file.fileName} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+                        <Link to={`/package/${protoPackage.name}/files/${file.fileName.replace(/\//g, '+')}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline break-all">{file.fileName.substring(commonPrefix.length)}</Link>
+                        <div className="flex space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            <span>{file.services.length} services</span>
+                            <span>{file.messages.length} messages</span>
+                            <span>{file.enums.length} enums</span>
                         </div>
-                    )}
-                    <ul className="space-y-2">
-                        {protoPackage.files.map(file => (
-                            <li key={file.fileName} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                                <Link to={`/package/${protoPackage.name}/files/${file.fileName.replace(/\//g, '+')}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline break-all">{file.fileName.substring(commonPrefix.length)}</Link>
-                                <div className="flex space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-2">
-                                    <span>{file.services.length} services</span>
-                                    <span>{file.messages.length} messages</span>
-                                    <span>{file.enums.length} enums</span>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                <div>
-                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Services</h3>
-                    <ul className="space-y-2">
-                        {proto.services.map(service => (
-                            <li key={service.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm flex justify-between items-center">
-                                <Link to={`/package/${protoPackage.name}/services/${service.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{service.name}</Link>
-                                <span className="text-sm text-gray-500 dark:text-gray-400">{service.rpcs.length} methods</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                <div>
-                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Messages</h3>
-                    <ul className="space-y-2">
-                        {proto.messages.map(message => (
-                            <li key={message.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm flex justify-between items-center">
-                                <Link to={`/package/${protoPackage.name}/messages/${message.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{message.name}</Link>
-                                <span className="text-sm text-gray-500 dark:text-gray-400">{message.fields.length} fields</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                <div>
-                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Enums</h3>
-                    <ul className="space-y-2">
-                        {proto.enums.map(enumItem => (
-                            <li key={enumItem.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm flex justify-between items-center">
-                                <Link to={`/package/${protoPackage.name}/enums/${enumItem.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{enumItem.name}</Link>
-                                <span className="text-sm text-gray-500 dark:text-gray-400">{enumItem.values.length} values</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            </div>
+                    </li>
+                )}
+            />
         </div>
     );
   }
@@ -490,7 +511,7 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
   );
 };
 
-interface SectionProps {
+interface NavSectionProps {
     title: string;
     items: (Message | Service | Enum)[];
     selectedItem: Message | Service | Enum | null;
@@ -498,7 +519,7 @@ interface SectionProps {
     packageName: string;
 }
 
-const Section = ({ title, items, selectedItem, itemType, packageName }: SectionProps) => {
+const NavSection = ({ title, items, selectedItem, itemType, packageName }: NavSectionProps) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   if (!items || items.length === 0) return null;
   return (
@@ -536,49 +557,67 @@ const generateFileSource = (file: ProtoFile) => {
 
     file.services.forEach(service => {
         if (service.description) {
-            source += `// ${service.description.replace(/\n/g, '\n// ')}\n`;
+            source += `// ${service.description.replace(/\n/g, '\n// ')}
+`;
         }
-        source += `service ${service.name} {\n`;
+        source += `service ${service.name} {
+`;
         service.rpcs.forEach(rpc => {
             if (rpc.description) {
-                source += `  // ${rpc.description.replace(/\n/g, '\n  // ')}\n`;
+                source += `  // ${rpc.description.replace(/\n/g, '\n  // ')}
+`;
             }
             const clientStream = rpc.isClientStream ? 'stream ' : '';
             const serverStream = rpc.isServerStream ? 'stream ' : '';
-            source += `  rpc ${rpc.name} (${clientStream}${rpc.request}) returns (${serverStream}${rpc.response});\n`;
+            source += `  rpc ${rpc.name} (${clientStream}${rpc.request}) returns (${serverStream}${rpc.response});
+`;
         });
-        source += '}\n\n';
+        source += `}
+
+`;
     });
 
     file.messages.forEach(message => {
         if (message.isMapEntry) return;
         if (message.description) {
-            source += `// ${message.description.replace(/\n/g, '\n// ')}\n`;
+            source += `// ${message.description.replace(/\n/g, '\n// ')}
+`;
         }
-        source += `message ${message.name} {\n`;
+        source += `message ${message.name} {
+`;
         message.fields.forEach(field => {
             if (field.description) {
-                source += `  // ${field.description.replace(/\n/g, '\n  // ')}\n`;
+                source += `  // ${field.description.replace(/\n/g, '\n  // ')}
+`;
             }
             const repeated = field.isRepeated && !field.isMap ? 'repeated ' : '';
             const fieldType = field.isMap ? `map<${field.keyType}, ${field.valueType}>` : field.type;
-            source += `  ${repeated}${fieldType} ${field.name} = ${field.tag};\n`;
+            source += `  ${repeated}${fieldType} ${field.name} = ${field.tag};
+`;
         });
-        source += '}\n\n';
+        source += `}
+
+`;
     });
 
     file.enums.forEach(enumItem => {
         if (enumItem.description) {
-            source += `// ${enumItem.description.replace(/\n/g, '\n// ')}\n`;
+            source += `// ${enumItem.description.replace(/\n/g, '\n// ')}
+`;
         }
-        source += `enum ${enumItem.name} {\n`;
+        source += `enum ${enumItem.name} {
+`;
         enumItem.values.forEach(value => {
             if (value.description) {
-                source += `  // ${value.description.replace(/\n/g, '\n  // ')}\n`;
+                source += `  // ${value.description.replace(/\n/g, '\n  // ')}
+`;
             }
-            source += `  ${value.name} = ${value.value};\n`;
+            source += `  ${value.name} = ${value.value};
+`;
         });
-        source += '}\n\n';
+        source += `}
+
+`;
     });
 
     return source;
@@ -857,9 +896,9 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
               </div>
               <div className="space-y-6">
                   <FileTreeView files={protoPackage.files} packageName={packageName!} />
-                  <Section title="Services" items={filteredServices} selectedItem={selectedItem} itemType="services" packageName={packageName!} />
-                  <Section title="Messages" items={filteredMessages} selectedItem={selectedItem} itemType="messages" packageName={packageName!} />
-                  <Section title="Enums" items={filteredEnums} selectedItem={selectedItem} itemType="enums" packageName={packageName!} />
+                  <NavSection title="Services" items={filteredServices} selectedItem={selectedItem} itemType="services" packageName={packageName!} />
+                  <NavSection title="Messages" items={filteredMessages} selectedItem={selectedItem} itemType="messages" packageName={packageName!} />
+                  <NavSection title="Enums" items={filteredEnums} selectedItem={selectedItem} itemType="enums" packageName={packageName!} />
               </div>
             </div>
         </div>
@@ -1128,17 +1167,28 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    if (isDarkMode) {
+  const toggleDarkMode = () => {
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      localStorage.theme = 'light';
+    } else {
+      localStorage.theme = 'dark';
+    }
+    // Re-apply the class based on the new localStorage value
+    if (localStorage.theme === 'dark') {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
     }
-  }, [isDarkMode]);
+  };
 
-  const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
+  // Initial theme setting on load
+  useEffect(() => {
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
 
   const packages = files.reduce((acc: Record<string, ProtoFile[]>, file) => {
     if (!acc[file.package]) {
@@ -1157,6 +1207,8 @@ export default function App() {
   if (error) {
     return <div>Error: {error}</div>;
   }
+
+  
 
   return (
     <Router>

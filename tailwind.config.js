@@ -11,4 +11,5 @@ export default {
     extend: {},
   },
   plugins: [typography],
+  // Added a comment to force Tailwind CSS rebuild
 }
