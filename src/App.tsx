@@ -425,11 +425,15 @@ interface SectionProps {
 }
 
 const Section = ({ title, items, selectedItem, itemType, packageName }: SectionProps) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  if (!items || items.length === 0) return null;
   return (
     <div className="w-full">
       <button onClick={() => setIsCollapsed(!isCollapsed)} className="flex items-center justify-between w-full py-2 px-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none rounded-lg">
-        <span>{title}</span>
+        <div className="flex items-center">
+          <span>{title}</span>
+          <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">({items.length})</span>
+        </div>
         <svg className={`h-5 w-5 transform transition-transform duration-200 ${isCollapsed ? 'rotate-0' : '-rotate-90'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
       </button>
       <div className={`transition-max-h duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'max-h-0' : 'max-h-screen'}`}>
@@ -447,13 +451,14 @@ const Section = ({ title, items, selectedItem, itemType, packageName }: SectionP
   );
 };
 
-const FileSourceView = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoPackage[], isDarkMode: boolean, toggleDarkMode: () => void }) => {
+
+const FileSourceContentView = ({ packages }: { packages: ProtoPackage[] }) => {
     const { packageName, fileName } = useParams();
     const protoPackage = packages.find(p => p.name === packageName);
     const protoFile = protoPackage?.files.find(f => f.fileName.replace(/\//g, '+') === fileName);
 
     if (!protoFile) {
-        return <div>File not found</div>;
+        return <div className="p-8">File not found</div>;
     }
 
     const generateFileSource = (file: ProtoFile) => {
@@ -515,14 +520,11 @@ const FileSourceView = ({ packages, isDarkMode, toggleDarkMode }: { packages: Pr
     }
 
     return (
-        <div className={`font-sans antialiased text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col md:flex-row transition-colors duration-500`}>
-            <PackageNav packages={packages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
-            <main className="flex-1 w-full bg-white dark:bg-gray-900 md:rounded-l-3xl shadow-xl z-10 overflow-y-auto transition-colors duration-500 p-8">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">{protoFile.fileName}</h2>
-                <SyntaxHighlighter language="protobuf" style={atomDark}>
-                    {generateFileSource(protoFile)}
-                </SyntaxHighlighter>
-            </main>
+        <div className="p-8">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">{protoFile.fileName}</h2>
+            <SyntaxHighlighter language="protobuf" style={atomDark}>
+                {generateFileSource(protoFile)}
+            </SyntaxHighlighter>
         </div>
     );
 }
@@ -644,22 +646,53 @@ interface PackageDocumentationViewProps {
 }
 
 const FileTreeView = ({ files, packageName }: { files: ProtoFile[], packageName: string }) => {
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(true);
+
+    const getCommonPathPrefix = (paths: string[]): string => {
+        if (!paths || paths.length < 2) return '';
+        const sortedPaths = [...paths].sort();
+        const first = sortedPaths[0];
+        const last = sortedPaths[sortedPaths.length - 1];
+        let i = 0;
+        while (i < first.length && first.charAt(i) === last.charAt(i)) {
+            i++;
+        }
+        let prefix = first.substring(0, i);
+        const lastSlash = prefix.lastIndexOf('/');
+        if (lastSlash === -1) {
+            return '';
+        }
+        return prefix.substring(0, lastSlash + 1);
+    };
+
+    const fileNames = files.map(f => f.fileName);
+    const commonPrefix = getCommonPathPrefix(fileNames);
+
+    if (!files || files.length === 0) return null;
+
     return (
         <div className="w-full">
         <button onClick={() => setIsCollapsed(!isCollapsed)} className="flex items-center justify-between w-full py-2 px-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none rounded-lg">
-            <span>Files</span>
+            <div className="flex items-center">
+                <span>Files</span>
+                <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">({files.length})</span>
+            </div>
             <svg className={`h-5 w-5 transform transition-transform duration-200 ${isCollapsed ? 'rotate-0' : '-rotate-90'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
         </button>
         <div className={`transition-max-h duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'max-h-0' : 'max-h-screen'}`}>
-        <ul className="space-y-1 mt-2">
-            {files.map(file => (
-                <li key={file.fileName}>
-                    <NavLink to={`/package/${packageName}/files/${file.fileName.replace(/\//g, '+')}`} className={({ isActive }) => `w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block ${ isActive ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' }`}>
-                        {file.fileName}
-                    </NavLink>
-                </li>
-            ))}
+            {commonPrefix && (
+                <div className="px-6 py-1 text-xs text-gray-500 dark:text-gray-400 truncate" title={commonPrefix}>
+                    {commonPrefix}
+                </div>
+            )}
+            <ul className="space-y-1 mt-2">
+                {files.map(file => (
+                    <li key={file.fileName}>
+                        <NavLink to={`/package/${packageName}/files/${file.fileName.replace(/\//g, '+')}`} className={({ isActive }) => `w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block ${ isActive ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' }`}>
+                            {file.fileName.substring(commonPrefix.length)}
+                        </NavLink>
+                    </li>
+                ))}
             </ul>
         </div>
         </div>
@@ -679,7 +712,7 @@ const uniqueBy = <T extends { name: string }>(arr: T[]): T[] => {
 };
 
 const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: PackageDocumentationViewProps) => {
-  const { packageName, itemType, itemName } = useParams();
+  const { packageName, itemType, itemName, fileName } = useParams();
   const [selectedItem, setSelectedItem] = useState<Message | Service | Enum | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState('');
@@ -774,7 +807,11 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
             </div>
         </div>
       <main ref={mainRef} className="flex-1 w-full bg-white dark:bg-gray-900 md:rounded-l-3xl shadow-xl z-20 overflow-y-auto transition-colors duration-500">
-        <ProtoDetailView item={selectedItem} type={selectedItemType} proto={mergedProtoFile} allTypes={allTypes} />
+        {fileName ? (
+            <FileSourceContentView packages={packages} />
+        ) : (
+            <ProtoDetailView item={selectedItem} type={selectedItemType} proto={mergedProtoFile} allTypes={allTypes} />
+        )}
       </main>
     </div>
   );
@@ -1066,7 +1103,7 @@ export default function App() {
             <Route path="/" element={<PackageListView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} onFileChange={handleFileChange} />} />
             <Route path="/package/:packageName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
             
-            <Route path="/package/:packageName/files/:fileName" element={<FileSourceView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/package/:packageName/files/:fileName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
             <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
         </Routes>
     </Router>
