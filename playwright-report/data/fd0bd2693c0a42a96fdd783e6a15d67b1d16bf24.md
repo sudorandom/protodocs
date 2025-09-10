@@ -1,0 +1,175 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "ProtoDocs" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - button "🌙" [ref=e9]
+      - button "Package buf.registry.owner.v1" [ref=e12]:
+        - generic [ref=e13]:
+          - paragraph [ref=e14]: Package
+          - heading "buf.registry.owner.v1" [level=2] [ref=e15]
+        - img [ref=e16]
+    - generic [ref=e18]:
+      - textbox "Filter definitions..." [ref=e20]
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - button "Files (6)" [ref=e23]:
+            - generic [ref=e24]:
+              - generic [ref=e25]: Files
+              - generic [ref=e26]: (6)
+            - img [ref=e27]
+          - list [ref=e30]:
+            - listitem [ref=e31]:
+              - link "organization.proto" [ref=e32] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/files/buf+registry+owner+v1+organization.proto
+            - listitem [ref=e33]:
+              - link "user.proto" [ref=e34] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/files/buf+registry+owner+v1+user.proto
+            - listitem [ref=e35]:
+              - link "owner.proto" [ref=e36] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/files/buf+registry+owner+v1+owner.proto
+            - listitem [ref=e37]:
+              - link "organization_service.proto" [ref=e38] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/files/buf+registry+owner+v1+organization_service.proto
+            - listitem [ref=e39]:
+              - link "owner_service.proto" [ref=e40] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/files/buf+registry+owner+v1+owner_service.proto
+            - listitem [ref=e41]:
+              - link "user_service.proto" [ref=e42] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/files/buf+registry+owner+v1+user_service.proto
+        - generic [ref=e43]:
+          - button "Services (3)" [ref=e44]:
+            - generic [ref=e45]:
+              - generic [ref=e46]: Services
+              - generic [ref=e47]: (3)
+            - img [ref=e48]
+          - list [ref=e50]:
+            - listitem [ref=e51]:
+              - link "OrganizationService" [ref=e52] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/services/OrganizationService
+            - listitem [ref=e53]:
+              - link "OwnerService" [ref=e54] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/services/OwnerService
+            - listitem [ref=e55]:
+              - link "UserService" [ref=e56] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/services/UserService
+        - generic [ref=e57]:
+          - button "Messages (29)" [ref=e58]:
+            - generic [ref=e59]:
+              - generic [ref=e60]: Messages
+              - generic [ref=e61]: (29)
+            - img [ref=e62]
+          - list [ref=e64]:
+            - listitem [ref=e65]:
+              - link "Organization" [ref=e66] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/Organization
+            - listitem [ref=e67]:
+              - link "OrganizationRef" [ref=e68] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/OrganizationRef
+            - listitem [ref=e69]:
+              - link "User" [ref=e70] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/User
+            - listitem [ref=e71]:
+              - link "UserRef" [ref=e72] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/UserRef
+            - listitem [ref=e73]:
+              - link "Owner" [ref=e74] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/Owner
+            - listitem [ref=e75]:
+              - link "OwnerRef" [ref=e76] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/OwnerRef
+            - listitem [ref=e77]:
+              - link "GetOrganizationsRequest" [ref=e78] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/GetOrganizationsRequest
+            - listitem [ref=e79]:
+              - link "GetOrganizationsResponse" [ref=e80] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/GetOrganizationsResponse
+            - listitem [ref=e81]:
+              - link "ListOrganizationsRequest" [ref=e82] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/ListOrganizationsRequest
+            - listitem [ref=e83]:
+              - link "ListOrganizationsResponse" [ref=e84] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/ListOrganizationsResponse
+            - listitem [ref=e85]:
+              - link "CreateOrganizationsRequest" [ref=e86] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/CreateOrganizationsRequest
+            - listitem [ref=e87]:
+              - link "Value" [ref=e88] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/Value
+            - listitem [ref=e89]:
+              - link "CreateOrganizationsResponse" [ref=e90] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/CreateOrganizationsResponse
+            - listitem [ref=e91]:
+              - link "UpdateOrganizationsRequest" [ref=e92] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/UpdateOrganizationsRequest
+            - listitem [ref=e93]:
+              - link "UpdateOrganizationsResponse" [ref=e94] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/UpdateOrganizationsResponse
+            - listitem [ref=e95]:
+              - link "DeleteOrganizationsRequest" [ref=e96] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/DeleteOrganizationsRequest
+            - listitem [ref=e97]:
+              - link "DeleteOrganizationsResponse" [ref=e98] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/DeleteOrganizationsResponse
+            - listitem [ref=e99]:
+              - link "GetOwnersRequest" [ref=e100] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/GetOwnersRequest
+            - listitem [ref=e101]:
+              - link "GetOwnersResponse" [ref=e102] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/GetOwnersResponse
+            - listitem [ref=e103]:
+              - link "GetUsersRequest" [ref=e104] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/GetUsersRequest
+            - listitem [ref=e105]:
+              - link "GetUsersResponse" [ref=e106] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/GetUsersResponse
+            - listitem [ref=e107]:
+              - link "ListUsersRequest" [ref=e108] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/ListUsersRequest
+            - listitem [ref=e109]:
+              - link "ListUsersResponse" [ref=e110] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/ListUsersResponse
+            - listitem [ref=e111]:
+              - link "CreateUsersRequest" [ref=e112] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/CreateUsersRequest
+            - listitem [ref=e113]:
+              - link "CreateUsersResponse" [ref=e114] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/CreateUsersResponse
+            - listitem [ref=e115]:
+              - link "UpdateUsersRequest" [ref=e116] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/UpdateUsersRequest
+            - listitem [ref=e117]:
+              - link "UpdateUsersResponse" [ref=e118] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/UpdateUsersResponse
+            - listitem [ref=e119]:
+              - link "DeleteUsersRequest" [ref=e120] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/DeleteUsersRequest
+            - listitem [ref=e121]:
+              - link "DeleteUsersResponse" [ref=e122] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/messages/DeleteUsersResponse
+        - generic [ref=e123]:
+          - button "Enums (4)" [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]: Enums
+              - generic [ref=e127]: (4)
+            - img [ref=e128]
+          - list [ref=e130]:
+            - listitem [ref=e131]:
+              - link "OrganizationVerificationStatus" [ref=e132] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/enums/OrganizationVerificationStatus
+            - listitem [ref=e133]:
+              - link "UserState" [ref=e134] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/enums/UserState
+            - listitem [ref=e135]:
+              - link "UserType" [ref=e136] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/enums/UserType
+            - listitem [ref=e137]:
+              - link "UserVerificationStatus" [ref=e138] [cursor=pointer]:
+                - /url: /package/buf.registry.owner.v1/enums/UserVerificationStatus
+  - main [ref=e139]:
+    - generic [ref=e140]: File not found
+```
