@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import * as protobuf from 'protobufjs';
-import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, Link, NavLink } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useParams, useNavigate, Link, NavLink, useLocation } from 'react-router-dom';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -18,6 +18,15 @@ interface Field {
   isMap?: boolean;
   keyType?: string;
   valueType?: string;
+}
+
+interface Extension {
+  name: string;
+  type: string;
+  tag: number;
+  description: string;
+  extendee: string;
+  isRepeated?: boolean;
 }
 
 interface Message {
@@ -62,6 +71,8 @@ interface ProtoFile {
   messages: Message[];
   services: Service[];
   enums: Enum[];
+  extensions: Extension[];
+  edition?: string;
   options?: Record<string, any>;
 }
 
@@ -76,7 +87,15 @@ const getAnchorId = (type: string, name: string) => `${type}-${name}`;
 const getFieldAnchorId = (type: string, name: string, fieldName: string) => `${type}-${name}--${fieldName}`;
 
 const getCommonPathPrefix = (paths: string[]): string => {
-    if (!paths || paths.length < 2) return '';
+    if (!paths || paths.length === 0) return '';
+    if (paths.length === 1) {
+        const lastSlash = paths[0].lastIndexOf('/');
+        if (lastSlash === -1) {
+            return ''; // No directory path, just a file name
+        }
+        return paths[0].substring(0, lastSlash + 1);
+    }
+
     const sortedPaths = [...paths].sort();
     const first = sortedPaths[0];
     const last = sortedPaths[sortedPaths.length - 1];
@@ -144,7 +163,7 @@ const CompactMessageView = ({ message, title, renderFieldType, messagePackage }:
   return (
     <div className="mt-4">
       <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">{title}: <span className="font-mono text-purple-500">{message.name}</span></h4>
-      <ul className="space-y-2 pl-4 border-l-2 border-gray-200 dark:border-gray-600">
+      <ul className="list-none space-y-2 pl-4 border-l-2 border-gray-200 dark:border-gray-600">
         {message.fields.map((field: Field) => (
           <li key={field.tag} className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded-md">
             <div className="flex items-center justify-between text-sm">
@@ -180,7 +199,7 @@ ${formatProtobufOptions(value, indent + '  ')}${indent}}`;
     }).join('\n');
 };
 
-const ProtoSourceView = ({ item, type }: { item: Message | Service | Enum, type: string }) => {
+const ProtoSourceView = ({ item, type }: { item: Message | Service | Enum | Extension, type: string }) => {
     const generateSource = (): string => {
         if (!item) return '';
 
@@ -239,7 +258,16 @@ const ProtoSourceView = ({ item, type }: { item: Message | Service | Enum, type:
                 });
             }
             source += '}';
+        } else if (type === 'extensions') {
+            const ext = item as Extension;
+            source += `extend ${ext.extendee} {
+`;
+            const repeated = ext.isRepeated ? 'repeated ' : '';
+            source += `  ${repeated}${ext.type} ${ext.name} = ${ext.tag};
+`;
+            source += `}`;
         }
+
 
         return source;
     };
@@ -254,7 +282,7 @@ const ProtoSourceView = ({ item, type }: { item: Message | Service | Enum, type:
 };
 
 interface ProtoDetailViewProps {
-    item: Message | Service | Enum | null;
+    item: Message | Service | Enum | Extension | null;
     type: string | null;
     proto: ProtoFile;
     allTypes: Map<string, {pkg: ProtoPackage, item: Message | Enum, type: string}>;
@@ -269,9 +297,31 @@ const DetailSection = <T,>({ title, items, renderItem, titleAddon }: { title: st
                 {title}
                 {titleAddon}
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-1 xl:grid-cols-2 gap-6">
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-6 list-none">
                 {items.map(renderItem)}
-            </div>
+            </ul>
+        </div>
+    );
+};
+
+const ExpandableMarkdown = ({ description }: { description: string }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const lines = description.split('\n');
+    const isLong = lines.length > 5;
+
+    return (
+        <div className="prose dark:prose-invert max-w-none mt-2">
+            <ReactMarkdown>
+                {isLong && !isExpanded ? lines.slice(0, 5).join('\n') : description}
+            </ReactMarkdown>
+            {isLong && (
+                <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline ml-1"
+                >
+                    {isExpanded ? 'View less' : 'View more'}
+                </button>
+            )}
         </div>
     );
 };
@@ -289,16 +339,16 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
         <div className="p-8">
             <div className="border-b dark:border-gray-700 pb-4">
                 <h2 className="text-4xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{proto.package}</h2>
-                {proto.description && <div className="prose dark:prose-invert max-w-none mt-2"><ReactMarkdown>{proto.description}</ReactMarkdown></div>}
+                {proto.description && <ExpandableMarkdown description={proto.description} />}
             </div>
 
             <DetailSection
                 title="Services"
                 items={proto.services}
                 renderItem={service => (
-                    <li key={service.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm flex justify-between items-center">
+                    <li key={service.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
                         <Link to={`/package/${protoPackage.name}/services/${service.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{service.name}</Link>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">{service.rpcs.length} methods</span>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">{service.rpcs.length} methods</div>
                     </li>
                 )}
             />
@@ -307,9 +357,9 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
                 title="Messages"
                 items={proto.messages}
                 renderItem={message => (
-                    <li key={message.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm flex justify-between items-center">
+                    <li key={message.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
                         <Link to={`/package/${protoPackage.name}/messages/${message.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{message.name}</Link>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">{message.fields.length} fields</span>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">{message.fields.length} fields</div>
                     </li>
                 )}
             />
@@ -318,9 +368,21 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
                 title="Enums"
                 items={proto.enums}
                 renderItem={enumItem => (
-                    <li key={enumItem.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm flex justify-between items-center">
+                    <li key={enumItem.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
                         <Link to={`/package/${protoPackage.name}/enums/${enumItem.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{enumItem.name}</Link>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">{enumItem.values.length} values</span>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">{enumItem.values.length} values</div>
+                    </li>
+                )}
+            />
+
+            <DetailSection
+                title="Extensions"
+                items={proto.extensions || []}
+                renderItem={ext => (
+                    <li key={`${ext.name}-${ext.extendee}`} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+                        <Link to={`/package/${protoPackage.name}/extensions/${ext.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{ext.name}</Link>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">extending <span className="font-mono text-purple-500">{ext.extendee}</span></div>
+                        {ext.description && <div className="prose dark:prose-invert max-w-none text-xs mt-2"><ReactMarkdown>{ext.description}</ReactMarkdown></div>}
                     </li>
                 )}
             />
@@ -334,12 +396,13 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
                     </span>
                 )}
                 renderItem={file => (
-                    <li key={file.fileName} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+                    <li key={file.fileName} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm list-none">
                         <Link to={`/package/${protoPackage.name}/files/${file.fileName.replace(/\//g, '+')}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline break-all">{file.fileName.substring(commonPrefix.length)}</Link>
                         <div className="flex space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-2">
-                            <span>{file.services.length} services</span>
-                            <span>{file.messages.length} messages</span>
-                            <span>{file.enums.length} enums</span>
+                            {file.services.length > 0 && <span>{file.services.length} services</span>}
+                            {file.messages.length > 0 && <span>{file.messages.length} messages</span>}
+                            {file.enums.length > 0 && <span>{file.enums.length} enums</span>}
+                            {(file.extensions?.length || 0) > 0 && <span>{file.extensions.length} extensions</span>}
                         </div>
                     </li>
                 )}
@@ -400,11 +463,11 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
   const renderFields = () => (
     <div className="space-y-4">
       <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">Fields</h3>
-      <ul className="space-y-2">
+      <ul className="list-none space-y-2">
         {(item as Message).fields.map((field: Field) => (
           <li key={field.tag} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm" id={getFieldAnchorId(type!, item.name, field.name)}>
             <div className="flex items-center justify-between">
-              <p className="font-mono text-sm text-purple-600 dark:text-purple-300 font-semibold"><a href={`#${getFieldAnchorId(type!, item.name, field.name)}`} className="hover:underline">{field.tag}. {field.name}</a></p>
+              <p className="font-mono text-sm text-purple-600 dark:text-purple-300 font-semibold">{field.tag}. {field.name} <a href={`#${getFieldAnchorId(type!, item.name, field.name)}`} className="hover:underline text-gray-400 dark:text-gray-400">¶</a></p>
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {field.isRepeated && !field.isMap ? 'repeated ' : ''}
                 {renderFieldType(field, proto.package)}
@@ -432,7 +495,7 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
         {(item as Enum).values.map((value: EnumValue) => (
           <li key={value.value} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm" id={getFieldAnchorId(type!, item.name, value.name)}>
             <div className="flex items-center justify-between">
-              <p className="font-mono text-sm text-purple-600 dark:text-purple-300 font-semibold"><a href={`#${getFieldAnchorId(type!, item.name, value.name)}`} className="hover:underline">{value.name}</a></p>
+              <p className="font-mono text-sm text-purple-600 dark:text-purple-300 font-semibold">{value.name} <a href={`#${getFieldAnchorId(type!, item.name, value.name)}`} className="hover:underline text-gray-400 dark:text-gray-600">¶</a></p>
               <span className="text-xs text-gray-500 dark:text-gray-400"> = {value.value}</span>
             </div>
 			<div className="prose dark:prose-invert max-w-none text-sm"><ReactMarkdown>{value.description}</ReactMarkdown></div>
@@ -487,16 +550,38 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
     </div>
   );
 
+  const renderExtension = () => (
+    <div className="space-y-4">
+      <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">Details</h3>
+      <ul className="list-none space-y-2">
+          <li className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="font-mono text-sm text-purple-600 dark:text-purple-300 font-semibold">extending {renderType((item as Extension).extendee, proto.package)}</p>
+            </div>
+          </li>
+          <li className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="font-mono text-sm text-purple-600 dark:text-purple-300 font-semibold">{(item as Extension).tag}. {(item as Extension).name}</p>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {(item as Extension).isRepeated ? 'repeated ' : ''}
+                {renderType((item as Extension).type, proto.package)}
+              </span>
+            </div>
+          </li>
+      </ul>
+    </div>
+  );
+
   return (
     <div className="p-8 space-y-6">
-      <div className="border-b dark:border-gray-700 pb-4 flex justify-between items-center" id={getAnchorId(type!, item.name)}>
-          <div>
-              <h2 className="text-4xl font-extrabold text-gray-900 dark:text-gray-100">{item.name}</h2>
-              <div className="prose dark:prose-invert max-w-none"><ReactMarkdown>{item.description}</ReactMarkdown></div>
-          </div>
-          <button onClick={() => setShowSource(!showSource)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline ml-4">
-              {showSource ? 'View Details' : 'View Source'}
-          </button>
+      <div className="border-b dark:border-gray-700 pb-4" id={getAnchorId(type!, item.name)}>
+        <div className="flex justify-between items-center">
+            <h2 className="text-4xl font-extrabold text-gray-900 dark:text-gray-100">{item.name}</h2>
+            <button onClick={() => setShowSource(!showSource)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline ml-4">
+                {showSource ? 'View Details' : 'View Source'}
+            </button>
+        </div>
+        <div className="prose dark:prose-invert max-w-none mt-2"><ReactMarkdown>{item.description}</ReactMarkdown></div>
       </div>
       {showSource ? (
           <ProtoSourceView item={item} type={type!} />
@@ -505,6 +590,7 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
               {type === 'messages' && renderFields()}
               {type === 'enums' && renderEnums()}
               {type === 'services' && renderRpcs()}
+              {type === 'extensions' && renderExtension()}
           </>
       )}
     </div>
@@ -513,15 +599,16 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
 
 interface NavSectionProps {
     title: string;
-    items: (Message | Service | Enum)[];
-    selectedItem: Message | Service | Enum | null;
+    items: (Message | Service | Enum | Extension)[];
+    selectedItem: Message | Service | Enum | Extension | null;
+    selectedItemType: string | null;
     itemType: string;
     packageName: string;
     isExpanded: boolean;
     onToggle: () => void;
 }
 
-const NavSection = ({ title, items, selectedItem, itemType, packageName, isExpanded, onToggle }: NavSectionProps) => {
+const NavSection = ({ title, items, selectedItem, selectedItemType, itemType, packageName, isExpanded, onToggle }: NavSectionProps) => {
     if (!items || items.length === 0) return null;
     const isItemSelected = items.some(item => selectedItem && selectedItem.name === item.name && itemType === selectedItemType);
 
@@ -534,7 +621,7 @@ const NavSection = ({ title, items, selectedItem, itemType, packageName, isExpan
                 </div>
                 <svg className={`h-5 w-5 transform transition-transform duration-200 ${!isExpanded && !isItemSelected ? 'rotate-0' : '-rotate-90'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
             </button>
-            <div className={`transition-max-h duration-300 ease-in-out overflow-hidden ${!isExpanded && !isItemSelected ? 'max-h-0' : 'max-h-screen'}`}>
+            <div className={`transition-max-h duration-300 ease-in-out overflow-hidden ${!isExpanded ? 'max-h-0' : 'max-h-screen'}`}>
                 <ul className="space-y-1 mt-2">
                     {items.map(item => (
                         <li key={item.name}>
@@ -551,12 +638,27 @@ const NavSection = ({ title, items, selectedItem, itemType, packageName, isExpan
 
 
 const generateFileSource = (file: ProtoFile) => {
-    let source = `syntax = "proto3";\n\n`;
+    let source = file.edition ? `edition = "${file.edition.replace("EDITION_", "")}";\n\n` : `syntax = "proto3";\n\n`;
     source += `package ${file.package};\n\n`;
 
     if (file.options) {
         source += formatProtobufOptions(file.options) + '\n\n';
     }
+
+    (file.extensions || []).forEach(ext => {
+        if (ext.description) {
+            source += `// ${ext.description.replace(/\n/g, '\n// ')}
+`;
+        }
+        source += `extend ${ext.extendee} {
+`;
+        const repeated = ext.isRepeated ? 'repeated ' : '';
+        source += `  ${repeated}${ext.type} ${ext.name} = ${ext.tag};
+`;
+        source += `}
+
+`;
+    });
 
     file.services.forEach(service => {
         if (service.description) {
@@ -625,6 +727,7 @@ const generateFileSource = (file: ProtoFile) => {
 
     return source;
 }
+
 
 const FileSourceContentView = ({ packages }: { packages: ProtoPackage[] }) => {
     const { packageName, fileName } = useParams();
@@ -781,7 +884,7 @@ const FileTreeView = ({ files, packageName, isExpanded, onToggle }: { files: Pro
                 </div>
                 <svg className={`h-5 w-5 transform transition-transform duration-200 ${!isExpanded && !isFileActive ? 'rotate-0' : '-rotate-90'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
             </button>
-            <div className={`transition-max-h duration-300 ease-in-out overflow-hidden ${!isExpanded && !isFileActive ? 'max-h-0' : 'max-h-screen'}`}>
+            <div className={`transition-max-h duration-300 ease-in-out overflow-hidden ${!isExpanded ? 'max-h-0' : 'max-h-screen'}`}>
                 {commonPrefix && (
                     <div className="px-6 py-1 text-xs text-gray-500 dark:text-gray-400 truncate" title={commonPrefix}>
                         {commonPrefix}
@@ -815,7 +918,7 @@ const uniqueBy = <T extends { name: string }>(arr: T[]): T[] => {
 
 const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: PackageDocumentationViewProps) => {
   const { packageName, itemType, itemName, fileName } = useParams();
-  const [selectedItem, setSelectedItem] = useState<Message | Service | Enum | null>(null);
+  const [selectedItem, setSelectedItem] = useState<Message | Service | Enum | Extension | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState('');
   const mainRef = useRef<HTMLDivElement>(null);
@@ -842,6 +945,8 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
         messages: uniqueBy(protoPackage.files.flatMap(f => f.messages)).filter(m => !m.isMapEntry),
         services: uniqueBy(protoPackage.files.flatMap(f => f.services)),
         enums: uniqueBy(protoPackage.files.flatMap(f => f.enums)),
+        extensions: uniqueBy(protoPackage.files.flatMap(f => f.extensions || [])),
+        edition: protoPackage.files.length > 0 ? protoPackage.files[0].edition : undefined,
         options: options,
     };
   }, [protoPackage]);
@@ -859,11 +964,12 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
 
   useEffect(() => {
     if (mergedProtoFile && itemType && itemName) {
-        let foundItem: Message | Service | Enum | undefined;
+        let foundItem: Message | Service | Enum | Extension | undefined;
         let foundType = '';
         if (itemType === 'messages') { foundItem = mergedProtoFile.messages.find((msg) => msg.name === itemName); foundType = 'messages'; }
         else if (itemType === 'services') { foundItem = mergedProtoFile.services.find((svc) => svc.name === itemName); foundType = 'services'; }
         else if (itemType === 'enums') { foundItem = mergedProtoFile.enums.find((enm) => enm.name === itemName); foundType = 'enums'; }
+        else if (itemType === 'extensions') { foundItem = mergedProtoFile.extensions.find((ext) => ext.name === itemName); foundType = 'extensions'; }
         
         if (foundItem) {
             setSelectedItem(foundItem);
@@ -905,26 +1011,28 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
   const filteredServices = mergedProtoFile.services.filter((svc) => svc.name.toLowerCase().includes(filterQuery.toLowerCase()));
   const filteredMessages = mergedProtoFile.messages.filter((msg) => msg.name.toLowerCase().includes(filterQuery.toLowerCase()));
   const filteredEnums = mergedProtoFile.enums.filter((enm) => enm.name.toLowerCase().includes(filterQuery.toLowerCase()));
+  const filteredExtensions = mergedProtoFile.extensions.filter((ext) => ext.name.toLowerCase().includes(filterQuery.toLowerCase()));
 
   const sidebarContent = (
     <>
         <PackageNav packages={packages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
-        <div className="flex-grow overflow-y-auto">
+        <div className="flex-grow overflow-y-auto overflow-y-auto">
             <div className="p-2 mb-4">
                 <input type="text" placeholder="Filter definitions..." value={filterQuery} onChange={(e) => setFilterQuery(e.target.value)} className="w-full px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="space-y-6">
-                <NavSection title="Services" items={filteredServices} selectedItem={selectedItem} itemType="services" packageName={packageName!} isExpanded={expandedSection === 'services'} onToggle={() => handleSectionToggle('services')} />
-                <NavSection title="Messages" items={filteredMessages} selectedItem={selectedItem} itemType="messages" packageName={packageName!} isExpanded={expandedSection === 'messages'} onToggle={() => handleSectionToggle('messages')} />
-                <NavSection title="Enums" items={filteredEnums} selectedItem={selectedItem} itemType="enums" packageName={packageName!} isExpanded={expandedSection === 'enums'} onToggle={() => handleSectionToggle('enums')} />
-                <FileTreeView files={protoPackage.files} packageName={packageName!} isExpanded={expandedSection === 'files'} onToggle={() => handleSectionToggle('files')} />
+                <NavSection title="Services" items={filteredServices} selectedItem={selectedItem} selectedItemType={selectedItemType} itemType="services" packageName={packageName!} isExpanded={expandedSection === 'services'} onToggle={() => handleSectionToggle('services')} />
+                <NavSection title="Messages" items={filteredMessages} selectedItem={selectedItem} selectedItemType={selectedItemType} itemType="messages" packageName={packageName!} isExpanded={expandedSection === 'messages'} onToggle={() => handleSectionToggle('messages')} />
+                <NavSection title="Enums" items={filteredEnums} selectedItem={selectedItem} selectedItemType={selectedItemType} itemType="enums" packageName={packageName!} isExpanded={expandedSection === 'enums'} onToggle={() => handleSectionToggle('enums')} />
+                <NavSection title="Extensions" items={filteredExtensions} selectedItem={selectedItem} selectedItemType={selectedItemType} itemType="extensions" packageName={packageName!} isExpanded={expandedSection === 'extensions'} onToggle={() => handleSectionToggle('extensions')} />
+                <FileTreeView files={protoPackage!.files} packageName={packageName!} isExpanded={expandedSection === 'files'} onToggle={() => handleSectionToggle('files')} />
             </div>
         </div>
     </>
   );
 
   return (
-    <div className={`font-sans antialiased text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col md:flex-row transition-colors duration-500`}>
+    <div className={`font-sans antialiased text-gray-800 dark:text-gray-200 min-h-screen flex flex-col md:flex-row transition-colors duration-500 bg-white dark:bg-gray-950`}>
         <div className="md:hidden flex items-center justify-between p-4 border-b dark:border-gray-700 sticky top-0 bg-gray-50 dark:bg-gray-900 z-30">
             <Link to={`/package/${packageName}`} className="text-xl font-bold text-blue-600 truncate">{packageName}</Link>
             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-md text-gray-500 dark:text-gray-400">
@@ -937,21 +1045,21 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
         {/* Sidebar for mobile */}
         <div className={`fixed inset-0 z-40 flex md:hidden ${isSidebarOpen ? '' : 'pointer-events-none'}`}>
             <div className="fixed inset-0 bg-black/20" onClick={() => setIsSidebarOpen(false)}></div>
-            <div className={`relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-gray-950 shadow-xl p-4 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className={`relative flex-1 flex flex-col max-w-sm w-full bg-white dark:bg-gray-950 shadow-xl p-4 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 {sidebarContent}
             </div>
         </div>
 
         {/* Sidebar for desktop */}
-        <div className="hidden md:flex flex-shrink-0 w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 p-4 shadow-xl flex-col h-screen">
+        <div className="hidden md:flex flex-shrink-0 w-96 border-r border-gray-200 dark:border-gray-700 p-4 shadow-xl flex-col h-screen sticky top-0">
             {sidebarContent}
         </div>
 
-        <main ref={mainRef} className="flex-1 w-full bg-white dark:bg-gray-900 md:rounded-l-3xl shadow-xl z-20 overflow-y-auto transition-colors duration-500">
+        <main ref={mainRef} className="flex-1 w-full bg-white dark:bg-gray-900 md:rounded-l-3xl shadow-xl z-20 transition-colors duration-500">
             {fileName ? (
                 <FileSourceContentView packages={packages} />
             ) : (
-                <ProtoDetailView item={selectedItem} type={selectedItemType} proto={mergedProtoFile} allTypes={allTypes} protoPackage={protoPackage!} />
+                <ProtoDetailView item={selectedItem} type={selectedItemType} proto={mergedProtoFile!} allTypes={allTypes} protoPackage={protoPackage!} />
             )}
         </main>
     </div>
@@ -964,6 +1072,14 @@ interface PackageListViewProps {
     toggleDarkMode: () => void;
     onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
+
+const ScrollToTop = () => {
+    const { pathname } = useLocation();
+    useEffect(() => {
+        document.documentElement.scrollTo(0, 0);
+    }, [pathname]);
+    return null;
+};
 
 const PackageListView = ({ packages, isDarkMode, toggleDarkMode, onFileChange }: PackageListViewProps) => {
   const navigate = useNavigate();
@@ -985,16 +1101,19 @@ const PackageListView = ({ packages, isDarkMode, toggleDarkMode, onFileChange }:
         <p className="text-center text-lg text-gray-600 dark:text-gray-400 mb-12">Select a package to view its documentation.</p>
         <div className="max-w-4xl mx-auto space-y-8">
           {packages.map((pkg) => {
-            const totalServices = pkg.files.reduce((sum, file) => sum + file.services.length, 0);
-            const totalTypes = pkg.files.reduce((sum, file) => sum + file.messages.length + file.enums.length, 0);
+            const totalServices = uniqueBy(pkg.files.flatMap(f => f.services)).length;
+            const totalMessages = uniqueBy(pkg.files.flatMap(f => f.messages)).length;
+            const totalEnums = uniqueBy(pkg.files.flatMap(f => f.enums)).length;
+            const totalExtensions = uniqueBy(pkg.files.flatMap(f => f.extensions || [])).length;
 
             return (
               <div key={pkg.name} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 border dark:border-gray-700 flex flex-col md:flex-row items-center justify-between hover:shadow-xl transition-shadow duration-300">
                 <div>
                   <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 font-mono">{pkg.name}</h3>
                   <div className="flex space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-2">
-                    <span><span className="font-semibold">{totalServices}</span> Services</span>
-                    <span><span className="font-semibold">{totalTypes}</span> Types</span>
+                    {totalServices > 0 && <span><span className="font-semibold">{totalServices}</span> Services</span>}
+                    {(totalMessages + totalEnums) > 0 && <span><span className="font-semibold">{totalMessages + totalEnums}</span> Types</span>}
+                    {totalExtensions > 0 && <span><span className="font-semibold">{totalExtensions}</span> Extensions</span>}
                   </div>
                 </div>
                 <button
@@ -1016,6 +1135,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [showSourceInfoWarning, setShowSourceInfoWarning] = useState<boolean>(false);
 
   useEffect(() => {
     const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -1035,6 +1155,8 @@ export default function App() {
                 locations.set(loc.path.join(','), loc);
             }
         }
+    } else {
+        setShowSourceInfoWarning(true);
     }
 
     const getComment = (path: number[]) => {
@@ -1134,6 +1256,26 @@ export default function App() {
         return { name: service.name || '', description: getComment(servicePath), rpcs };
     });
 
+    const extensions: Extension[] = (fileDescriptor.extension || []).map((ext: any, i: number) => {
+        const extPath = [7, i]; // 7 is for extensions in FileDescriptorProto
+        let typeName = '';
+        if (ext.typeName) {
+            typeName = ext.typeName.startsWith('.') ? ext.typeName.substring(1) : ext.typeName;
+        } else if (typeof ext.type === 'string' && ext.type.startsWith('TYPE_')) {
+            typeName = ext.type.substring('TYPE_'.length).toLowerCase();
+        } else {
+            typeName = typeStringMap[ext.type] || '';
+        }
+        return {
+            name: ext.name || '',
+            type: typeName,
+            tag: ext.number || 0,
+            description: getComment(extPath),
+            extendee: ext.extendee.startsWith('.') ? ext.extendee.substring(1) : ext.extendee,
+            isRepeated: ext.label === 3,
+        };
+    });
+
     return {
         fileName: fileDescriptor.name || '',
         package: fileDescriptor.package || '',
@@ -1141,6 +1283,8 @@ export default function App() {
         messages,
         services,
         enums,
+        extensions,
+        edition: fileDescriptor.edition,
         options: fileDescriptor.options,
     };
   };
@@ -1185,12 +1329,19 @@ export default function App() {
   useEffect(() => {
     const fetchDefaultDescriptors = async () => {
       try {
-        const response = await fetch('/buf.registry.binpb');
-        if (!response.ok) {
-          throw new Error('Failed to fetch default descriptors');
+        const files = ['/gnostic.binpb', '/protovalidate.binpb', '/googleapis.binpb'];
+        const responses = await Promise.all(files.map((file) => fetch(file)));
+
+        for (const response of responses) {
+          if (!response.ok) {
+            throw new Error(`Failed to fetch default descriptors from ${response.url}`);
+          }
         }
-        const buffer = await response.arrayBuffer();
-        await loadDescriptors(buffer);
+
+        const buffers = await Promise.all(responses.map((res) => res.arrayBuffer()));
+        for (const buffer of buffers) {
+          await loadDescriptors(buffer);
+        }
       } catch (err) {
         setError('Failed to load default descriptors.');
         console.error(err);
@@ -1257,6 +1408,13 @@ export default function App() {
 
   return (
     <Router>
+        <ScrollToTop />
+        {showSourceInfoWarning && (
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
+                <p className="font-bold">Warning</p>
+                <p>Comments and some other source information may not be displayed. To enable this, generate your descriptor files with the `--include-source-info` flag.</p>
+            </div>
+        )}
         <Routes>
             <Route path="/" element={<PackageListView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} onFileChange={handleFileChange} />} />
             <Route path="/package/:packageName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
