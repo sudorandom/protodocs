@@ -27,6 +27,8 @@ export interface Message {
   description: string;
   fields: Field[];
   isMapEntry?: boolean;
+  nestedMessages?: Message[];
+  nestedEnums?: Enum[];
 }
 
 export interface EnumValue {
