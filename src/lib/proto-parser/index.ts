@@ -54,7 +54,7 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
                 let valueType: string | undefined;
 
                 const fieldMessageType = allMessageDescriptors.get(field.typeName?.substring(1));
-                if (field.label === 3 && field.type === 11 && fieldMessageType?.options?.mapEntry) {
+                if (field.label === 'LABEL_REPEATED' && field.type === 11 && fieldMessageType?.options?.mapEntry) {
                     isMap = true;
                     const keyField = fieldMessageType.field.find((f:any) => f.number === 1);
                     const valueField = fieldMessageType.field.find((f:any) => f.number === 2);
@@ -84,7 +84,7 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
                     type: typeName,
                     tag: field.number || 0,
                     description: getComment(msgPath.concat(2, j)), // 2 is for fields
-                    isRepeated: field.label === 3,
+                    isRepeated: field.label === 'LABEL_REPEATED' && !isMap,
                     isMap,
                     keyType,
                     valueType,
@@ -138,7 +138,7 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
             tag: ext.number || 0,
             description: getComment(extPath),
             extendee: ext.extendee.startsWith('.') ? ext.extendee.substring(1) : ext.extendee,
-            isRepeated: ext.label === 3,
+            isRepeated: ext.label === 'LABEL_REPEATED',
         };
     });
 

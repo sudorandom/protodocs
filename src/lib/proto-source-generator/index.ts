@@ -44,7 +44,7 @@ const generateMessageSource = (message: Message, indentLevel: number): string =>
             if (field.description) {
                 source += `${generateIndent(indentLevel + 1)}// ${field.description.replace(/\n/g, `\n${generateIndent(indentLevel + 1)}// `)}\n`;
             }
-            const repeated = field.isRepeated && !field.isMap ? 'repeated ' : '';
+            const repeated = field.isRepeated ? 'repeated ' : '';
             const fieldType = field.isMap ? `map<${field.keyType}, ${field.valueType}>` : field.type;
             source += `${generateIndent(indentLevel + 1)}${repeated}${fieldType} ${field.name} = ${field.tag};\n`;
         });

@@ -170,7 +170,7 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
             <div className="flex items-center justify-between">
               <p className="font-mono text-sm text-purple-600 dark:text-purple-300 font-semibold">{field.tag}. {field.name} <a href={`#${getFieldAnchorId(type!, item.name, field.name)}`} className="hover:underline text-gray-400 dark:text-gray-400">¶</a></p>
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {field.isRepeated && !field.isMap ? 'repeated ' : ''}
+                {field.isRepeated ? 'repeated ' : ''}
                 {renderFieldType(field, proto.package)}
               </span>
             </div>
