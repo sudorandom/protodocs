@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup mise
+      uses: jdx/mise-action@v2
+
+    - name: Install dependencies
+      run: pnpm install
+
+    - name: Run lint
+      run: pnpm lint
+
+    - name: Run Playwright tests
+      run: just playwright
+
+    - name: Build project
+      run: pnpm run build
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: protodoc-build
+        path: dist
