@@ -1,13 +1,14 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { type ProtoPackage } from '../types';
 import { uniqueBy } from '../utils';
 
 interface PackageListViewProps {
     packages: ProtoPackage[];
+    isDarkMode: boolean;
+    toggleDarkMode: () => void;
 }
 
-const PackageListView = ({ packages }: PackageListViewProps) => {
+const PackageListView = ({ packages, isDarkMode, toggleDarkMode }: PackageListViewProps) => {
   const navigate = useNavigate();
 
   return (

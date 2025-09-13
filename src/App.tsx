@@ -41,17 +41,6 @@ export default function App() {
     fetchDefaultDescriptors();
   }, []);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-        setLoading(true);
-        for (const file of e.target.files) {
-            const buffer = await file.arrayBuffer();
-            await loadDescriptors(buffer, setFiles, setError, setShowSourceInfoWarning);
-        }
-        setLoading(false);
-    }
-  };
-
   const toggleDarkMode = () => {
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       localStorage.theme = 'light';
@@ -114,8 +103,8 @@ export default function App() {
             <Route path="/" element={<PackageListView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
             <Route path="/package/:packageName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
             
-            <Route path="/package/:packageName/files/:fileName" element={<PackageDocumentationView packages={protoPackages} />} />
-            <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} />} />
+            <Route path="/package/:packageName/files/:fileName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
         </Routes>
     </Router>
   );

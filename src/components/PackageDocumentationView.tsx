@@ -13,9 +13,11 @@ import ErrorPage from './ErrorPage';
 
 interface PackageDocumentationViewProps {
     packages: ProtoPackage[];
+    isDarkMode: boolean;
+    toggleDarkMode: () => void;
 }
 
-const PackageDocumentationView = ({ packages }: PackageDocumentationViewProps) => {
+const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: PackageDocumentationViewProps) => {
   const { packageName, itemType, itemName, fileName } = useParams();
   const [selectedItem, setSelectedItem] = useState<Message | Service | Enum | Extension | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
