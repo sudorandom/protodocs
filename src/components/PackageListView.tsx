@@ -4,11 +4,9 @@ import { uniqueBy } from '../utils';
 
 interface PackageListViewProps {
     packages: ProtoPackage[];
-    isDarkMode: boolean;
-    toggleDarkMode: () => void;
 }
 
-const PackageListView = ({ packages, isDarkMode, toggleDarkMode }: PackageListViewProps) => {
+const PackageListView = ({ packages }: PackageListViewProps) => {
   const navigate = useNavigate();
 
   return (

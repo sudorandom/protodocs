@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { type ProtoFile, type ProtoPackage } from './types';
 import { loadDescriptors } from './lib/proto-parser';
@@ -12,7 +12,6 @@ export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [showSourceInfoWarning, setShowSourceInfoWarning] = useState<boolean>(false);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchDefaultDescriptors = async () => {
@@ -41,33 +40,6 @@ export default function App() {
     fetchDefaultDescriptors();
   }, []);
 
-  const toggleDarkMode = () => {
-    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      localStorage.theme = 'light';
-      setIsDarkMode(false);
-    } else {
-      localStorage.theme = 'dark';
-      setIsDarkMode(true);
-    }
-    // Re-apply the class based on the new localStorage value
-    if (localStorage.theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
-
-  // Initial theme setting on load
-  useEffect(() => {
-    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      document.documentElement.classList.add('dark');
-      setIsDarkMode(true);
-    } else {
-      document.documentElement.classList.remove('dark');
-      setIsDarkMode(false);
-    }
-  }, []);
-
   const packages = files.reduce((acc: Record<string, ProtoFile[]>, file) => {
     if (!acc[file.package]) {
       acc[file.package] = [];
@@ -82,13 +54,9 @@ export default function App() {
     return null;
   }
 
-  
-
   if (error) {
-    return <ErrorPage errorMessage={error} />;
+    return <ErrorPage title="Error" message={error} />;
   }
-
-  
 
   return (
     <Router>
@@ -100,11 +68,11 @@ export default function App() {
             </div>
         )}
         <Routes>
-            <Route path="/" element={<PackageListView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
-            <Route path="/package/:packageName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/" element={<PackageListView packages={protoPackages} />} />
+            <Route path="/package/:packageName" element={<PackageDocumentationView packages={protoPackages} />} />
             
-            <Route path="/package/:packageName/files/:fileName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
-            <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/package/:packageName/files/:fileName" element={<PackageDocumentationView packages={protoPackages} />} />
+            <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} />} />
         </Routes>
     </Router>
   );
