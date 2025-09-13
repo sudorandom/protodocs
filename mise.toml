@@ -1,2 +1,5 @@
 [tools]
 pnpm = "latest"
+buf = "latest"
+just = "latest"
+node = "latest"
