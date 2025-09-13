@@ -28,10 +28,22 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
     }
     const resolveType = (type: number) => typeStringMap[type] || 'unknown';
 
+    const transformEnums = (enumDescriptors: any[], path: number[]): Enum[] => {
+        if (!enumDescriptors) return [];
+        return enumDescriptors.map((enumType, i) => {
+            const enumPath = path.concat(i);
+            const values: EnumValue[] = (enumType.value || []).map((val: any, j: number) => ({
+                name: val.name || '',
+                value: val.number || 0,
+                description: getComment(enumPath.concat(2, j)), // 2 is for values
+            }));
+            return { name: enumType.name || '', description: getComment(enumPath), values };
+        });
+    };
+
     const transformMessages = (messageDescriptors: any[], prefix: string, path: number[]): Message[] => {
         if (!messageDescriptors) return [];
-        let messages: Message[] = [];
-        messageDescriptors.forEach((msg, i) => {
+        return messageDescriptors.map((msg, i) => {
             const messageName = prefix ? `${prefix}.${msg.name}` : msg.name;
             const msgPath = path.concat(i);
 
@@ -78,25 +90,23 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
                     valueType,
                 };
             });
-            messages.push({ name: msg.name, description: getComment(msgPath), fields, isMapEntry: msg.options?.mapEntry });
-            if (msg.nestedType) {
-                messages = messages.concat(transformMessages(msg.nestedType, messageName, msgPath.concat(3))); // 3 is for nested types
-            }
+
+            const nestedMessages = transformMessages(msg.nestedType, messageName, msgPath.concat(3)); // 3 is for nested types
+            const nestedEnums = transformEnums(msg.enumType, msgPath.concat(4)); // 4 is for enums in messages
+
+            return {
+                name: msg.name,
+                description: getComment(msgPath),
+                fields,
+                isMapEntry: msg.options?.mapEntry,
+                nestedMessages: nestedMessages.length > 0 ? nestedMessages : undefined,
+                nestedEnums: nestedEnums.length > 0 ? nestedEnums : undefined,
+            };
         });
-        return messages;
     }
 
     const messages: Message[] = transformMessages(fileDescriptor.messageType, fileDescriptor.package, [4]); // 4 is for messages
-
-    const enums: Enum[] = (fileDescriptor.enumType || []).map((enumType: any, i: number) => {
-        const enumPath = [5, i]; // 5 is for enums
-        const values: EnumValue[] = (enumType.value || []).map((val: any, j: number) => ({
-            name: val.name || '',
-            value: val.number || 0,
-            description: getComment(enumPath.concat(2, j)), // 2 is for values
-        }));
-        return { name: enumType.name || '', description: getComment(enumPath), values };
-    });
+    const enums: Enum[] = transformEnums(fileDescriptor.enumType, [5]); // 5 is for enums
 
     const services: Service[] = (fileDescriptor.service || []).map((service: any, i: number) => {
         const servicePath = [6, i]; // 6 is for services
