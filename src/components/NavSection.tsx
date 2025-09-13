@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Message, Service, Enum, Extension } from '../types';
+import { type Message, type Service, type Enum, type Extension } from '../types';
 
 interface NavSectionProps {
     title: string;

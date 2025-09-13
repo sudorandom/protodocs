@@ -1,14 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ProtoFile, ProtoPackage } from './types';
+import { type ProtoFile, type ProtoPackage } from './types';
 import { loadDescriptors } from './lib/proto-parser';
 import PackageDocumentationView from './components/PackageDocumentationView';
 import PackageListView from './components/PackageListView';
 import ScrollToTop from './components/ScrollToTop';
-
-import ScrollToTop from './components/ScrollToTop';
-
-import PackageListView from './components/PackageListView';
 
 export default function App() {
   const [files, setFiles] = useState<ProtoFile[]>([]);
@@ -26,8 +22,6 @@ export default function App() {
         setIsDarkMode(prefersDarkMode);
     }
   }, []);
-
-import { loadDescriptors } from './lib/proto-parser';
 
   useEffect(() => {
     const fetchDefaultDescriptors = async () => {

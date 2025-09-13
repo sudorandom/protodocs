@@ -18,7 +18,7 @@ export const getCommonPathPrefix = (paths: string[]): string => {
     while (i < first.length && first.charAt(i) === last.charAt(i)) {
         i++;
     }
-    let prefix = first.substring(0, i);
+    const prefix = first.substring(0, i);
     const lastSlash = prefix.lastIndexOf('/');
     if (lastSlash === -1) {
         return '';

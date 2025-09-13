@@ -1,8 +1,20 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
-import { ProtoPackage, Message, Service, Enum, Extension, ProtoFile, Field } from '../types';
-import { getAnchorId, getFieldAnchorId, scalarDocUrls, wellKnownTypeUrls } from '../utils';
+import {
+  type Rpc,
+  type EnumValue,
+  type Annotation,
+  type ProtoPackage,
+  type Message,
+  type Service,
+  type Enum,
+  type Extension,
+  type ProtoFile,
+  type Field } from '../types';
+import { getAnchorId, getCommonPathPrefix, scalarDocUrls, wellKnownTypeUrls, getFieldAnchorId } from '../utils';
+import ExpandableMarkdown from './ExpandableMarkdown';
+import ProtoSourceView from './ProtoSourceView';
+import CompactMessageView from './CompactMessageView';
 
 interface ProtoDetailViewProps {
     item: Message | Service | Enum | Extension | null;
@@ -15,6 +27,7 @@ interface ProtoDetailViewProps {
 import DetailSection from './DetailSection';
 
 const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDetailViewProps) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { packageName } = useParams();
   const [expandedRpc, setExpandedRpc] = useState<string | null>(null);
   const [showSource, setShowSource] = useState(false);
@@ -57,7 +70,7 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
                 items={proto.enums}
                 renderItem={enumItem => (
                     <li key={enumItem.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                        <Link to={`/package/${protoPackage.name}/enums/${enumItem.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{enumItem.name}</Link>
+                        <Link to={`/package/${protoPackage.name}/enums/${enumItem.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:hover:underline">{enumItem.name}</Link>
                         <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">{enumItem.values.length} values</div>
                     </li>
                 )}
@@ -179,7 +192,7 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
   const renderEnums = () => (
     <div className="space-y-4">
       <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">Values</h3>
-      <ul className="space-y-2">
+      <ul className="list-none space-y-2">
         {(item as Enum).values.map((value: EnumValue) => (
           <li key={value.value} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm" id={getFieldAnchorId(type!, item.name, value.name)}>
             <div className="flex items-center justify-between">
@@ -196,7 +209,7 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
   const renderRpcs = () => (
     <div className="space-y-4">
       <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">RPCs</h3>
-      <ul className="space-y-2">
+      <ul className="list-none space-y-2">
         {(item as Service).rpcs.map((rpc: Rpc) => {
           const isExpanded = expandedRpc === rpc.name;
           const requestInfo = allTypes.get(rpc.request);
@@ -269,7 +282,7 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
                 {showSource ? 'View Details' : 'View Source'}
             </button>
         </div>
-        <div className="prose dark:prose-invert max-w-none mt-2"><ExpandableMarkdown description={item.description} /></div>
+        <div className="prose dark:prose-invert max-w-none text-sm"><ExpandableMarkdown description={item.description} /></div>
       </div>
       {showSource ? (
           <ProtoSourceView item={item} type={type!} />

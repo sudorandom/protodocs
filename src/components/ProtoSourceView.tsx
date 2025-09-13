@@ -1,23 +1,7 @@
 import React from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { Message, Service, Enum, Extension } from '../types';
-
-const formatProtobufOptions = (options: Record<string, any>, indent = ''): string => {
-    return Object.entries(options).map(([key, value]): string => {
-        let valueStr;
-        if (typeof value === 'string') {
-            valueStr = `"${value}"`;
-        } else if (typeof value === 'object' && value !== null) {
-            valueStr = `{
-${formatProtobufOptions(value, indent + '  ')}${indent}}`;
-        } else {
-            valueStr = value.toString();
-        }
-        return `${indent}option (${key}) = ${valueStr};
-`;
-    }).join('\n');
-};
+import { type Message, type Service, type Enum, type Extension } from '../types';
 
 const ProtoSourceView = ({ item, type }: { item: Message | Service | Enum | Extension, type: string }) => {
     const generateSource = (): string => {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ProtoPackage } from '../types';
+import { type ProtoPackage } from '../types';
 import { uniqueBy } from '../utils';
 
 interface PackageListViewProps {

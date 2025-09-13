@@ -2,8 +2,9 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { ProtoPackage, ProtoFile } from '../types';
+import { type ProtoPackage, type ProtoFile } from '../types';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const formatProtobufOptions = (options: Record<string, any>, indent = ''): string => {
     return Object.entries(options).map(([key, value]): string => {
         let valueStr;

@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as protobuf from 'protobufjs';
-import { Field, Extension, Message, EnumValue, Enum, Rpc, Service, ProtoFile } from '../../types';
+import { type Field, type Extension, type Message, type EnumValue, type Enum, type Rpc, type Service, type ProtoFile } from '../../types';
 
 const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<string, any>, setShowSourceInfoWarning: (show: boolean) => void): ProtoFile => {
     const locations = new Map<string, any>();
@@ -57,7 +58,8 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
                         typeName = field.typeName.startsWith('.') ? field.typeName.substring(1) : field.typeName;
                     } else if (typeof field.type === 'string' && field.type.startsWith('TYPE_')) {
                         typeName = field.type.substring('TYPE_'.length).toLowerCase();
-                    } else {
+                    }
+                    else {
                         typeName = typeStringMap[field.type] || '';
                     }
                     if (!typeName) {

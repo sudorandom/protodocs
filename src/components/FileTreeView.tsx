@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useParams } from 'react-router-dom';
-import { ProtoFile } from '../types';
+import { type ProtoFile } from '../types';
 import { getCommonPathPrefix } from '../utils';
 
 const FileTreeView = ({ files, packageName, isExpanded, onToggle }: { files: ProtoFile[], packageName: string, isExpanded: boolean, onToggle: () => void }) => {

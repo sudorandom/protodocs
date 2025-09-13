@@ -21,7 +21,7 @@ test.describe('Screenshot tests', () => {
 
   test('service detail page', async ({ page }) => {
     await page.goto('/package/google.bytestream/services/ByteStream');
-    await expect(page.getByRole('heading', { name: 'ByteStream' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'ByteStream', exact: true })).toBeVisible();
     await page.screenshot({ path: 'e2e/screenshots/04-service-detail.png', fullPage: true });
   });
 

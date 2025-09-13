@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ProtoPackage } from '../types';
+import { type ProtoPackage } from '../types';
 
 const PackageNav = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoPackage[], isDarkMode: boolean, toggleDarkMode: () => void }) => {
     const { packageName } = useParams();

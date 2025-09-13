@@ -6,7 +6,10 @@ playwright:
     npx playwright test
 
 run:
-    npm run dev
+    pnpm dev
+
+lint:
+    pnpm lint
 
 descriptors:
     buf build buf.build/bufbuild/protovalidate -o public/protovalidate.binpb

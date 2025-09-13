@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Message, Field } from '../types';
+import { type Message, type Field } from '../types';
 
 interface CompactMessageViewProps {
   message: Message;

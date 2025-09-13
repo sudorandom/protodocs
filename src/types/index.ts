@@ -1,5 +1,5 @@
 // --- Data Types ---
-export interface Annotation extends String {}
+export type Annotation = string;
 
 export interface Field {
   name: string;
@@ -66,6 +66,7 @@ export interface ProtoFile {
   enums: Enum[];
   extensions: Extension[];
   edition?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: Record<string, any>;
 }
 
