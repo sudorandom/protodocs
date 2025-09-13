@@ -18,7 +18,7 @@ descriptors:
     buf build buf.build/googleapis/googleapis \
         -o public/googleapis.binpb \
         --exclude-path google/longrunning \
-        --exclude-path googlegoogle/geo/type \
+        --exclude-path google/geo/type \
         --exclude-path google/api/expr/v1alpha1 \
         --exclude-path google/api/expr/v1beta1 \
         --exclude-path google/rpc/context
