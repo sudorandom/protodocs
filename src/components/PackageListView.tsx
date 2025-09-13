@@ -1,22 +1,28 @@
 import { useNavigate } from 'react-router-dom';
-import { type ProtoPackage } from '../types';
+import { type ProtoPackage, type Config } from '../types';
 import { uniqueBy } from '../utils';
+import MarkdownView from './MarkdownView';
 
 interface PackageListViewProps {
     packages: ProtoPackage[];
+    config: Config | null;
 }
 
-const PackageListView = ({ packages }: PackageListViewProps) => {
+const PackageListView = ({ packages, config }: PackageListViewProps) => {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-500">
       <header className="p-4 flex justify-between items-center container mx-auto">
-        <h1 className="text-3xl font-bold text-blue-600 dark:text-blue-400">ProtoDocs</h1>
+        <h1 className="text-3xl font-bold text-blue-600 dark:text-blue-400">{config?.title ?? 'ProtoDocs'}</h1>
         
       </header>
       <div className="container mx-auto p-8 pt-4">
-        
+        {config?.front_page_markdown_file && (
+          <div className="mb-12">
+            <MarkdownView url={config.front_page_markdown_file} />
+          </div>
+        )}
         <h2 className="text-5xl font-extrabold text-center mb-4 text-gray-900 dark:text-gray-100">Available Packages</h2>
         <p className="text-center text-lg text-gray-600 dark:text-gray-400 mb-12">Select a package to view its documentation.</p>
         <div className="max-w-4xl mx-auto space-y-8">
@@ -45,6 +51,11 @@ const PackageListView = ({ packages }: PackageListViewProps) => {
             );
           })}
         </div>
+        {config?.bottom_of_front_page_markdown_file && (
+          <div className="mt-12">
+            <MarkdownView url={config.bottom_of_front_page_markdown_file} />
+          </div>
+        )}
       </div>
     </div>
   );

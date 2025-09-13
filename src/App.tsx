@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { type ProtoFile, type ProtoPackage } from './types';
+import { type ProtoFile, type ProtoPackage, type Config } from './types';
 import { loadDescriptors } from './lib/proto-parser';
 import PackageDocumentationView from './components/PackageDocumentationView';
 import PackageListView from './components/PackageListView';
@@ -12,16 +12,25 @@ export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [showSourceInfoWarning, setShowSourceInfoWarning] = useState<boolean>(false);
+  const [config, setConfig] = useState<Config | null>(null);
 
   useEffect(() => {
-    const fetchDefaultDescriptors = async () => {
+    const fetchConfigAndDescriptors = async () => {
       try {
-        const files = ['/gnostic.binpb', '/protovalidate.binpb', '/googleapis.binpb'];
+        const configResponse = await fetch('/config.json');
+        if (!configResponse.ok) {
+          throw new Error('Failed to fetch config.json');
+        }
+        const configData: Config = await configResponse.json();
+        setConfig(configData);
+        document.title = configData.title;
+
+        const files = configData.descriptor_files;
         const responses = await Promise.all(files.map((file) => fetch(file)));
 
         for (const response of responses) {
           if (!response.ok) {
-            throw new Error(`Failed to fetch default descriptors from ${response.url}`);
+            throw new Error(`Failed to fetch descriptors from ${response.url}`);
           }
         }
 
@@ -30,14 +39,14 @@ export default function App() {
           await loadDescriptors(buffer, setFiles, setError, setShowSourceInfoWarning);
         }
       } catch (err) {
-        setError('Failed to load default descriptors.');
+        setError('Failed to load descriptors.');
         console.error(err);
       } finally {
         setLoading(false);
         document.body.classList.remove('loading');
       }
     };
-    fetchDefaultDescriptors();
+    fetchConfigAndDescriptors();
   }, []);
 
   const packages = files.reduce((acc: Record<string, ProtoFile[]>, file) => {
@@ -68,11 +77,11 @@ export default function App() {
             </div>
         )}
         <Routes>
-            <Route path="/" element={<PackageListView packages={protoPackages} />} />
-            <Route path="/package/:packageName" element={<PackageDocumentationView packages={protoPackages} />} />
+            <Route path="/" element={<PackageListView packages={protoPackages} config={config} />} />
+            <Route path="/package/:packageName" element={<PackageDocumentationView packages={protoPackages} config={config} />} />
             
-            <Route path="/package/:packageName/files/:fileName" element={<PackageDocumentationView packages={protoPackages} />} />
-            <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} />} />
+            <Route path="/package/:packageName/files/:fileName" element={<PackageDocumentationView packages={protoPackages} config={config} />} />
+            <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} config={config} />} />
         </Routes>
     </Router>
   );

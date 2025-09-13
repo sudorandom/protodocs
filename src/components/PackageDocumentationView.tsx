@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { type ProtoPackage, type Message, type Service, type Enum, type Extension } from '../types';
+import { type ProtoPackage, type Message, type Service, type Enum, type Extension, type Config } from '../types';
 import { getAnchorId } from '../utils';
 import FileTreeView from './FileTreeView';
 import PackageNav from './PackageNav';
@@ -13,9 +13,10 @@ import ErrorPage from './ErrorPage';
 
 interface PackageDocumentationViewProps {
     packages: ProtoPackage[];
+    config: Config | null;
 }
 
-const PackageDocumentationView = ({ packages }: PackageDocumentationViewProps) => {
+const PackageDocumentationView = ({ packages, config }: PackageDocumentationViewProps) => {
   const { packageName, itemType, itemName, fileName } = useParams();
   const [selectedItem, setSelectedItem] = useState<Message | Service | Enum | Extension | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<string | null>(null);

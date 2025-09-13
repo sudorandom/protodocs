@@ -76,3 +76,11 @@ export interface ProtoPackage {
     name: string;
     files: ProtoFile[];
 }
+
+// --- Config ---
+export interface Config {
+  title: string;
+  descriptor_files: string[];
+  front_page_markdown_file?: string;
+  bottom_of_front_page_markdown_file?: string;
+}
