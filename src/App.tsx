@@ -78,10 +78,10 @@ export default function App() {
         )}
         <Routes>
             <Route path="/" element={<PackageListView packages={protoPackages} config={config} />} />
-            <Route path="/package/:packageName" element={<PackageDocumentationView packages={protoPackages} config={config} />} />
+            <Route path="/package/:packageName" element={<PackageDocumentationView packages={protoPackages} />} />
             
-            <Route path="/package/:packageName/files/:fileName" element={<PackageDocumentationView packages={protoPackages} config={config} />} />
-            <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} config={config} />} />
+            <Route path="/package/:packageName/files/:fileName" element={<PackageDocumentationView packages={protoPackages} />} />
+            <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} />} />
         </Routes>
     </Router>
   );

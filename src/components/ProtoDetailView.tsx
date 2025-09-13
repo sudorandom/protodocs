@@ -27,7 +27,6 @@ interface ProtoDetailViewProps {
 import DetailSection from './DetailSection';
 
 const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDetailViewProps) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   useParams();
   const [expandedRpc, setExpandedRpc] = useState<string | null>(null);
   const [showSource, setShowSource] = useState(false);
