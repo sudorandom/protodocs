@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { type ProtoPackage } from '../types';
 
-const PackageNav = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoPackage[], isDarkMode: boolean, toggleDarkMode: () => void }) => {
+const PackageNav = ({ packages }: { packages: ProtoPackage[] }) => {
     const { packageName } = useParams();
     const navigate = useNavigate();
     const [isPackageDropdownOpen, setIsPackageDropdownOpen] = useState(false);
@@ -44,23 +44,34 @@ const PackageNav = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoP
                 <div className="flex items-center space-x-2">
                     <Link to={`/`} className="text-2xl font-bold text-blue-600">ProtoDocs</Link>
                 </div>
-                <button onClick={toggleDarkMode} className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200">{isDarkMode ? '☀️' : '🌙'}</button>
+                
             </div>
             <div className="space-y-6">
                 <div className="relative">
-                    <div className="w-full p-4 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                        <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Package</p>
+                    <div className="flex justify-between items-center">
+                        {isPackageDropdownOpen ? (
+                            <div className="w-full">
+                                <input
+                                    ref={packageFilterInputRef}
+                                    type="text"
+                                    placeholder="Filter packages..."
+                                    value={packageFilter}
+                                    onChange={(e) => setPackageFilter(e.target.value)}
+                                    onKeyDown={handlePackageFilterKeyDown}
+                                    className="w-full px-3 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                        ) : (
                             <Link to={`/package/${packageName}`} className="font-mono text-base font-semibold text-gray-800 dark:text-gray-100 mt-1 break-all hover:underline">
                                 {packageName}
                             </Link>
-                        </div>
+                        )}
                         <button
                             onClick={() => setIsPackageDropdownOpen(!isPackageDropdownOpen)}
                             className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
                         >
                             <svg
-                                className={`h-5 w-5 transform transition-transform duration-200 ${isPackageDropdownOpen ? 'rotate-180' : ''}`}
+                                className="h-5 w-5"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -69,24 +80,13 @@ const PackageNav = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoP
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth="2"
-                                d="M19 9l-7 7-7-7"
+                                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
                                 />
                             </svg>
                         </button>
                     </div>
                     {isPackageDropdownOpen && (
                     <div className="absolute z-20 mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-                        <div className="p-2">
-                        <input
-                            ref={packageFilterInputRef}
-                            type="text"
-                            placeholder="Filter packages..."
-                            value={packageFilter}
-                            onChange={(e) => setPackageFilter(e.target.value)}
-                            onKeyDown={handlePackageFilterKeyDown}
-                            className="w-full px-3 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        </div>
                         <ul className="max-h-60 overflow-y-auto">
                         {filteredPackages.map((p, index) => (
                             <li key={p.name} className={selectedPackageIndex === index ? 'bg-gray-200 dark:bg-gray-700' : ''}>
@@ -95,7 +95,7 @@ const PackageNav = ({ packages, isDarkMode, toggleDarkMode }: { packages: ProtoP
                                     navigate(`/package/${p.name}`);
                                     setIsPackageDropdownOpen(false);
                                 }}
-                                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 truncate"
+                                                                className={`w-full text-left px-4 py-2 text-sm truncate ${selectedPackageIndex === index ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-gray-50'}`}
                                 title={p.name}
                                 >
                                 {p.name}

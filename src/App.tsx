@@ -5,23 +5,14 @@ import { loadDescriptors } from './lib/proto-parser';
 import PackageDocumentationView from './components/PackageDocumentationView';
 import PackageListView from './components/PackageListView';
 import ScrollToTop from './components/ScrollToTop';
+import ErrorPage from './components/ErrorPage';
 
 export default function App() {
   const [files, setFiles] = useState<ProtoFile[]>([]);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [showSourceInfoWarning, setShowSourceInfoWarning] = useState<boolean>(false);
-
-  useEffect(() => {
-    const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-        setIsDarkMode(savedTheme === 'dark');
-    } else {
-        setIsDarkMode(prefersDarkMode);
-    }
-  }, []);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchDefaultDescriptors = async () => {
@@ -44,6 +35,7 @@ export default function App() {
         console.error(err);
       } finally {
         setLoading(false);
+        document.body.classList.remove('loading');
       }
     };
     fetchDefaultDescriptors();
@@ -63,8 +55,10 @@ export default function App() {
   const toggleDarkMode = () => {
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       localStorage.theme = 'light';
+      setIsDarkMode(false);
     } else {
       localStorage.theme = 'dark';
+      setIsDarkMode(true);
     }
     // Re-apply the class based on the new localStorage value
     if (localStorage.theme === 'dark') {
@@ -78,8 +72,10 @@ export default function App() {
   useEffect(() => {
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       document.documentElement.classList.add('dark');
+      setIsDarkMode(true);
     } else {
       document.documentElement.classList.remove('dark');
+      setIsDarkMode(false);
     }
   }, []);
 
@@ -94,11 +90,13 @@ export default function App() {
   const protoPackages: ProtoPackage[] = Object.entries(packages).map(([name, files]) => ({ name, files }));
 
   if (loading) {
-    return <div>Loading...</div>;
+    return null;
   }
 
+  
+
   if (error) {
-    return <div>Error: {error}</div>;
+    return <ErrorPage errorMessage={error} />;
   }
 
   
@@ -113,11 +111,11 @@ export default function App() {
             </div>
         )}
         <Routes>
-            <Route path="/" element={<PackageListView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} onFileChange={handleFileChange} />} />
+            <Route path="/" element={<PackageListView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
             <Route path="/package/:packageName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
             
-            <Route path="/package/:packageName/files/:fileName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
-            <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/package/:packageName/files/:fileName" element={<PackageDocumentationView packages={protoPackages} />} />
+            <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} isDarkMode={isDarkMode} />} />
         </Routes>
     </Router>
   );

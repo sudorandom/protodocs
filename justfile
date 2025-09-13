@@ -12,6 +12,16 @@ lint:
     pnpm lint
 
 descriptors:
-    buf build buf.build/bufbuild/protovalidate -o public/protovalidate.binpb
-    buf build buf.build/googleapis/googleapis -o public/googleapis.binpb
-    buf build buf.build/gnostic/gnostic -o public/gnostic.binpb
+    buf build buf.build/bufbuild/protovalidate \
+        -o public/protovalidate.binpb \
+        --path buf/validate
+    buf build buf.build/googleapis/googleapis \
+        -o public/googleapis.binpb \
+        --exclude-path google/longrunning \
+        --exclude-path googlegoogle/geo/type \
+        --exclude-path google/api/expr/v1alpha1 \
+        --exclude-path google/api/expr/v1beta1 \
+        --exclude-path google/rpc/context
+    buf build buf.build/gnostic/gnostic \
+        -o public/gnostic.binpb \
+        --path gnostic/openapi/v3

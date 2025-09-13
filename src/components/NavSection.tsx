@@ -30,7 +30,7 @@ const NavSection = ({ title, items, selectedItem, selectedItemType, itemType, pa
                 <ul className="space-y-1 mt-2">
                     {items.map(item => (
                         <li key={item.name}>
-                            <Link to={`/package/${packageName}/${itemType}/${item.name}`} className={`w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block ${ selectedItem && selectedItem.name === item.name ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' }`}>
+                            <Link to={`/package/${packageName}/${itemType}/${item.name}`} className={`w-full text-left py-2 px-6 text-sm rounded-lg transition-colors duration-200 block ${ selectedItem && selectedItem.name === item.name ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 dark:text-gray-100 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800' }`}>
                                 {item.name}
                             </Link>
                         </li>

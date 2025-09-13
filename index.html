@@ -5,9 +5,58 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ProtoDoc</title>
+    <style>
+      body.loading, body.loading #root {
+        height: 100vh;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f7fafc; /* gray-100 */
+      }
+      @media (prefers-color-scheme: dark) {
+        body.loading, body.loading #root {
+          background-color: #1a202c; /* gray-900 */
+          color: #e2e8f0; /* gray-200 */
+        }
+      }
+      .loading-container {
+        display: flex;
+        align-items: center;
+      }
+      .spinner {
+        width: 2rem; /* w-8 */
+        height: 2rem; /* h-8 */
+        border: 4px solid #4299e1; /* border-blue-500 */
+        border-radius: 50%;
+        border-top-color: transparent;
+        animation: spin 1s linear infinite;
+        margin-right: 0.5rem; /* space-x-2 */
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .loading-text {
+        font-size: 1.125rem; /* text-lg */
+        font-weight: 500; /* font-medium */
+        color: #4a5568; /* text-gray-700 */
+      }
+      @media (prefers-color-scheme: dark) {
+        body.loading .loading-text {
+          color: #e2e8f0; /* text-gray-200 */
+        }
+      }
+    </style>
   </head>
-  <body>
-    <div id="root"></div>
+  <body class="loading">
+    <div id="root">
+        <div class="loading-container">
+            <div class="spinner"></div>
+            <span class="loading-text">Loading...</span>
+        </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

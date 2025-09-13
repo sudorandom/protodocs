@@ -9,14 +9,13 @@ import ProtoDetailView from './ProtoDetailView';
 import FileSourceContentView from './FileSourceContentView';
 import NavSection from './NavSection';
 import { uniqueBy } from '../utils';
+import ErrorPage from './ErrorPage';
 
 interface PackageDocumentationViewProps {
     packages: ProtoPackage[];
-    isDarkMode: boolean;
-    toggleDarkMode: () => void;
 }
 
-const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: PackageDocumentationViewProps) => {
+const PackageDocumentationView = ({ packages }: PackageDocumentationViewProps) => {
   const { packageName, itemType, itemName, fileName } = useParams();
   const [selectedItem, setSelectedItem] = useState<Message | Service | Enum | Extension | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
@@ -105,7 +104,7 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
   };
 
   if (!mergedProtoFile) {
-      return <div>Package not found</div>
+      return <ErrorPage title="Package Not Found" message="The requested package could not be found." />;
   }
 
   const filteredServices = mergedProtoFile.services.filter((svc) => svc.name.toLowerCase().includes(filterQuery.toLowerCase()));
@@ -115,17 +114,17 @@ const PackageDocumentationView = ({ packages, isDarkMode, toggleDarkMode }: Pack
 
   const sidebarContent = (
     <>
-        <PackageNav packages={packages} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
+        <PackageNav packages={packages} />
         <div className="flex-grow overflow-y-auto overflow-y-auto">
             <div className="p-2 mb-4">
-                <input type="text" placeholder="Filter definitions..." value={filterQuery} onChange={(e) => setFilterQuery(e.target.value)} className="w-full px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input type="text" placeholder="Filter definitions..." value={filterQuery} onChange={(e) => setFilterQuery(e.target.value)} className="w-full px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-800 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600" />
             </div>
             <div className="space-y-6">
-                <NavSection title="Services" items={filteredServices} selectedItem={selectedItem} selectedItemType={selectedItemType} itemType="services" packageName={packageName!} isExpanded={expandedSection === 'services'} onToggle={() => handleSectionToggle('services')} />
-                <NavSection title="Messages" items={filteredMessages} selectedItem={selectedItem} selectedItemType={selectedItemType} itemType="messages" packageName={packageName!} isExpanded={expandedSection === 'messages'} onToggle={() => handleSectionToggle('messages')} />
-                <NavSection title="Enums" items={filteredEnums} selectedItem={selectedItem} selectedItemType={selectedItemType} itemType="enums" packageName={packageName!} isExpanded={expandedSection === 'enums'} onToggle={() => handleSectionToggle('enums')} />
-                <NavSection title="Extensions" items={filteredExtensions} selectedItem={selectedItem} selectedItemType={selectedItemType} itemType="extensions" packageName={packageName!} isExpanded={expandedSection === 'extensions'} onToggle={() => handleSectionToggle('extensions')} />
-                <FileTreeView files={protoPackage!.files} packageName={packageName!} isExpanded={expandedSection === 'files'} onToggle={() => handleSectionToggle('files')} />
+                <NavSection title="Services" items={filteredServices} selectedItem={selectedItem} selectedItemType={selectedItemType} itemType="services" packageName={packageName!} isExpanded={filterQuery !== '' || expandedSection === 'services'} onToggle={() => handleSectionToggle('services')} />
+                <NavSection title="Messages" items={filteredMessages} selectedItem={selectedItem} selectedItemType={selectedItemType} itemType="messages" packageName={packageName!} isExpanded={filterQuery !== '' || expandedSection === 'messages'} onToggle={() => handleSectionToggle('messages')} />
+                <NavSection title="Enums" items={filteredEnums} selectedItem={selectedItem} selectedItemType={selectedItemType} itemType="enums" packageName={packageName!} isExpanded={filterQuery !== '' || expandedSection === 'enums'} onToggle={() => handleSectionToggle('enums')} />
+                <NavSection title="Extensions" items={filteredExtensions} selectedItem={selectedItem} selectedItemType={selectedItemType} itemType="extensions" packageName={packageName!} isExpanded={filterQuery !== '' || expandedSection === 'extensions'} onToggle={() => handleSectionToggle('extensions')} />
+                <FileTreeView files={protoPackage!.files} packageName={packageName!} isExpanded={filterQuery !== '' || expandedSection === 'files'} onToggle={() => handleSectionToggle('files')} />
             </div>
         </div>
     </>
