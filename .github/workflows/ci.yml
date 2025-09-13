@@ -28,6 +28,9 @@ jobs:
     - name: Run lint
       run: pnpm lint
 
+    - name: Run tests
+      run: pnpm test
+
     - name: Run Playwright tests
       run: just playwright
 
