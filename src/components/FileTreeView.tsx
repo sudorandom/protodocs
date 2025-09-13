@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { NavLink, useParams } from 'react-router-dom';
 import { type ProtoFile } from '../types';
 import { getCommonPathPrefix } from '../utils';

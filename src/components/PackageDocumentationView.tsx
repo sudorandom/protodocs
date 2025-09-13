@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { type ProtoPackage, type Message, type Service, type Enum, type Extension, type ProtoFile } from '../types';
+import { type ProtoPackage, type Message, type Service, type Enum, type Extension } from '../types';
 import { getAnchorId } from '../utils';
 import FileTreeView from './FileTreeView';
 import PackageNav from './PackageNav';

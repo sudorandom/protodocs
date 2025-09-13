@@ -178,7 +178,7 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
 
         setFiles(prevFiles => {
             const existingFileNames = new Set(prevFiles.map(f => f.fileName));
-            const newFiles = protoFiles.filter(pf => !existingFileNames.has(pf.fileName));
+            const newFiles = protoFiles.filter((pf: ProtoFile) => !existingFileNames.has(pf.fileName));
             return [...prevFiles, ...newFiles];
         });
     } catch (err) {

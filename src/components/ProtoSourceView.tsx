@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { type Message, type Service, type Enum, type Extension } from '../types';

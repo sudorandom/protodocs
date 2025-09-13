@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   type Rpc,
@@ -28,7 +28,7 @@ import DetailSection from './DetailSection';
 
 const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDetailViewProps) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { packageName } = useParams();
+  useParams();
   const [expandedRpc, setExpandedRpc] = useState<string | null>(null);
   const [showSource, setShowSource] = useState(false);
   const navigate = useNavigate();
