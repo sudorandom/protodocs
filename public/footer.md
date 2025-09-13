@@ -3,4 +3,4 @@
 
 You can put contact information, links, or any other content here.
 
-Powered by [ProtoDocs](https://github.com/jnewmano/protodocs).
+Powered by [ProtoDocs](https://github.com/sudorandom/protodocs).
