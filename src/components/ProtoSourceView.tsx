@@ -15,12 +15,13 @@ interface ProtoSourceViewProps {
 }
 
 const ProtoSourceView = ({ item, type, allTypes, protoPackage }: ProtoSourceViewProps) => {
-    const customRenderer = (props: { rows: Array<{ children: Array<{ children: string, [key: string]: unknown }> }> }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const customRenderer = (props: any) => {
         const { rows } = props;
-        return rows.map((row, i) => {
+        return rows.map((row: any, i: number) => {
             return (
                 <span key={i}>
-                    {row.children.map((token, j) => {
+                    {row.children.map((token: any, j: number) => {
                         const typeName = token.children;
                         const typeInfo = allTypes.get(typeName);
 
