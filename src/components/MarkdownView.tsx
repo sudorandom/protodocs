@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface MarkdownViewProps {
   url: string;
@@ -38,8 +39,8 @@ const MarkdownView = ({ url }: MarkdownViewProps) => {
   }
 
   return (
-    <div className="prose dark:prose-invert max-w-none">
-      <ReactMarkdown>
+    <div className="prose dark:prose-invert max-w-none mt-2">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>
         {markdown}
       </ReactMarkdown>
     </div>

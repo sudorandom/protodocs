@@ -28,6 +28,36 @@ const PackageDocumentationView = ({ packages }: PackageDocumentationViewProps) =
   const mergedProtoFile = useMemo(() => {
     if (!protoPackage) return null;
 
+    const allMessages: Message[] = [];
+    const allEnums: Enum[] = [];
+
+    const topLevelMessages = uniqueBy(protoPackage.files.flatMap(f => f.messages));
+    const topLevelEnums = uniqueBy(protoPackage.files.flatMap(f => f.enums));
+
+    const processMessages = (messages: Message[], prefix = '') => {
+        for (const message of messages) {
+            const newName = prefix ? `${prefix}.${message.name}` : message.name;
+            allMessages.push({ ...message, name: newName });
+
+            if (message.nestedMessages) {
+                processMessages(message.nestedMessages, newName);
+            }
+            if (message.nestedEnums) {
+                processEnums(message.nestedEnums, newName);
+            }
+        }
+    };
+
+    const processEnums = (enums: Enum[], prefix = '') => {
+        for (const enumItem of enums) {
+            const newName = prefix ? `${prefix}.${enumItem.name}` : enumItem.name;
+            allEnums.push({ ...enumItem, name: newName });
+        }
+    };
+
+    processMessages(topLevelMessages, '');
+    processEnums(topLevelEnums, '');
+
     const description = protoPackage.files.map(f => f.description).filter(d => d).join('\n\n');
     const options = protoPackage.files.reduce((acc, file) => {
         if (file.options) {
@@ -40,9 +70,9 @@ const PackageDocumentationView = ({ packages }: PackageDocumentationViewProps) =
         fileName: '',
         package: protoPackage.name,
         description: description,
-        messages: uniqueBy(protoPackage.files.flatMap(f => f.messages)).filter(m => !m.isMapEntry),
+        messages: allMessages.filter(m => !m.isMapEntry),
         services: uniqueBy(protoPackage.files.flatMap(f => f.services)),
-        enums: uniqueBy(protoPackage.files.flatMap(f => f.enums)),
+        enums: allEnums,
         extensions: uniqueBy(protoPackage.files.flatMap(f => f.extensions || [])),
         edition: protoPackage.files.length > 0 ? protoPackage.files[0].edition : undefined,
         options: options,

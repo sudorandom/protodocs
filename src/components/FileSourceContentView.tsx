@@ -1,7 +1,10 @@
 
 import { useParams } from 'react-router-dom';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
+import protobuf from 'react-syntax-highlighter/dist/esm/languages/prism/protobuf';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+
+SyntaxHighlighter.registerLanguage('protobuf', protobuf);
 import { type ProtoPackage, type ProtoFile } from '../types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

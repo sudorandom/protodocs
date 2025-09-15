@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as protobuf from 'protobufjs';
+import { createFileRegistry, ScalarType, fromBinary } from '@bufbuild/protobuf';
+import { FileDescriptorSetSchema } from '@bufbuild/protobuf/wkt';
 import { type Field, type Extension, type Message, type EnumValue, type Enum, type Rpc, type Service, type ProtoFile } from '../../types';
 
 const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<string, any>, setShowSourceInfoWarning: (show: boolean) => void): ProtoFile => {
@@ -19,14 +20,6 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
         if (!loc) return '';
         return (loc.leadingComments || loc.trailingComments || '').trim();
     };
-
-    const typeStringMap: { [key: number]: string } = {};
-    for (const key in protobuf.types.basic) {
-        if (Object.prototype.hasOwnProperty.call(protobuf.types.basic, key)) {
-            typeStringMap[(protobuf.types.basic as any)[key]] = key;
-        }
-    }
-    const resolveType = (type: number) => typeStringMap[type] || 'unknown';
 
     const transformEnums = (enumDescriptors: any[], path: number[]): Enum[] => {
         if (!enumDescriptors) return [];
@@ -56,26 +49,31 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
                 const fieldMessageType = allMessageDescriptors.get(field.typeName?.substring(1));
                 if (field.label === 'LABEL_REPEATED' && field.type === 11 && fieldMessageType?.options?.mapEntry) {
                     isMap = true;
-                    const keyField = fieldMessageType.field.find((f:any) => f.number === 1);
                     const valueField = fieldMessageType.field.find((f:any) => f.number === 2);
-                    keyType = resolveType(keyField.type);
-                    if (valueField.typeName) {
+                    const keyField = fieldMessageType.field.find((f:any) => f.number === 1);
+                    
+                    if(keyField?.type) {
+                        const keyTypeName = ScalarType[keyField.type];
+                        keyType = keyTypeName.toLowerCase();
+                    }
+
+                    if (valueField?.typeName) {
                         valueType = valueField.typeName.startsWith('.') ? valueField.typeName.substring(1) : valueField.typeName;
-                    } else {
-                        valueType = resolveType(valueField.type);
+                    } else if (valueField?.type) {
+                        const valueTypeName = ScalarType[valueField.type];
+                        valueType = valueTypeName.toLowerCase();
                     }
                     typeName = field.typeName.startsWith('.') ? field.typeName.substring(1) : field.typeName;
                 } else {
                     if (field.typeName) {
                         typeName = field.typeName.startsWith('.') ? field.typeName.substring(1) : field.typeName;
-                    } else if (typeof field.type === 'string' && field.type.startsWith('TYPE_')) {
-                        typeName = field.type.substring('TYPE_'.length).toLowerCase();
+                    }
+                    else if (typeof field.type === 'number') {
+                        const scalarTypeName = ScalarType[field.type];
+                        typeName = scalarTypeName.toLowerCase();
                     }
                     else {
-                        typeName = typeStringMap[field.type] || '';
-                    }
-                    if (!typeName) {
-                        console.error('Field type not resolved:', field);
+                        typeName = 'unknown';
                     }
                 }
 
@@ -91,8 +89,8 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
                 };
             });
 
-            const nestedMessages = transformMessages(msg.nestedType, messageName, msgPath.concat(3)); // 3 is for nested types
-            const nestedEnums = transformEnums(msg.enumType, msgPath.concat(4)); // 4 is for enums in messages
+            const nestedMessages = transformMessages(msg.nestedType, messageName, msgPath.concat(3));
+            const nestedEnums = transformEnums(msg.enumType, msgPath.concat(4));
 
             return {
                 name: msg.name,
@@ -105,32 +103,32 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
         });
     }
 
-    const messages: Message[] = transformMessages(fileDescriptor.messageType, fileDescriptor.package, [4]); // 4 is for messages
-    const enums: Enum[] = transformEnums(fileDescriptor.enumType, [5]); // 5 is for enums
+    const messages: Message[] = transformMessages(fileDescriptor.messageType, fileDescriptor.package, [4]);
+    const enums: Enum[] = transformEnums(fileDescriptor.enumType, [5]);
 
     const services: Service[] = (fileDescriptor.service || []).map((service: any, i: number) => {
-        const servicePath = [6, i]; // 6 is for services
+        const servicePath = [6, i];
         const rpcs: Rpc[] = (service.method || []).map((method: any, j: number) => ({
             name: method.name || '',
             request: method.inputType?.startsWith('.') ? method.inputType.substring(1) : method.inputType,
             response: method.outputType?.startsWith('.') ? method.outputType.substring(1) : method.outputType,
-            description: getComment(servicePath.concat(2, j)), // 2 is for methods
+            description: getComment(servicePath.concat(2, j)),
             isClientStream: method.clientStreaming || false,
             isServerStream: method.serverStreaming || false,
-            isBidi: (method.clientStreaming || false) && (method.serverStreaming || false),
         }));
         return { name: service.name || '', description: getComment(servicePath), rpcs };
     });
 
     const extensions: Extension[] = (fileDescriptor.extension || []).map((ext: any, i: number) => {
-        const extPath = [7, i]; // 7 is for extensions in FileDescriptorProto
+        const extPath = [7, i];
         let typeName = '';
         if (ext.typeName) {
             typeName = ext.typeName.startsWith('.') ? ext.typeName.substring(1) : ext.typeName;
-        } else if (typeof ext.type === 'string' && ext.type.startsWith('TYPE_')) {
-            typeName = ext.type.substring('TYPE_'.length).toLowerCase();
+        } else if (typeof ext.type === 'number') {
+            const scalarTypeName = ScalarType[ext.type];
+            typeName = scalarTypeName.toLowerCase();
         } else {
-            typeName = typeStringMap[ext.type] || '';
+            typeName = 'unknown';
         }
         return {
             name: ext.name || '',
@@ -145,7 +143,7 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
     return {
         fileName: fileDescriptor.name || '',
         package: fileDescriptor.package || '',
-        description: getComment([2]), // 2 is for package
+        description: getComment([2]),
         messages,
         services,
         enums,
@@ -162,13 +160,13 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
     setShowSourceInfoWarning: (show: boolean) => void
 ) => {
     try {
-        const root = protobuf.Root.fromJSON(await import('protobufjs/google/protobuf/descriptor.json'));
-        const FileDescriptorSet = root.lookupType("google.protobuf.FileDescriptorSet");
-        const descriptorSet = FileDescriptorSet.decode(new Uint8Array(buffer));
-        const descriptorSetObject = FileDescriptorSet.toObject(descriptorSet, { enums: String });
+        
+        const fileDescriptorSet = fromBinary(FileDescriptorSetSchema, new Uint8Array(buffer));
+        
+        createFileRegistry(fileDescriptorSet);
 
         const allMessageDescriptors = new Map<string, any>();
-        (descriptorSetObject.file || []).forEach((file: any) => {
+        for (const file of fileDescriptorSet.file) {
             const processMessages = (messages: any[], prefix: string) => {
                 if (!messages) return;
                 messages.forEach(msg => {
@@ -180,9 +178,9 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
                 });
             };
             processMessages(file.messageType, file.package);
-        });
+        }
 
-        const protoFiles = (descriptorSetObject.file || []).map((file: any) => {
+        const protoFiles = fileDescriptorSet.file.map((file: any) => {
           return transformToProtoFile(file, allMessageDescriptors, setShowSourceInfoWarning);
         });
 
@@ -191,8 +189,10 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
             const newFiles = protoFiles.filter((pf: ProtoFile) => !existingFileNames.has(pf.fileName));
             return [...prevFiles, ...newFiles];
         });
+        setError(null);
     } catch (err) {
-        setError('Failed to parse descriptor file.');
+        setError('Failed to parse descriptor file. Please ensure it is a valid FileDescriptorSet.');
         console.error(err);
     }
   };
+

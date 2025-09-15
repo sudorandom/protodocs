@@ -1,6 +1,5 @@
----
-*This is an example of a footer.*
+`protodocs` is an open-source project for rendering reference documentation from protobuf descriptors.
 
-You can put contact information, links, or any other content here.
+**GitHub Repository:** [github.com/protodocs/protodocs](https://github.com/protodocs/protodocs)
 
-Powered by [ProtoDocs](https://github.com/sudorandom/protodocs).
+&copy; 2025 protodocs.dev. All rights reserved.

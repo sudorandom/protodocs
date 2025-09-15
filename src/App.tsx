@@ -13,6 +13,23 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [showSourceInfoWarning, setShowSourceInfoWarning] = useState<boolean>(false);
   const [config, setConfig] = useState<Config | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const savedMode = localStorage.getItem('darkMode');
+    return savedMode ? JSON.parse(savedMode) : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(prevMode => !prevMode);
+  };
 
   useEffect(() => {
     const fetchConfigAndDescriptors = async () => {
@@ -70,6 +87,13 @@ export default function App() {
   return (
     <Router>
         <ScrollToTop />
+        <button
+          onClick={toggleDarkMode}
+          className="fixed bottom-4 right-4 p-2 rounded-full bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800 shadow-lg z-50"
+          aria-label="Toggle dark mode"
+        >
+          {isDarkMode ? '☀️' : '🌙'}
+        </button>
         {showSourceInfoWarning && (
             <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
                 <p className="font-bold">Warning</p>
@@ -86,3 +110,4 @@ export default function App() {
     </Router>
   );
 }
+
