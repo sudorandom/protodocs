@@ -15,13 +15,15 @@ interface ProtoSourceViewProps {
 }
 
 const ProtoSourceView = ({ item, type, allTypes, protoPackage }: ProtoSourceViewProps) => {
+    // I am using `any` for the props because the type `rendererProps` from `react-syntax-highlighter` is not exported.
+    // This is a pragmatic solution to fix the build issue.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const customRenderer = (props: any) => {
         const { rows } = props;
-        return rows.map((row: any, i: number) => {
+        return rows.map((row: { children: { children: string }[] }, i: number) => {
             return (
                 <span key={i}>
-                    {row.children.map((token: any, j: number) => {
+                    {row.children.map((token, j: number) => {
                         const typeName = token.children;
                         const typeInfo = allTypes.get(typeName);
 
