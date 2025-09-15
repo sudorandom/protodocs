@@ -1,4 +1,4 @@
-import { type Message, type Service, type Enum, type Extension } from '../../types';
+import { type Message, type Service, type Enum, type Extension, type ProtoPackage } from '../../types';
 
 const generateIndent = (level: number): string => '  '.repeat(level);
 
@@ -20,7 +20,13 @@ const generateEnumSource = (enumItem: Enum, indentLevel: number): string => {
     return source;
 };
 
-const generateMessageSource = (message: Message, indentLevel: number): string => {
+const generateMessageSource = (
+    message: Message,
+    indentLevel: number,
+    protoPackage: ProtoPackage,
+    allTypes: Map<string, { pkg: ProtoPackage, item: Message | Enum, type: string }>,
+    parentMessageName?: string
+): string => {
     let source = '';
     if (message.description) {
         source += `${generateIndent(indentLevel)}// ${message.description.replace(/\n/g, `\n${generateIndent(indentLevel)}// `)}\n`;
@@ -35,7 +41,7 @@ const generateMessageSource = (message: Message, indentLevel: number): string =>
 
     if (message.nestedMessages) {
         message.nestedMessages.forEach(nestedMessage => {
-            source += `\n${generateMessageSource(nestedMessage, indentLevel + 1)}`;
+            source += `\n${generateMessageSource(nestedMessage, indentLevel + 1, protoPackage, allTypes, message.name)}`;
         });
     }
 
@@ -45,7 +51,13 @@ const generateMessageSource = (message: Message, indentLevel: number): string =>
                 source += `${generateIndent(indentLevel + 1)}// ${field.description.replace(/\n/g, `\n${generateIndent(indentLevel + 1)}// `)}\n`;
             }
             const repeated = field.isRepeated ? 'repeated ' : '';
-            const fieldType = field.isMap ? `map<${field.keyType}, ${field.valueType}>` : field.type;
+            let fieldType = field.isMap ? `map<${field.keyType}, ${field.valueType}>` : field.type;
+            if (!allTypes.get(fieldType) && parentMessageName) {
+                const fqn = `${protoPackage.name}.${parentMessageName}.${fieldType}`;
+                if (allTypes.has(fqn)) {
+                    fieldType = fqn;
+                }
+            }
             source += `${generateIndent(indentLevel + 1)}${repeated}${fieldType} ${field.name} = ${field.tag};\n`;
         });
     }
@@ -54,11 +66,16 @@ const generateMessageSource = (message: Message, indentLevel: number): string =>
     return source;
 }
 
-export const generateSource = (item: Message | Service | Enum | Extension, type: string): string => {
+export const generateSource = (
+    item: Message | Service | Enum | Extension,
+    type: string,
+    protoPackage: ProtoPackage,
+    allTypes: Map<string, { pkg: ProtoPackage, item: Message | Enum, type: string }>
+): string => {
     if (!item) return '';
 
     if (type === 'messages') {
-        return generateMessageSource(item as Message, 0);
+        return generateMessageSource(item as Message, 0, protoPackage, allTypes);
     }
 
     if (type === 'enums') {

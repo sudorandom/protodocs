@@ -330,7 +330,7 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
         <div className="prose dark:prose-invert max-w-none text-sm"><ExpandableMarkdown description={item.description} /></div>
       </div>
       {showSource ? (
-          <ProtoSourceView item={item} type={type!} />
+          <ProtoSourceView item={item} type={type!} allTypes={allTypes} protoPackage={protoPackage} />
       ) : (
           <>
               {type === 'messages' && (

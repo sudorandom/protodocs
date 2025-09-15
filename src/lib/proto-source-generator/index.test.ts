@@ -17,7 +17,9 @@ message TestMessage {
   string test_field = 1;
 }
 `;
-    expect(generateSource(message, 'messages')).toBe(expectedSource);
+    const allTypes = new Map();
+    const protoPackage = { name: 'test', files: [] };
+    expect(generateSource(message, 'messages', protoPackage, allTypes)).toBe(expectedSource);
   });
 
   it('should generate source for a message with repeated fields', () => {
@@ -34,7 +36,9 @@ message TestMessage {
   repeated string test_field = 1;
 }
 `;
-    expect(generateSource(message, 'messages')).toBe(expectedSource);
+    const allTypes = new Map();
+    const protoPackage = { name: 'test', files: [] };
+    expect(generateSource(message, 'messages', protoPackage, allTypes)).toBe(expectedSource);
   });
 
   it('should generate source for a message with map fields', () => {
@@ -51,7 +55,9 @@ message TestMessage {
   map<string, int32> test_field = 1;
 }
 `;
-    expect(generateSource(message, 'messages')).toBe(expectedSource);
+    const allTypes = new Map();
+    const protoPackage = { name: 'test', files: [] };
+    expect(generateSource(message, 'messages', protoPackage, allTypes)).toBe(expectedSource);
   });
 
   it('should generate source for a simple enum', () => {
@@ -68,7 +74,9 @@ enum TestEnum {
   TEST_VALUE = 0;
 }
 `;
-    expect(generateSource(enumItem, 'enums')).toBe(expectedSource);
+    const allTypes = new Map();
+    const protoPackage = { name: 'test', files: [] };
+    expect(generateSource(enumItem, 'enums', protoPackage, allTypes)).toBe(expectedSource);
   });
 
   it('should generate source for a simple service', () => {
@@ -84,7 +92,9 @@ service TestService {
   // A test RPC.
   rpc TestRPC (TestRequest) returns (TestResponse);
 }`;
-    expect(generateSource(service, 'services')).toBe(expectedSource);
+    const allTypes = new Map();
+    const protoPackage = { name: 'test', files: [] };
+    expect(generateSource(service, 'services', protoPackage, allTypes)).toBe(expectedSource);
   });
 
   it('should generate source for a service with streaming', () => {
@@ -106,7 +116,9 @@ service TestService {
   // A bidi streaming RPC.
   rpc BidiStreamingRPC (stream TestRequest) returns (stream TestResponse);
 }`;
-    expect(generateSource(service, 'services')).toBe(expectedSource);
+    const allTypes = new Map();
+    const protoPackage = { name: 'test', files: [] };
+    expect(generateSource(service, 'services', protoPackage, allTypes)).toBe(expectedSource);
 });
 
 
@@ -122,7 +134,9 @@ service TestService {
 extend TestMessage {
   string test_extension = 123;
 }`;
-    expect(generateSource(extension, 'extensions')).toBe(expectedSource);
+    const allTypes = new Map();
+    const protoPackage = { name: 'test', files: [] };
+    expect(generateSource(extension, 'extensions', protoPackage, allTypes)).toBe(expectedSource);
   });
 
   it('should generate source for a message with a nested message', () => {
@@ -150,7 +164,9 @@ message OuterMessage {
   }
 }
 `;
-    expect(generateSource(message, 'messages')).toBe(expectedSource);
+    const allTypes = new Map();
+    const protoPackage = { name: 'test', files: [] };
+    expect(generateSource(message, 'messages', protoPackage, allTypes)).toBe(expectedSource);
   });
 
   it('should generate source for a message with a nested enum', () => {
@@ -178,7 +194,9 @@ message TestMessage {
   }
 }
 `;
-    expect(generateSource(message, 'messages')).toBe(expectedSource);
+    const allTypes = new Map();
+    const protoPackage = { name: 'test', files: [] };
+    expect(generateSource(message, 'messages', protoPackage, allTypes)).toBe(expectedSource);
   });
 
   it('should handle multiple levels of nesting', () => {
@@ -217,6 +235,8 @@ message L1 {
   }
 }
 `;
-    expect(generateSource(message, 'messages')).toBe(expectedSource);
+    const allTypes = new Map();
+    const protoPackage = { name: 'test', files: [] };
+    expect(generateSource(message, 'messages', protoPackage, allTypes)).toBe(expectedSource);
   });
 });
