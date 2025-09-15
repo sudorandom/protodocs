@@ -1,0 +1,10 @@
+{
+  "title": "protodocs",
+  "descriptor_files": [
+    "/gnostic.binpb",
+    "/protovalidate.binpb",
+    "/googleapis.binpb"
+  ],
+  "front_page_markdown_file": "/home.md",
+  "bottom_of_front_page_markdown_file": "/footer.md"
+}

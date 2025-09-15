@@ -8,8 +8,11 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      gridTemplateColumns: {
+        'auto-fit-minmax': 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))',
+      }
+    },
   },
   plugins: [typography],
-  // Added a comment to force Tailwind CSS rebuild
 }

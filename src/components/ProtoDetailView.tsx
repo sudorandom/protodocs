@@ -27,7 +27,6 @@ interface ProtoDetailViewProps {
 import DetailSection from './DetailSection';
 
 const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDetailViewProps) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   useParams();
   const [expandedRpc, setExpandedRpc] = useState<string | null>(null);
   const [showSource, setShowSource] = useState(false);
@@ -47,10 +46,10 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
                 title="Services"
                 items={proto.services}
                 renderItem={service => (
-                    <li key={service.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                        <Link to={`/package/${protoPackage.name}/services/${service.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{service.name}</Link>
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">{service.rpcs.length} methods</div>
-                    </li>
+                    <Link key={service.name} to={`/package/${protoPackage.name}/services/${service.name}`} className="block w-full h-full cursor-pointer p-4 rounded-lg shadow-sm bg-gray-50 dark:bg-gray-800 transition-all duration-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <div className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{service.name}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">{service.rpcs.length} methods</div>
+                        </Link>
                 )}
             />
 
@@ -58,10 +57,10 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
                 title="Messages"
                 items={proto.messages}
                 renderItem={message => (
-                    <li key={message.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                        <Link to={`/package/${protoPackage.name}/messages/${message.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{message.name}</Link>
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">{message.fields.length} fields</div>
-                    </li>
+                        <Link key={message.name} to={`/package/${protoPackage.name}/messages/${message.name}`} className="block w-full h-full cursor-pointer p-4 rounded-lg shadow-sm bg-gray-50 dark:bg-gray-800 transition-all duration-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <div className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{message.name}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">{message.fields.length} fields</div>
+                        </Link>
                 )}
             />
 
@@ -69,9 +68,11 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
                 title="Enums"
                 items={proto.enums}
                 renderItem={enumItem => (
-                    <li key={enumItem.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                        <Link to={`/package/${protoPackage.name}/enums/${enumItem.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:hover:underline">{enumItem.name}</Link>
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">{enumItem.values.length} values</div>
+                    <li key={enumItem.name}>
+                        <Link to={`/package/${protoPackage.name}/enums/${enumItem.name}`} className="block w-full h-full cursor-pointer p-4 rounded-lg shadow-sm bg-gray-50 dark:bg-gray-800 transition-all duration-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <div className="font-mono text-blue-600 dark:text-blue-400 hover:hover:underline">{enumItem.name}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">{enumItem.values.length} values</div>
+                        </Link>
                     </li>
                 )}
             />
@@ -80,10 +81,12 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
                 title="Extensions"
                 items={proto.extensions || []}
                 renderItem={ext => (
-                    <li key={`${ext.name}-${ext.extendee}`} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                        <Link to={`/package/${protoPackage.name}/extensions/${ext.name}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{ext.name}</Link>
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">extending <span className="font-mono text-purple-500">{ext.extendee}</span></div>
-                        {ext.description && <div className="prose dark:prose-invert max-w-none text-xs mt-2"><ExpandableMarkdown description={ext.description} /></div>}
+                    <li key={`${ext.name}-${ext.extendee}`}>
+                        <Link to={`/package/${protoPackage.name}/extensions/${ext.name}`} className="block w-full h-full cursor-pointer p-4 rounded-lg shadow-sm bg-gray-50 dark:bg-gray-800 transition-all duration-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <div className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{ext.name}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">extending <span className="font-mono text-purple-500">{ext.extendee}</span></div>
+                            {ext.description && <div className="prose dark:prose-invert max-w-none text-xs mt-2"><ExpandableMarkdown description={ext.description} /></div>}
+                        </Link>
                     </li>
                 )}
             />
@@ -97,14 +100,16 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
                     </span>
                 )}
                 renderItem={file => (
-                    <li key={file.fileName} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm list-none">
-                        <Link to={`/package/${protoPackage.name}/files/${file.fileName.replace(/\//g, '+')}`} className="font-mono text-blue-600 dark:text-blue-400 hover:underline break-all">{file.fileName.substring(commonPrefix.length)}</Link>
-                        <div className="flex space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-2">
-                            {file.services.length > 0 && <span>{file.services.length} services</span>}
-                            {file.messages.length > 0 && <span>{file.messages.length} messages</span>}
-                            {file.enums.length > 0 && <span>{file.enums.length} enums</span>}
-                            {(file.extensions?.length || 0) > 0 && <span>{file.extensions.length} extensions</span>}
-                        </div>
+                    <li key={file.fileName} className="list-none">
+                        <Link to={`/package/${protoPackage.name}/files/${file.fileName.replace(/\//g, '+')}`} className="block w-full h-full cursor-pointer p-4 rounded-lg shadow-sm bg-gray-50 dark:bg-gray-800 transition-all duration-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <div className="font-mono text-blue-600 dark:text-blue-400 hover:underline break-all">{file.fileName.substring(commonPrefix.length)}</div>
+                            <div className="flex space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-2">
+                                {file.services.length > 0 && <span>{file.services.length} services</span>}
+                                {file.messages.length > 0 && <span>{file.messages.length} messages</span>}
+                                {file.enums.length > 0 && <span>{file.enums.length} enums</span>}
+                                {(file.extensions?.length || 0) > 0 && <span>{file.extensions.length} extensions</span>}
+                            </div>
+                        </Link>
                     </li>
                 )}
             />
@@ -134,14 +139,14 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
   const renderType = (type: string, messagePackage: string) => {
     if (scalarDocUrls[type]) {
       return (
-        <a href={scalarDocUrls[type]} target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:underline">
+        <a href={scalarDocUrls[type]} target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:underline cursor-pointer">
           {type}
         </a>
       );
     }
     if (wellKnownTypeUrls[type]) {
         return (
-            <a href={wellKnownTypeUrls[type]} target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:underline">
+            <a href={wellKnownTypeUrls[type]} target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:underline cursor-pointer">
                 {type.split('.').pop()}
             </a>
         );
@@ -155,11 +160,47 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
     }
 
     return (
-      <button onClick={() => findAndSelect(type)} className="font-semibold text-purple-600 dark:text-purple-300 hover:text-purple-400 dark:hover:text-purple-200 underline transition-colors duration-200">
+      <button onClick={() => findAndSelect(type)} className="font-semibold text-purple-600 dark:text-purple-300 hover:text-purple-400 dark:hover:text-purple-200 underline transition-colors duration-200 cursor-pointer">
         {typeName}
       </button>
     );
   }
+
+  const renderNestedMessages = () => {
+    if (!(item as Message).nestedMessages) return null;
+    return (
+        <DetailSection
+            title="Nested Messages"
+            items={(item as Message).nestedMessages || []}
+            renderItem={message => (
+                <li key={message.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+                    <Link to={`/package/${protoPackage.name}/messages/${item.name}.${message.name}`} className="block w-full h-full cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <div className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{message.name}</div>
+                        {message.description && <div className="prose dark:prose-invert max-w-none text-sm mt-1"><ExpandableMarkdown description={message.description} /></div>}
+                    </Link>
+                </li>
+            )}
+        />
+    );
+  };
+
+  const renderNestedEnums = () => {
+    if (!(item as Message).nestedEnums) return null;
+    return (
+        <DetailSection
+            title="Nested Enums"
+            items={(item as Message).nestedEnums || []}
+            renderItem={enumItem => (
+                <li key={enumItem.name} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+                    <Link to={`/package/${protoPackage.name}/enums/${item.name}.${enumItem.name}`} className="block w-full h-full cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <div className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{enumItem.name}</div>
+                        {enumItem.description && <div className="prose dark:prose-invert max-w-none text-sm mt-1"><ExpandableMarkdown description={enumItem.description} /></div>}
+                    </Link>
+                </li>
+            )}
+        />
+    );
+  };
 
   const renderFields = () => (
     <div className="space-y-4">
@@ -167,13 +208,16 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
       <ul className="list-none space-y-2">
         {(item as Message).fields.map((field: Field) => (
           <li key={field.tag} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm" id={getFieldAnchorId(type!, item.name, field.name)}>
-            <div className="flex items-center justify-between">
-              <p className="font-mono text-sm text-purple-600 dark:text-purple-300 font-semibold">{field.tag}. {field.name} <a href={`#${getFieldAnchorId(type!, item.name, field.name)}`} className="hover:underline text-gray-400 dark:text-gray-400">¶</a></p>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {field.isRepeated ? 'repeated ' : ''}
-                {renderFieldType(field, proto.package)}
+            <p className="font-mono text-sm">
+              <span className="text-purple-600 dark:text-purple-300 font-semibold mr-2">{field.tag}. {field.name}</span>
+              <span className="font-mono text-green-500 dark:text-green-400 text-xs mr-2">
+                [{field.isRepeated ? 'repeated ' : ''}
+                {renderFieldType(field, proto.package)}]
               </span>
-            </div>
+              <span>
+                <a href={`#${getFieldAnchorId(type!, item.name, field.name)}`} className="hover:underline text-gray-400 dark:text-gray-400">¶</a>
+              </span>
+            </p>
             <div className="prose dark:prose-invert max-w-none text-sm"><ExpandableMarkdown description={field.description} /></div>
             {field.annotations && field.annotations.length > 0 && (
               <div className="mt-3 p-2 bg-gray-200 dark:bg-gray-700 rounded-md">
@@ -195,9 +239,10 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
       <ul className="list-none space-y-2">
         {(item as Enum).values.map((value: EnumValue) => (
           <li key={value.value} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm" id={getFieldAnchorId(type!, item.name, value.name)}>
-            <div className="flex items-center justify-between">
-              <p className="font-mono text-sm text-purple-600 dark:text-purple-300 font-semibold">{value.name} <a href={`#${getFieldAnchorId(type!, item.name, value.name)}`} className="hover:underline text-gray-400 dark:text-gray-600">¶</a></p>
-              <span className="text-xs text-gray-500 dark:text-gray-400"> = {value.value}</span>
+            <div className="flex items-center">
+              <p className="font-mono text-sm text-purple-600 dark:text-purple-300 font-semibold mr-2">{value.name}</p>
+              <span className="text-xs text-gray-500 dark:text-gray-400 mr-2"> = {value.value}</span>
+              <span><a href={`#${getFieldAnchorId(type!, item.name, value.name)}`} className="hover:underline text-gray-400 dark:text-gray-600">¶</a></span>
             </div>
 			<div className="prose dark:prose-invert max-w-none text-sm"><ExpandableMarkdown description={value.description} /></div>
           </li>
@@ -261,13 +306,13 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
             </div>
           </li>
           <li className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className="font-mono text-sm text-purple-600 dark:text-purple-300 font-semibold">{(item as Extension).tag}. {(item as Extension).name}</p>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {(item as Extension).isRepeated ? 'repeated ' : ''}
-                {renderType((item as Extension).type, proto.package)}
+            <p className="font-mono text-sm">
+              <span className="text-purple-600 dark:text-purple-300 font-semibold">{(item as Extension).tag}. {(item as Extension).name}</span>
+              <span className="font-mono text-green-500 dark:text-green-400 text-xs ml-2">
+                [{(item as Extension).isRepeated ? 'repeated ' : ''}
+                {renderType((item as Extension).type, proto.package)}]
               </span>
-            </div>
+            </p>
           </li>
       </ul>
     </div>
@@ -288,7 +333,13 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
           <ProtoSourceView item={item} type={type!} />
       ) : (
           <>
-              {type === 'messages' && renderFields()}
+              {type === 'messages' && (
+                <>
+                  {renderFields()}
+                  {renderNestedMessages()}
+                  {renderNestedEnums()}
+                </>
+              )}
               {type === 'enums' && renderEnums()}
               {type === 'services' && renderRpcs()}
               {type === 'extensions' && renderExtension()}
