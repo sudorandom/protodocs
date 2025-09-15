@@ -15,14 +15,14 @@ interface ProtoSourceViewProps {
 }
 
 const ProtoSourceView = ({ item, type, allTypes, protoPackage }: ProtoSourceViewProps) => {
-    const customRenderer = (props: any) => {
-        const { rows, stylesheet, useInlineStyles } = props;
-        return rows.map((row: any, i: number) => {
+    const customRenderer = (props: { rows: Array<{ children: Array<{ children: string, [key: string]: unknown }> }> }) => {
+        const { rows } = props;
+        return rows.map((row, i) => {
             return (
-                <span key={i} {...props.getLineProps({ line: row, key: i })}>
-                    {row.children.map((token: any, j: number) => {
+                <span key={i}>
+                    {row.children.map((token, j) => {
                         const typeName = token.children;
-                        let typeInfo = allTypes.get(typeName);
+                        const typeInfo = allTypes.get(typeName);
 
                         // If the type is not found, it might be a nested type.
                         // The FQN is constructed in generateMessageSource, so we just need to link it.
@@ -37,7 +37,7 @@ const ProtoSourceView = ({ item, type, allTypes, protoPackage }: ProtoSourceView
                                 </Link>
                             );
                         }
-                        return <span key={j} {...props.getTokenProps({ token, key: j })} />;
+                        return <span key={j}>{token.children}</span>;
                     })}
                 </span>
             );
