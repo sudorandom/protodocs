@@ -57,12 +57,10 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
                 title="Messages"
                 items={proto.messages}
                 renderItem={message => (
-                    <li key={message.name}>
-                        <Link to={`/package/${protoPackage.name}/messages/${message.name}`} className="block w-full h-full cursor-pointer p-4 rounded-lg shadow-sm bg-gray-50 dark:bg-gray-800 transition-all duration-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <Link key={message.name} to={`/package/${protoPackage.name}/messages/${message.name}`} className="block w-full h-full cursor-pointer p-4 rounded-lg shadow-sm bg-gray-50 dark:bg-gray-800 transition-all duration-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                             <div className="font-mono text-blue-600 dark:text-blue-400 hover:underline">{message.name}</div>
                             <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">{message.fields.length} fields</div>
                         </Link>
-                    </li>
                 )}
             />
 
