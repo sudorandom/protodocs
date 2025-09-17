@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRegistry, ScalarType, fromBinary } from '@bufbuild/protobuf';
 import { FileDescriptorSetSchema } from '@bufbuild/protobuf/wkt';
-import { type Field, type Extension, type Message, type EnumValue, type Enum, type Rpc, type Service, type ProtoFile } from '../../types';
+import { type Field, type Extension, type Message, type EnumValue, type Enum, type Rpc, type Service, type ProtoFile, type Commentable } from '../../types';
 
 const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<string, any>, setShowSourceInfoWarning: (show: boolean) => void): ProtoFile => {
     const locations = new Map<string, any>();
@@ -15,10 +15,15 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
         setShowSourceInfoWarning(true);
     }
 
-    const getComment = (path: number[]) => {
+    const getComment = (path: number[]): Commentable => {
         const loc = locations.get(path.join(','));
-        if (!loc) return '';
-        return (loc.leadingComments || loc.trailingComments || '').trim();
+        if (!loc) return { description: '' };
+        return {
+            description: (loc.leadingComments || loc.trailingComments || '').trim(),
+            leadingComments: loc.leadingComments,
+            trailingComments: loc.trailingComments,
+            leadingDetachedComments: loc.leadingDetachedComments,
+        };
     };
 
     const transformEnums = (enumDescriptors: any[], path: number[]): Enum[] => {
@@ -28,9 +33,13 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
             const values: EnumValue[] = (enumType.value || []).map((val: any, j: number) => ({
                 name: val.name || '',
                 value: val.number || 0,
-                description: getComment(enumPath.concat(2, j)), // 2 is for values
+                ...getComment(enumPath.concat(2, j)), // 2 is for values
             }));
-            return { name: enumType.name || '', description: getComment(enumPath), values };
+            return {
+                name: enumType.name || '',
+                values,
+                ...getComment(enumPath),
+            };
         });
     };
 
@@ -81,11 +90,11 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
                     name: field.name || '',
                     type: typeName,
                     tag: field.number || 0,
-                    description: getComment(msgPath.concat(2, j)), // 2 is for fields
                     isRepeated: field.label === 'LABEL_REPEATED' && !isMap,
                     isMap,
                     keyType,
                     valueType,
+                    ...getComment(msgPath.concat(2, j)), // 2 is for fields
                 };
             });
 
@@ -94,11 +103,11 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
 
             return {
                 name: msg.name,
-                description: getComment(msgPath),
                 fields,
                 isMapEntry: msg.options?.mapEntry,
                 nestedMessages: nestedMessages.length > 0 ? nestedMessages : undefined,
                 nestedEnums: nestedEnums.length > 0 ? nestedEnums : undefined,
+                ...getComment(msgPath),
             };
         });
     }
@@ -112,11 +121,15 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
             name: method.name || '',
             request: method.inputType?.startsWith('.') ? method.inputType.substring(1) : method.inputType,
             response: method.outputType?.startsWith('.') ? method.outputType.substring(1) : method.outputType,
-            description: getComment(servicePath.concat(2, j)),
             isClientStream: method.clientStreaming || false,
             isServerStream: method.serverStreaming || false,
+            ...getComment(servicePath.concat(2, j)),
         }));
-        return { name: service.name || '', description: getComment(servicePath), rpcs };
+        return {
+            name: service.name || '',
+            rpcs,
+            ...getComment(servicePath),
+        };
     });
 
     const extensions: Extension[] = (fileDescriptor.extension || []).map((ext: any, i: number) => {
@@ -134,22 +147,22 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
             name: ext.name || '',
             type: typeName,
             tag: ext.number || 0,
-            description: getComment(extPath),
             extendee: ext.extendee.startsWith('.') ? ext.extendee.substring(1) : ext.extendee,
             isRepeated: ext.label === 'LABEL_REPEATED',
+            ...getComment(extPath),
         };
     });
 
     return {
         fileName: fileDescriptor.name || '',
         package: fileDescriptor.package || '',
-        description: getComment([2]),
         messages,
         services,
         enums,
         extensions,
         edition: fileDescriptor.edition,
         options: fileDescriptor.options,
+        ...getComment([2]),
     };
   };
 
@@ -195,4 +208,3 @@ const transformToProtoFile = (fileDescriptor: any, allMessageDescriptors: Map<st
         console.error(err);
     }
   };
-

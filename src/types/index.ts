@@ -1,11 +1,17 @@
 // --- Data Types ---
 export type Annotation = string;
 
-export interface Field {
+export interface Commentable {
+  description: string;
+  leadingComments?: string;
+  trailingComments?: string;
+  leadingDetachedComments?: string[];
+}
+
+export interface Field extends Commentable {
   name: string;
   type: string;
   tag: number;
-  description: string;
   annotations?: Annotation[];
   isRepeated?: boolean;
   isMap?: boolean;
@@ -13,56 +19,49 @@ export interface Field {
   valueType?: string;
 }
 
-export interface Extension {
+export interface Extension extends Commentable {
   name: string;
   type: string;
   tag: number;
-  description: string;
   extendee: string;
   isRepeated?: boolean;
 }
 
-export interface Message {
+export interface Message extends Commentable {
   name: string;
-  description: string;
   fields: Field[];
   isMapEntry?: boolean;
   nestedMessages?: Message[];
   nestedEnums?: Enum[];
 }
 
-export interface EnumValue {
+export interface EnumValue extends Commentable {
   name: string;
   value: number;
-  description: string;
 }
 
-export interface Enum {
+export interface Enum extends Commentable {
   name: string;
-  description: string;
   values: EnumValue[];
 }
 
-export interface Rpc {
+export interface Rpc extends Commentable {
   name:string;
   request: string;
   response: string;
-  description: string;
   isServerStream?: boolean;
   isClientStream?: boolean;
   isBidi?: boolean;
 }
 
-export interface Service {
+export interface Service extends Commentable {
   name: string;
-  description: string;
   rpcs: Rpc[];
 }
 
-export interface ProtoFile {
+export interface ProtoFile extends Commentable {
   fileName: string;
   package: string;
-  description: string;
   messages: Message[];
   services: Service[];
   enums: Enum[];
