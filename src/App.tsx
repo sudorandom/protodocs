@@ -13,23 +13,6 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [showSourceInfoWarning, setShowSourceInfoWarning] = useState<boolean>(false);
   const [config, setConfig] = useState<Config | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    const savedMode = localStorage.getItem('darkMode');
-    return savedMode ? JSON.parse(savedMode) : window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
-
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
-  }, [isDarkMode]);
-
-  const toggleDarkMode = () => {
-    setIsDarkMode(prevMode => !prevMode);
-  };
 
   useEffect(() => {
     const fetchConfigAndDescriptors = async () => {
