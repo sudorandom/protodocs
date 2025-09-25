@@ -87,13 +87,6 @@ export default function App() {
   return (
     <Router>
         <ScrollToTop />
-        <button
-          onClick={toggleDarkMode}
-          className="fixed bottom-4 right-4 p-2 rounded-full bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800 shadow-lg z-50"
-          aria-label="Toggle dark mode"
-        >
-          {isDarkMode ? '☀️' : '🌙'}
-        </button>
         {showSourceInfoWarning && (
             <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
                 <p className="font-bold">Warning</p>
@@ -106,6 +99,7 @@ export default function App() {
             
             <Route path="/package/:packageName/files/:fileName" element={<PackageDocumentationView packages={protoPackages} />} />
             <Route path="/package/:packageName/:itemType/:itemName" element={<PackageDocumentationView packages={protoPackages} />} />
+            <Route path="/package/:packageName/:itemType/:itemName/source" element={<PackageDocumentationView packages={protoPackages} />} />
         </Routes>
     </Router>
   );

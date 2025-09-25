@@ -1,7 +1,7 @@
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
 import protobuf from 'react-syntax-highlighter/dist/esm/languages/prism/protobuf';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { Link } from 'react-router-dom';
+
 import { type Message, type Service, type Enum, type Extension, type ProtoPackage } from '../types';
 import { generateSource } from '../lib/proto-source-generator';
 
@@ -10,50 +10,18 @@ SyntaxHighlighter.registerLanguage('protobuf', protobuf);
 interface ProtoSourceViewProps {
     item: Message | Service | Enum | Extension;
     type: string;
-    allTypes: Map<string, { pkg: ProtoPackage, item: Message | Enum, type: string }>;
     protoPackage: ProtoPackage;
+    allTypes: Map<string, { pkg: ProtoPackage; item: Message | Enum; type: string; }>;
 }
 
-const ProtoSourceView = ({ item, type, allTypes, protoPackage }: ProtoSourceViewProps) => {
-    // I am using `any` for the props because the type `rendererProps` from `react-syntax-highlighter` is not exported.
-    // This is a pragmatic solution to fix the build issue.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const customRenderer = (props: any) => {
-        const { rows } = props;
-        return rows.map((row: { children: { children: string }[] }, i: number) => {
-            return (
-                <span key={i}>
-                    {row.children.map((token, j: number) => {
-                        const typeName = token.children;
-                        const typeInfo = allTypes.get(typeName);
-
-                        // If the type is not found, it might be a nested type.
-                        // The FQN is constructed in generateMessageSource, so we just need to link it.
-                        if (typeInfo) {
-                            return (
-                                <Link
-                                    key={j}
-                                    to={`/package/${typeInfo.pkg.name}/${typeInfo.type}/${typeInfo.item.name}`}
-                                    className="text-purple-400 hover:underline"
-                                >
-                                    {typeName.split('.').pop()}
-                                </Link>
-                            );
-                        }
-                        return <span key={j}>{token.children}</span>;
-                    })}
-                </span>
-            );
-        });
-    };
-
+const ProtoSourceView = ({ item, type, protoPackage, allTypes }: ProtoSourceViewProps) => {
     return (
         <div className="p-8">
             <SyntaxHighlighter
                 language="protobuf"
                 style={atomDark}
+                wrapLines={true}
                 customStyle={{ background: 'transparent' }}
-                renderer={customRenderer}
             >
                 {generateSource(item, type, protoPackage, allTypes)}
             </SyntaxHighlighter>

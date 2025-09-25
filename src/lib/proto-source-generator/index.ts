@@ -1,5 +1,15 @@
 import { type Message, type Service, type Enum, type Extension, type ProtoPackage, type Commentable, type EnumValue, type Field } from '../../types';
 
+// Custom findLastIndex implementation
+const findLastIndex = <T>(array: T[], predicate: (value: T, index: number, obj: T[]) => boolean): number => {
+    for (let i = array.length - 1; i >= 0; i--) {
+        if (predicate(array[i], i, array)) {
+            return i;
+        }
+    }
+    return -1;
+};
+
 const generateIndent = (level: number): string => '  '.repeat(level);
 
 const formatComment = (comment: string, indentLevel: number, isTrailing = false): string => {
@@ -25,18 +35,14 @@ const generateComments = (item: Commentable, indentLevel: number): string[] => {
     return lines;
 };
 
-
 const generateEnumSource = (enumItem: Enum, indentLevel: number): string[] => {
     const lines = generateComments(enumItem, indentLevel);
     lines.push(`${generateIndent(indentLevel)}enum ${enumItem.name} {`);
 
     if (enumItem.values) {
         enumItem.values.forEach((value: EnumValue) => {
-            const valueLines = generateComments(value, indentLevel + 1);
-            if (valueLines.length > 0) {
-                lines.push(...valueLines);
-            }
-            let line = `${generateIndent(indentLevel + 1)}${value.name} = ${value.value};`;
+            lines.push(...generateComments(value, indentLevel + 1));
+            let line = `${generateIndent(indentLevel + 1)}${value.name} = ${String(value.value)};`;
             if (value.trailingComments) {
                 line += formatComment(value.trailingComments, 0, true);
             }
@@ -52,7 +58,7 @@ const generateMessageSource = (
     message: Message,
     indentLevel: number,
     protoPackage: ProtoPackage,
-    allTypes: Map<string, { pkg: ProtoPackage, item: Message | Enum, type: string }>,
+    allTypes: Map<string, { pkg: ProtoPackage, item: Message | Enum, type: string } >,
     parentMessageName?: string
 ): string[] => {
     const lines = generateComments(message, indentLevel);
@@ -97,7 +103,7 @@ const generateMessageSource = (
     if (message.nestedEnums?.length && (message.nestedMessages?.length || message.fields?.length)) {
         const firstMessageIndex = body.findIndex(line => line.includes('message '));
         const firstFieldIndex = body.findIndex(line => line.includes(' = '));
-        const lastEnumIndex = body.findLastIndex(line => line.includes('}'));
+        const lastEnumIndex = findLastIndex(body, (line: string) => line.includes('}'));
 
         if(lastEnumIndex !== -1) {
             if (firstMessageIndex > lastEnumIndex || firstFieldIndex > lastEnumIndex) {
@@ -106,7 +112,7 @@ const generateMessageSource = (
         }
     }
     if (message.nestedMessages?.length && message.fields?.length) {
-        const lastMessageIndex = body.findLastIndex(line => line.includes('}'));
+        const lastMessageIndex = findLastIndex(body, (line: string) => line.includes('}'));
         if (lastMessageIndex !== -1) {
             body.splice(lastMessageIndex + 1, 0, '');
         }

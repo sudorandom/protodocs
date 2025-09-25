@@ -22,14 +22,14 @@ interface ProtoDetailViewProps {
     proto: ProtoFile;
     allTypes: Map<string, {pkg: ProtoPackage, item: Message | Enum, type: string}>;
     protoPackage: ProtoPackage;
+    showSource: boolean;
 }
 
 import DetailSection from './DetailSection';
 
-const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDetailViewProps) => {
+const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage, showSource }: ProtoDetailViewProps) => {
   useParams();
   const [expandedRpc, setExpandedRpc] = useState<string | null>(null);
-  const [showSource, setShowSource] = useState(false);
   const navigate = useNavigate();
 
   if (!item) {
@@ -323,9 +323,9 @@ const ProtoDetailView = ({ item, type, proto, allTypes, protoPackage }: ProtoDet
       <div className="border-b dark:border-gray-700 pb-4" id={getAnchorId(type!, item.name)}>
         <div className="flex justify-between items-center">
             <h2 className="text-4xl font-extrabold text-gray-900 dark:text-gray-100">{item.name}</h2>
-            <button onClick={() => setShowSource(!showSource)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline ml-4">
+            <Link to={showSource ? `/package/${protoPackage.name}/${type}/${item.name}` : `/package/${protoPackage.name}/${type}/${item.name}/source`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline ml-4">
                 {showSource ? 'View Details' : 'View Source'}
-            </button>
+            </Link>
         </div>
         <div className="prose dark:prose-invert max-w-none text-sm"><ExpandableMarkdown description={item.description} /></div>
       </div>
