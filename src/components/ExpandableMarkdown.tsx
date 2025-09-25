@@ -4,12 +4,12 @@ import ReactMarkdown from 'react-markdown';
 const ExpandableMarkdown = ({ description }: { description: string }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const lines = description.split('\n');
-    const isLong = lines.length > 5;
+    const isLong = lines.length > 20;
 
     return (
         <div className="prose dark:prose-invert max-w-none mt-2">
             <ReactMarkdown>
-                {isLong && !isExpanded ? lines.slice(0, 5).join('\n') : description}
+                {isLong && !isExpanded ? lines.slice(0, 10).join('\n') : description}
             </ReactMarkdown>
             {isLong && (
                 <button
