@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { type ProtoPackage, type Message, type Service, type Enum, type Extension } from '../types';
 import { getAnchorId } from '../utils';
 import FileTreeView from './FileTreeView';
@@ -16,6 +16,8 @@ interface PackageDocumentationViewProps {
 
 const PackageDocumentationView = ({ packages }: PackageDocumentationViewProps) => {
   const { packageName, itemType, itemName, fileName } = useParams();
+  const location = useLocation();
+  const showSource = location.pathname.endsWith('/source');
   const [selectedItem, setSelectedItem] = useState<Message | Service | Enum | Extension | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState('');
@@ -187,7 +189,7 @@ const PackageDocumentationView = ({ packages }: PackageDocumentationViewProps) =
             {fileName ? (
                 <FileSourceContentView packages={packages} />
             ) : (
-                <ProtoDetailView item={selectedItem} type={selectedItemType} proto={mergedProtoFile!} allTypes={allTypes} protoPackage={protoPackage!} />
+                <ProtoDetailView item={selectedItem} type={selectedItemType} proto={mergedProtoFile!} allTypes={allTypes} protoPackage={protoPackage!} showSource={showSource} />
             )}
         </main>
     </div>

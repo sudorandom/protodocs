@@ -128,7 +128,12 @@ const FileSourceContentView = ({ packages }: { packages: ProtoPackage[] }) => {
     return (
         <div className="p-8">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">{protoFile.fileName}</h2>
-            <SyntaxHighlighter language="protobuf" style={atomDark}>
+            <SyntaxHighlighter
+                language="protobuf"
+                style={atomDark}
+                customStyle={{ background: 'transparent' }}
+                wrapLines={true}
+                codeTagProps={{ style: { whiteSpace: 'pre-wrap' } }}>
                 {generateFileSource(protoFile)}
             </SyntaxHighlighter>
         </div>
