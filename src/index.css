@@ -123,40 +123,64 @@
 }
 
 /* Dark Mode Styles */
-html.dark .prose {
-  color: var(--tw-prose-invert-body);
-}
-html.dark .prose h1,
-html.dark .prose h2,
-html.dark .prose h3,
-html.dark .prose h4 {
-  color: var(--tw-prose-invert-headings);
-  font-weight: bold; /* Ensure boldness in dark mode */
-}
-html.dark .prose a {
-  color: var(--tw-prose-invert-links);
-}
-html.dark .prose blockquote {
-  border-left-color: var(--tw-prose-invert-quote-borders);
-  background-color: var(--tw-prose-invert-bg-blockquote);
-  color: var(--tw-prose-invert-quotes);
-}
-html.dark .prose code {
-  background-color: var(--tw-prose-invert-code-bg);
-  color: var(--tw-prose-invert-code);
-}
-html.dark .prose pre {
-  background-color: var(--tw-prose-invert-pre-bg);
-  color: var(--tw-prose-invert-pre-code);
-}
-html.dark .prose thead {
-  border-bottom-color: var(--tw-prose-invert-th-borders);
-}
-html.dark .prose thead th {
-  color: var(--tw-prose-invert-headings);
-}
-html.dark .prose tbody tr {
-  border-bottom-color: var(--tw-prose-invert-td-borders);
+@media (prefers-color-scheme: dark) {
+  .prose {
+    color: var(--tw-prose-invert-body);
+  }
+  .prose h1,
+  .prose h2,
+  .prose h3,
+  .prose h4 {
+    color: var(--tw-prose-invert-headings);
+    font-weight: bold; /* Ensure boldness in dark mode */
+  }
+  .prose a {
+    color: var(--tw-prose-invert-links);
+  }
+  .prose blockquote {
+    border-left-color: var(--tw-prose-invert-quote-borders);
+    background-color: var(--tw-prose-invert-bg-blockquote);
+    color: var(--tw-prose-invert-quotes);
+  }
+  .prose code {
+    background-color: var(--tw-prose-invert-code-bg);
+    color: var(--tw-prose-invert-code);
+  }
+  .prose pre {
+    background-color: var(--tw-prose-invert-pre-bg);
+    color: var(--tw-prose-invert-pre-code);
+  }
+  .prose thead {
+    border-bottom-color: var(--tw-prose-invert-th-borders);
+  }
+  .prose thead th {
+    color: var(--tw-prose-invert-headings);
+  }
+  .prose tbody tr {
+    border-bottom-color: var(--tw-prose-invert-td-borders);
+  }
+
+  .prose {
+    --tw-prose-invert-body: #cbd5e0; /* gray-300 - softer light gray */
+    --tw-prose-invert-headings: #f0f4f8; /* off-white */
+    --tw-prose-invert-lead: #a0aec0; /* gray-400 */
+    --tw-prose-invert-links: #90cdf4; /* blue-200 - slightly lighter */
+    --tw-prose-invert-bold: #ffffff; /* white */
+    --tw-prose-invert-counters: #718096; /* gray-500 */
+    --tw-prose-invert-bullets: #4a5568; /* gray-700 */
+    --tw-prose-invert-hr: #4a5568; /* gray-700 */
+    --tw-prose-invert-quotes: #e2e8f0; /* gray-200 */
+    --tw-prose-invert-quote-borders: #4a5568; /* gray-700 */
+    --tw-prose-invert-captions: #718096; /* gray-500 */
+    --tw-prose-invert-code: #ffffff; /* white */
+    --tw-prose-invert-pre-code: #cbd5e0; /* gray-300 */
+    --tw-prose-invert-pre-bg: #1a202c; /* gray-900 */
+    --tw-prose-invert-th-borders: #4a5568; /* gray-700 */
+    --tw-prose-invert-td-borders: #2d3748; /* gray-800 */
+
+    --tw-prose-invert-bg-blockquote: #2d3748; /* gray-800 */
+    --tw-prose-invert-code-bg: #2d3748; /* gray-800 */
+  }
 }
 
 /* Define custom CSS variables for blockquote and code backgrounds */
@@ -180,26 +204,4 @@ html.dark .prose tbody tr {
 
   --tw-prose-bg-blockquote: #edf2f7; /* gray-100 */
   --tw-prose-code-bg: #e2e8f0; /* gray-200 */
-}
-
-html.dark .prose {
-  --tw-prose-invert-body: #cbd5e0; /* gray-300 - softer light gray */
-  --tw-prose-invert-headings: #f0f4f8; /* off-white */
-  --tw-prose-invert-lead: #a0aec0; /* gray-400 */
-  --tw-prose-invert-links: #90cdf4; /* blue-200 - slightly lighter */
-  --tw-prose-invert-bold: #ffffff; /* white */
-  --tw-prose-invert-counters: #718096; /* gray-500 */
-  --tw-prose-invert-bullets: #4a5568; /* gray-700 */
-  --tw-prose-invert-hr: #4a5568; /* gray-700 */
-  --tw-prose-invert-quotes: #e2e8f0; /* gray-200 */
-  --tw-prose-invert-quote-borders: #4a5568; /* gray-700 */
-  --tw-prose-invert-captions: #718096; /* gray-500 */
-  --tw-prose-invert-code: #ffffff; /* white */
-  --tw-prose-invert-pre-code: #cbd5e0; /* gray-300 */
-  --tw-prose-invert-pre-bg: #1a202c; /* gray-900 */
-  --tw-prose-invert-th-borders: #4a5568; /* gray-700 */
-  --tw-prose-invert-td-borders: #2d3748; /* gray-800 */
-
-  --tw-prose-invert-bg-blockquote: #2d3748; /* gray-800 */
-  --tw-prose-invert-code-bg: #2d3748; /* gray-800 */
 }

@@ -2,7 +2,7 @@
 import typography from '@tailwindcss/typography';
 
 export default {
-  darkMode: 'class',
+  darkMode: 'media',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
