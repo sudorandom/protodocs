@@ -15,6 +15,10 @@ export default function App() {
   const [config, setConfig] = useState<Config | null>(null);
 
   useEffect(() => {
+    document.documentElement.classList.add('dark');
+  }, []);
+
+  useEffect(() => {
     const fetchConfigAndDescriptors = async () => {
       try {
         const configResponse = await fetch('/config.json');
