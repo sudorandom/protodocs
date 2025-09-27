@@ -1,15 +1,20 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
-const ExpandableMarkdown = ({ description }: { description: string }) => {
+interface ExpandableMarkdownProps {
+    description: string;
+    showLines?: number;
+}
+
+const ExpandableMarkdown = ({ description, showLines = 30 }: ExpandableMarkdownProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const lines = description.split('\n');
-    const isLong = lines.length > 30;
+    const isLong = lines.length > showLines;
 
     return (
         <div className="prose dark:prose-invert max-w-none mt-2">
             <ReactMarkdown>
-                {isLong && !isExpanded ? lines.slice(0, 30).join('\n') : description}
+                {isLong && !isExpanded ? lines.slice(0, showLines).join('\n') : description}
             </ReactMarkdown>
             {isLong && (
                 <button
