@@ -8,5 +8,8 @@
     "/gnostic.binpb"
   ],
   "front_page_markdown_file": "/home.md",
-  "bottom_of_front_page_markdown_file": "/footer.md"
+  "bottom_of_front_page_markdown_file": "/footer.md",
+  "service_endpoints": {
+    "connectrpc.eliza.v1.ElizaService": "https://demo.connectrpc.com"
+  }
 }

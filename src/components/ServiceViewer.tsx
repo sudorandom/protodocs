@@ -27,6 +27,8 @@ interface ServiceViewerProps {
   ) => void;
   registry: any;
   config: any;
+  customHeaders: { key: string; value: string }[];
+  setCustomHeaders: (headers: { key: string; value: string }[]) => void;
 }
 
 export default function ServiceViewer({
@@ -38,6 +40,8 @@ export default function ServiceViewer({
   onPinClick,
   registry,
   config,
+  customHeaders,
+  setCustomHeaders,
 }: ServiceViewerProps) {
   const fqn = file.package ? `.${file.package}.${service.name}` : `.${service.name}`;
   const [expandedMethod, setExpandedMethod] = useState<string | null>(null);
@@ -150,6 +154,8 @@ export default function ServiceViewer({
                 registry={registry}
                 config={config}
                 onClose={() => setExpandedMethod(null)}
+                customHeaders={customHeaders}
+                setCustomHeaders={setCustomHeaders}
               />
             )}
           </div>
@@ -170,6 +176,8 @@ interface RpcMethodTesterProps {
   registry: any;
   config: any;
   onClose: () => void;
+  customHeaders: { key: string; value: string }[];
+  setCustomHeaders: (headers: { key: string; value: string }[]) => void;
 }
 
 function RpcMethodTester({
@@ -180,11 +188,26 @@ function RpcMethodTester({
   registry,
   config,
   onClose,
+  customHeaders,
+  setCustomHeaders,
 }: RpcMethodTesterProps) {
   const isStreaming = !!(method.clientStreaming || method.serverStreaming);
-  const [endpointUrl, setEndpointUrl] = useState(
-    config.reflectionUrl || 'http://localhost:8080'
-  );
+  const [endpointUrl, setEndpointUrl] = useState(() => {
+    if (config.serviceEndpoints) {
+      const fullServiceName = packageName ? `${packageName}.${serviceName}` : serviceName;
+      const fqn = packageName ? `.${packageName}.${serviceName}` : `.${serviceName}`;
+      if (config.serviceEndpoints[fullServiceName]) {
+        return config.serviceEndpoints[fullServiceName];
+      }
+      if (config.serviceEndpoints[fqn]) {
+        return config.serviceEndpoints[fqn];
+      }
+      if (config.serviceEndpoints[serviceName]) {
+        return config.serviceEndpoints[serviceName];
+      }
+    }
+    return config.reflectionUrl || 'http://localhost:8080';
+  });
   const [protocol, setProtocol] = useState<'connect' | 'grpc-web'>('connect');
   const [requestJson, setRequestJson] = useState(() => {
     try {
@@ -210,6 +233,14 @@ function RpcMethodTester({
     const url = `${normalizedUrl}/${fullServiceName}/${method.name}`;
     const http2Flag = endpointUrl.startsWith('http://') ? ' --http2-prior-knowledge' : '';
 
+    let headerArgs = '';
+    customHeaders.forEach(({ key, value }) => {
+      const trimmedKey = key.trim();
+      if (trimmedKey) {
+        headerArgs += ` \\\n  --header "${trimmedKey}: ${value.trim()}"`;
+      }
+    });
+
     let cleanJson = '{}';
     try {
       cleanJson = JSON.stringify(JSON.parse(requestJson));
@@ -217,7 +248,7 @@ function RpcMethodTester({
       cleanJson = requestJson.replace(/\s+/g, '');
     }
 
-    return `buf curl${http2Flag} \\\n  --protocol ${proto} \\\n  --data '${cleanJson}' \\\n  ${url}`;
+    return `buf curl${http2Flag}${headerArgs} \\\n  --protocol ${proto} \\\n  --data '${cleanJson}' \\\n  ${url}`;
   };
 
   const getCurlCommand = () => {
@@ -226,6 +257,14 @@ function RpcMethodTester({
     const url = `${normalizedUrl}/${fullServiceName}/${method.name}`;
     const http2Flag = endpointUrl.startsWith('http://') ? ' --http2-prior-knowledge' : '';
 
+    let headerArgs = '';
+    customHeaders.forEach(({ key, value }) => {
+      const trimmedKey = key.trim();
+      if (trimmedKey) {
+        headerArgs += ` \\\n  -H "${trimmedKey}: ${value.trim()}"`;
+      }
+    });
+
     let cleanJson = '{}';
     try {
       cleanJson = JSON.stringify(JSON.parse(requestJson));
@@ -233,10 +272,10 @@ function RpcMethodTester({
       cleanJson = requestJson.replace(/\s+/g, '');
     }
 
-    return `curl${http2Flag} -X POST \\\n  -H "Content-Type: application/json" \\\n  -H "Connect-Protocol-Version: 1" \\\n  -d '${cleanJson}' \\\n  ${url}`;
+    return `curl${http2Flag} -X POST \\\n  -H "Content-Type: application/json" \\\n  -H "Connect-Protocol-Version: 1"${headerArgs} \\\n  -d '${cleanJson}' \\\n  ${url}`;
   };
 
-  const handleCopySingleCmd = (text: string, type: 'connect' | 'grpc' | 'grpc-web' | 'curl-connect') => {
+  const handleCopySingleCmd = (text: string, type: 'connect' | 'grpc' | 'grpc-web' | 'curl-connect' | null) => {
     navigator.clipboard.writeText(text);
     setCopiedProtocol(type);
     setTimeout(() => setCopiedProtocol(null), 2000);
@@ -252,6 +291,15 @@ function RpcMethodTester({
     setIsLoading(true);
     setError(null);
     setResponse(null);
+
+    const extraHeaders: Record<string, string> = {};
+    customHeaders.forEach(({ key, value }) => {
+      const trimmedKey = key.trim();
+      if (trimmedKey) {
+        extraHeaders[trimmedKey] = value.trim();
+      }
+    });
+
     try {
       const res = await sendRpcRequest({
         baseUrl: endpointUrl,
@@ -263,6 +311,7 @@ function RpcMethodTester({
         requestJson,
         protocol,
         registry,
+        extraHeaders,
       });
       setResponse(res);
     } catch (err: any) {
@@ -364,6 +413,69 @@ function RpcMethodTester({
                 {isLoading ? 'Sending...' : 'Send Request'}
               </button>
             </div>
+          </div>
+
+          {/* Custom Headers Configurator */}
+          <div className="border border-app-border/40 rounded-lg p-3 bg-app-code/30">
+            <div className="flex items-center justify-between mb-2 select-none">
+              <span className="text-[10px] text-app-textMuted uppercase font-bold">Custom Headers (For Auth, Metadata)</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomHeaders([...customHeaders, { key: '', value: '' }]);
+                }}
+                className="text-app-accent hover:text-app-accent/80 font-bold text-[9px] uppercase tracking-wider flex items-center gap-1 cursor-pointer select-none"
+              >
+                + Add Header
+              </button>
+            </div>
+            
+            {customHeaders.length === 0 ? (
+              <div className="text-[10px] text-app-textMuted/60 italic pb-0.5">No custom headers configured.</div>
+            ) : (
+              <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
+                {customHeaders.map((h, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Header Name (e.g. Authorization)"
+                      className="flex-1 bg-app-base border border-app-border rounded px-2 py-1 text-app-textBright outline-none focus:border-app-accent font-mono text-[10px]"
+                      value={h.key}
+                      onChange={(e) => {
+                        const newHeaders = [...customHeaders];
+                        newHeaders[index].key = e.target.value;
+                        setCustomHeaders(newHeaders);
+                      }}
+                    />
+                    <span className="text-app-textMuted font-bold select-none">:</span>
+                    <input
+                      type="text"
+                      placeholder="Value (e.g. Bearer token)"
+                      className="flex-1 bg-app-base border border-app-border rounded px-2 py-1 text-app-textBright outline-none focus:border-app-accent font-mono text-[10px]"
+                      value={h.value}
+                      onChange={(e) => {
+                        const newHeaders = [...customHeaders];
+                        newHeaders[index].value = e.target.value;
+                        setCustomHeaders(newHeaders);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newHeaders = customHeaders.filter((_, i) => i !== index);
+                        setCustomHeaders(newHeaders);
+                      }}
+                      className="text-red-400 hover:text-red-300 p-1 hover:bg-app-hoverBg rounded cursor-pointer transition-colors"
+                      title="Remove Header"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

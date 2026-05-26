@@ -20,6 +20,7 @@ export async function sendRpcRequest({
   requestJson,
   protocol,
   registry,
+  extraHeaders,
 }: {
   baseUrl: string;
   packageName: string;
@@ -30,6 +31,7 @@ export async function sendRpcRequest({
   requestJson: string;
   protocol: 'connect' | 'grpc-web';
   registry: any;
+  extraHeaders?: Record<string, string>;
 }): Promise<RpcResponseResult> {
   const normalizedUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
   const fullServiceName = packageName ? `${packageName}.${serviceName}` : serviceName;
@@ -49,6 +51,9 @@ export async function sendRpcRequest({
   const parsedRequest = fromJsonString(inputSchema, requestJson);
 
   const headers: Record<string, string> = {};
+  if (extraHeaders) {
+    Object.assign(headers, extraHeaders);
+  }
   let body: Uint8Array | string;
 
   if (protocol === 'connect') {

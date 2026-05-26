@@ -25,6 +25,7 @@ interface AppConfig {
   defaultFile?: string;
   frontPageMarkdownFile?: string;
   bottomOfFrontPageMarkdownFile?: string;
+  serviceEndpoints?: Record<string, string>;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -103,6 +104,19 @@ export default function App() {
   const [searchSelectedIndex, setSearchSelectedIndex] = useState<number>(-1);
   const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState<boolean>(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [customHeaders, setCustomHeadersState] = useState<{ key: string; value: string }[]>(() => {
+    try {
+      const saved = localStorage.getItem('protodocs_custom_headers');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const setCustomHeaders = (newHeaders: { key: string; value: string }[]) => {
+    setCustomHeadersState(newHeaders);
+    localStorage.setItem('protodocs_custom_headers', JSON.stringify(newHeaders));
+  };
   const [referencePanel, setReferencePanel] = useState<ReferencePanelState | null>(null);
   const [activeTooltip, setActiveTooltip] = useState<TooltipState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -446,6 +460,9 @@ export default function App() {
                 activeConfig.reflectionUrl = fileConfig.server_url;
               } else if (fileConfig.reflection_url) {
                 activeConfig.reflectionUrl = fileConfig.reflection_url;
+              }
+              if (fileConfig.service_endpoints) {
+                activeConfig.serviceEndpoints = fileConfig.service_endpoints;
               }
             }
           } catch (e) {
@@ -1055,6 +1072,8 @@ export default function App() {
                       onPinClick={handlePinClick}
                       registry={registry}
                       config={config}
+                      customHeaders={customHeaders}
+                      setCustomHeaders={setCustomHeaders}
                     />
                   ))}
 
