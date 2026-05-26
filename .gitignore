@@ -24,3 +24,7 @@ test-results
 *.njsproj
 *.sln
 *.sw?
+
+# Build artifacts
+protodocs-static.tar.gz
+
