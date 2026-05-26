@@ -4,11 +4,14 @@ import ExtensionGroupViewer from './ExtensionGroupViewer';
 import OptionLink from './OptionLink';
 import { FormatOptions } from './options-formatter';
 import { formatOptionValue } from '../lib/options-formatter-helpers';
+import EnumViewer from './EnumViewer';
 
 interface MessageViewerProps {
   message: any;
   file: any;
   typeIndex: Record<string, any>;
+  /** FQN of the parent message (for nested types). Omit for top-level messages. */
+  parentFqn?: string;
   onMouseEnter: (
     e: React.MouseEvent,
     fqn: string,
@@ -24,17 +27,25 @@ interface MessageViewerProps {
     category: 'primitive' | 'wkt' | 'custom' | 'option' | 'enum_value',
     shortName: string
   ) => void;
+  /** When true, renders with reduced bottom margin (for nesting inside a parent message). */
+  nested?: boolean;
 }
 
 export default function MessageViewer({
   message,
   file,
   typeIndex,
+  parentFqn,
+  nested,
   onMouseEnter,
   onMouseLeave,
   onPinClick,
 }: MessageViewerProps) {
-  const fqn = file.package ? `.${file.package}.${message.name}` : `.${message.name}`;
+  const fqn = parentFqn
+    ? `${parentFqn}.${message.name}`
+    : file.package
+    ? `.${file.package}.${message.name}`
+    : `.${message.name}`;
 
   // Group nested extensions by extendee
   const extensionGroups = useMemo(() => {
@@ -108,11 +119,12 @@ export default function MessageViewer({
     return items;
   }, [message.field, message.oneofDecl]);
 
+
   return (
-    <div id={fqn} className="mb-8 font-mono text-sm rounded transition-colors group p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text">
+    <div id={fqn} className={`${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors group p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}>
       {message.description && (
         <div className="text-syn-comment mb-1 whitespace-pre-wrap">
-          // {message.description}
+          {message.description.split('\n').map((line: string) => `// ${line}`).join('\n')}
         </div>
       )}
       <div>
@@ -151,7 +163,7 @@ export default function MessageViewer({
             return (
               <div key={`oneof-${idx}`} className="mb-4 mt-2">
                 {item.description && (
-                  <div className="text-syn-comment mb-1 whitespace-pre-wrap">// {item.description}</div>
+                  <div className="text-syn-comment mb-1 whitespace-pre-wrap">{item.description.split('\n').map((line: string) => `// ${line}`).join('\n')}</div>
                 )}
                 <div className="text-app-textMain">
                   <span className="text-syn-keyword">oneof</span>{' '}
@@ -261,7 +273,41 @@ export default function MessageViewer({
           </div>
         ))}
       </div>
+
+      {/* Nested enums */}
+      {message.enumType?.map((enm: any) => (
+        <div key={enm.name} className="pl-8 -ml-3">
+          <EnumViewer
+            enumObj={enm}
+            file={file}
+            typeIndex={typeIndex}
+            parentFqn={fqn}
+            nested
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+            onPinClick={onPinClick}
+          />
+        </div>
+      ))}
+
+      {/* Nested messages (skip synthetic map-entry messages) */}
+      {message.nestedType?.filter((nested: any) => !nested.options?.mapEntry).map((nested: any) => (
+        <div key={nested.name} className="pl-8 -ml-3">
+          <MessageViewer
+            message={nested}
+            file={file}
+            typeIndex={typeIndex}
+            parentFqn={fqn}
+            nested
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+            onPinClick={onPinClick}
+          />
+        </div>
+      ))}
+
       <div>{'}'}</div>
     </div>
   );
 }
+

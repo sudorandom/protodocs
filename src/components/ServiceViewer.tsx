@@ -50,7 +50,7 @@ export default function ServiceViewer({
     <div id={fqn} className="mb-8 font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text">
       {service.description && (
         <div className="text-syn-comment mb-1 whitespace-pre-wrap">
-          // {service.description}
+          {service.description.split('\n').map((line: string) => `// ${line}`).join('\n')}
         </div>
       )}
       <div>
@@ -80,7 +80,7 @@ export default function ServiceViewer({
           return (
             <div key={m.name} id={methodFqn} className="mb-3.5 mt-2">
               {m.description && (
-                <div className="text-syn-comment mb-0.5 whitespace-pre-wrap">// {m.description}</div>
+                <div className="text-syn-comment mb-0.5 whitespace-pre-wrap">{m.description.split('\n').map((line: string) => `// ${line}`).join('\n')}</div>
               )}
               <div
                 onClick={() => {
@@ -191,7 +191,7 @@ function RpcMethodTester({
   customHeaders,
   setCustomHeaders,
 }: RpcMethodTesterProps) {
-  const isStreaming = !!(method.clientStreaming || method.serverStreaming);
+  const isConsoleSupported = !method.clientStreaming;
   const [endpointUrl, setEndpointUrl] = useState(() => {
     if (config.serviceEndpoints) {
       const fullServiceName = packageName ? `${packageName}.${serviceName}` : serviceName;
@@ -226,6 +226,9 @@ function RpcMethodTester({
   const [error, setError] = useState<string | null>(null);
   const [cmdTool, setCmdTool] = useState<'buf' | 'curl'>('buf');
   const [copiedProtocol, setCopiedProtocol] = useState<'connect' | 'grpc' | 'grpc-web' | 'curl-connect' | null>(null);
+  const [streamMessages, setStreamMessages] = useState<{ id: number; body: string; timestamp: string }[]>([]);
+  const [copiedResponse, setCopiedResponse] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
 
   const getBufCurlCommand = (proto: 'connect' | 'grpc' | 'grpc-web') => {
     const normalizedUrl = endpointUrl.endsWith('/') ? endpointUrl.slice(0, -1) : endpointUrl;
@@ -281,7 +284,31 @@ function RpcMethodTester({
     setTimeout(() => setCopiedProtocol(null), 2000);
   };
 
-  const [testerView, setTesterView] = useState<'try' | 'curl'>(isStreaming ? 'curl' : 'try');
+  const handleCopyResponse = () => {
+    let copyText = '';
+    if (method.serverStreaming) {
+      copyText = streamMessages.map((m) => `// Message #${m.id} (${m.timestamp})\n${m.body}`).join('\n\n');
+      if (response?.headers) {
+        copyText = `${response.headers}\n\n${copyText}`;
+      }
+    } else {
+      copyText = response?.body || '';
+    }
+
+    if (copyText) {
+      navigator.clipboard.writeText(copyText);
+      setCopiedResponse(true);
+      setTimeout(() => setCopiedResponse(false), 2000);
+    }
+  };
+
+  const handleCopyMessage = (id: number, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMessageId(id);
+    setTimeout(() => setCopiedMessageId(null), 2000);
+  };
+
+  const [testerView, setTesterView] = useState<'try' | 'curl'>(isConsoleSupported ? 'try' : 'curl');
 
   const handleSend = async () => {
     if (!registry) {
@@ -291,6 +318,7 @@ function RpcMethodTester({
     setIsLoading(true);
     setError(null);
     setResponse(null);
+    setStreamMessages([]);
 
     const extraHeaders: Record<string, string> = {};
     customHeaders.forEach(({ key, value }) => {
@@ -299,6 +327,8 @@ function RpcMethodTester({
         extraHeaders[trimmedKey] = value.trim();
       }
     });
+
+    const isServerStreaming = !!method.serverStreaming;
 
     try {
       const res = await sendRpcRequest({
@@ -312,8 +342,32 @@ function RpcMethodTester({
         protocol,
         registry,
         extraHeaders,
+        isServerStreaming,
+        onChunk: isServerStreaming ? (chunk) => {
+          if (chunk.body) {
+            setStreamMessages((prev) => [
+              ...prev,
+              {
+                id: prev.length + 1,
+                body: chunk.body!,
+                timestamp: new Date().toLocaleTimeString(),
+              },
+            ]);
+          }
+          if (chunk.headers) {
+            setResponse((prev) => ({
+              status: prev?.status || 'Invoking stream...',
+              headers: prev?.headers ? `${prev.headers}\n${chunk.headers}` : chunk.headers!,
+              body: prev?.body || '',
+            }));
+          }
+        } : undefined,
       });
-      setResponse(res);
+      setResponse((prev) => ({
+        status: res.status,
+        headers: prev?.headers || res.headers,
+        body: res.body,
+      }));
     } catch (err: any) {
       setError(err?.message || 'An error occurred during call execution');
     } finally {
@@ -325,7 +379,7 @@ function RpcMethodTester({
     <div className="mt-3 p-4 bg-app-panel border border-app-border rounded-lg font-sans text-xs space-y-4">
       {/* View Mode Tabs Header */}
       <div className="flex items-center justify-between border-b border-app-border/40 pb-2.5 mb-2 flex-wrap gap-2">
-        {!isStreaming ? (
+        {isConsoleSupported ? (
           <div className="flex gap-1.5 bg-app-base border border-app-border rounded p-0.5 select-none">
             {(['try', 'curl'] as const).map((view) => (
               <button
@@ -344,7 +398,7 @@ function RpcMethodTester({
           </div>
         ) : (
           <div className="text-[10px] text-app-textMuted uppercase font-bold select-none px-1 py-1">
-            Streaming Call (CLI Preview Only)
+            Client/Bidi Streaming Call (CLI Preview Only)
           </div>
         )}
 
@@ -493,25 +547,90 @@ function RpcMethodTester({
 
             {/* Response Viewer */}
             <div className="flex flex-col">
-              <label className="block text-[10px] text-app-textMuted uppercase font-bold mb-1">
+              <label className="block text-[10px] text-app-textMuted uppercase font-bold mb-1 select-none">
                 Response
               </label>
-              <div className="flex-1 min-h-[12rem] bg-app-code border border-app-border rounded p-2 font-mono text-[11px] overflow-auto max-h-72">
+              <div className="flex-1 min-h-[12rem] bg-app-code border border-app-border rounded p-3 font-mono text-[11px] overflow-auto max-h-72 relative">
+                {/* Global Copy Button */}
+                {(response || streamMessages.length > 0) && (
+                  <button
+                    type="button"
+                    onClick={handleCopyResponse}
+                    className="absolute top-2 right-2 p-1 hover:bg-app-hoverBg rounded text-app-textMuted hover:text-app-textBright transition-colors flex items-center gap-1 select-none cursor-pointer text-[9px] font-bold uppercase tracking-wider bg-app-base/40 border border-app-border/30 z-10"
+                    title="Copy full response and headers"
+                  >
+                    {copiedResponse ? (
+                      <>
+                        <svg className="w-3.5 h-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                        <span>Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5A3.375 3.375 0 006.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0015 2.25h-1.5a2.251 2.251 0 00-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 00-9-9z" />
+                        </svg>
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+                )}
+
                 {error && <div className="text-red-400">Error: {error}</div>}
+                
                 {response && (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div className="text-app-accent font-bold">{response.status}</div>
-                    <div className="text-[10px] text-app-textMuted border-b border-app-border/40 pb-1.5 whitespace-pre">
-                      {response.headers}
-                    </div>
-                    <pre className="text-syn-type whitespace-pre-wrap">{response.body}</pre>
+                    {response.headers && (
+                      <div className="text-[10px] text-app-textMuted border-b border-app-border/40 pb-1.5 whitespace-pre pr-12 select-text">
+                        {response.headers}
+                      </div>
+                    )}
+                    
+                    {!method.serverStreaming && response.body && (
+                      <pre className="text-syn-type whitespace-pre-wrap select-text pr-12">{response.body}</pre>
+                    )}
                   </div>
                 )}
-                {!error && !response && !isLoading && (
-                  <div className="text-app-textMuted italic">Click "Send Request" to invoke the RPC endpoint.</div>
+
+                {method.serverStreaming && streamMessages.length > 0 && (
+                  <div className="space-y-3 mt-3">
+                    <div className="text-[9px] uppercase font-bold text-app-textMuted select-none border-b border-app-border/20 pb-1">
+                      Streaming Messages ({streamMessages.length})
+                    </div>
+                    {streamMessages.map((msg) => (
+                      <div key={msg.id} className="relative border border-app-border/40 rounded p-2 bg-app-base/20 group/msg">
+                        <div className="flex items-center justify-between text-[9px] text-app-textMuted border-b border-app-border/10 pb-1 mb-1.5 select-none">
+                          <span>Message #{msg.id} &bull; {msg.timestamp}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyMessage(msg.id, msg.body)}
+                            className="text-app-textMuted hover:text-app-textBright hover:bg-app-hoverBg p-0.5 rounded transition-colors cursor-pointer"
+                            title="Copy this message"
+                          >
+                            {copiedMessageId === msg.id ? (
+                              <svg className="w-3.5 h-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                              </svg>
+                            ) : (
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5A3.375 3.375 0 006.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0015 2.25h-1.5a2.251 2.251 0 00-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 00-9-9z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                        <pre className="text-syn-type whitespace-pre-wrap select-text">{msg.body}</pre>
+                      </div>
+                    ))}
+                  </div>
                 )}
-                {isLoading && (
-                  <div className="flex items-center gap-2 text-app-textMuted italic">
+
+                {!error && !response && streamMessages.length === 0 && !isLoading && (
+                  <div className="text-app-textMuted italic select-none">Click "Send Request" to invoke the RPC endpoint.</div>
+                )}
+                {isLoading && streamMessages.length === 0 && (
+                  <div className="flex items-center gap-2 text-app-textMuted italic select-none">
                     <div className="animate-spin rounded-full h-3 w-3 border-b border-app-accent"></div>
                     Invoking endpoint...
                   </div>

@@ -6,6 +6,7 @@ export interface TooltipState {
   category: 'primitive' | 'wkt' | 'custom' | 'option' | 'enum_value';
   shortName: string;
   isPinned: boolean;
+  hasDefinition?: boolean;
 }
 
 interface TooltipProps {
@@ -83,7 +84,7 @@ export default function Tooltip({
         )}
       </div>
 
-      {activeTooltip.isPinned && activeTooltip.category !== 'primitive' && (
+      {activeTooltip.isPinned && activeTooltip.category !== 'primitive' && activeTooltip.hasDefinition && (
         <div className="mt-3.5 pt-3 border-t border-app-border flex flex-col gap-1.5">
           <button
             onClick={() => onGoToDefinition(activeTooltip.fqn)}

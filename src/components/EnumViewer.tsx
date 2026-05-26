@@ -7,6 +7,10 @@ interface EnumViewerProps {
   enumObj: any;
   file: any;
   typeIndex: Record<string, any>;
+  /** FQN of the parent message (for nested enums). Omit for top-level enums. */
+  parentFqn?: string;
+  /** When true, renders with reduced bottom margin (for nesting inside a parent message). */
+  nested?: boolean;
   onMouseEnter: (
     e: React.MouseEvent,
     fqn: string,
@@ -28,17 +32,23 @@ export default function EnumViewer({
   enumObj,
   file,
   typeIndex,
+  parentFqn,
+  nested,
   onMouseEnter,
   onMouseLeave,
   onPinClick,
 }: EnumViewerProps) {
-  const fqn = file.package ? `.${file.package}.${enumObj.name}` : `.${enumObj.name}`;
+  const fqn = parentFqn
+    ? `${parentFqn}.${enumObj.name}`
+    : file.package
+    ? `.${file.package}.${enumObj.name}`
+    : `.${enumObj.name}`;
 
   return (
-    <div id={fqn} className="mb-8 font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text">
+    <div id={fqn} className={`${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}>
       {enumObj.description && (
         <div className="text-syn-comment mb-1 whitespace-pre-wrap">
-          // {enumObj.description}
+          {enumObj.description.split('\n').map((line: string) => `// ${line}`).join('\n')}
         </div>
       )}
       <div>

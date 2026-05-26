@@ -1,10 +1,10 @@
-# ProtoDoc
+# protodoc
 
 > [!CAUTION]
 > This project is under active development and is not yet ready for use.
 > There are many bugs and incomplete features.
 
-ProtoDoc is a web-based documentation browser for Protocol Buffer definitions. It allows you to navigate through your `.proto` files, view message and service definitions, and understand the structure of your APIs.
+`protodoc` is a web-based documentation browser for Protocol Buffer definitions. It allows you to navigate through your `.proto` files, view message and service definitions, and understand the structure of your APIs.
 
 ## Features
 

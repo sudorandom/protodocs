@@ -127,8 +127,22 @@ export default function App() {
     const index: Record<string, { kind: 'message' | 'enum' | 'service' | 'option'; obj: any; file: string; defFqn?: string }> = {};
     schema.file.forEach((f) => {
       const pkgPrefix = f.package ? `.${f.package}.` : '.';
+
+      const addMessage = (m: any, parentFqn: string) => {
+        const fqn = `${parentFqn}${m.name}`;
+        index[fqn] = { kind: 'message', obj: m, file: f.name };
+
+        m.nestedType?.forEach((nested: any) => {
+          addMessage(nested, `${fqn}.`);
+        });
+
+        m.enumType?.forEach((e: any) => {
+          index[`${fqn}.${e.name}`] = { kind: 'enum', obj: e, file: f.name };
+        });
+      };
+
       f.messageType?.forEach((m: any) => {
-        index[pkgPrefix + m.name] = { kind: 'message', obj: m, file: f.name };
+        addMessage(m, pkgPrefix);
       });
       f.enumType?.forEach((e: any) => {
         index[pkgPrefix + e.name] = { kind: 'enum', obj: e, file: f.name };
@@ -158,7 +172,18 @@ export default function App() {
 
     // Delay to allow file content tab to switch & render
     setTimeout(() => {
-      const el = document.getElementById(elementId);
+      let el = document.getElementById(elementId);
+      // Fallback for nested types: find the closest ancestor ID that exists in the DOM
+      if (!el) {
+        let currentId = elementId;
+        while (currentId) {
+          const lastDot = currentId.lastIndexOf('.');
+          if (lastDot <= 0) break;
+          currentId = currentId.substring(0, lastDot);
+          el = document.getElementById(currentId);
+          if (el) break;
+        }
+      }
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         el.classList.remove('highlight-flash');
@@ -517,7 +542,7 @@ export default function App() {
   // Close unpinned tooltips and download dropdown when clicking around
   useEffect(() => {
     const handleClick = () => {
-      setActiveTooltip((prev) => (prev && prev.isPinned ? prev : null));
+      setActiveTooltip(null);
       setIsDownloadOpen(false);
     };
     window.addEventListener('click', handleClick);
@@ -621,6 +646,14 @@ export default function App() {
   const handlePinClick = (e: React.MouseEvent, fqn: string, description: any, category: 'primitive' | 'wkt' | 'custom' | 'option' | 'enum_value', shortName: string) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
+    let hasDefinition = !!typeIndex[fqn];
+    if (!hasDefinition) {
+      const parts = fqn.split('.');
+      if (parts.length > 1) {
+        const parentFqn = parts.slice(0, -1).join('.');
+        hasDefinition = !!typeIndex[parentFqn];
+      }
+    }
     setActiveTooltip({
       x: rect.left,
       y: rect.bottom + window.scrollY + 6,
@@ -629,11 +662,20 @@ export default function App() {
       category,
       shortName,
       isPinned: true,
+      hasDefinition,
     });
   };
 
   const handleMouseEnter = (e: React.MouseEvent, fqn: string, description: any, category: 'primitive' | 'wkt' | 'custom' | 'option' | 'enum_value', shortName: string) => {
     const rect = e.currentTarget.getBoundingClientRect();
+    let hasDefinition = !!typeIndex[fqn];
+    if (!hasDefinition) {
+      const parts = fqn.split('.');
+      if (parts.length > 1) {
+        const parentFqn = parts.slice(0, -1).join('.');
+        hasDefinition = !!typeIndex[parentFqn];
+      }
+    }
     setActiveTooltip((prev) => {
       if (prev && prev.isPinned) return prev;
       return {
@@ -644,6 +686,7 @@ export default function App() {
         category,
         shortName,
         isPinned: false,
+        hasDefinition,
       };
     });
   };

@@ -21,6 +21,8 @@ export async function sendRpcRequest({
   protocol,
   registry,
   extraHeaders,
+  isServerStreaming,
+  onChunk,
 }: {
   baseUrl: string;
   packageName: string;
@@ -32,6 +34,8 @@ export async function sendRpcRequest({
   protocol: 'connect' | 'grpc-web';
   registry: any;
   extraHeaders?: Record<string, string>;
+  isServerStreaming?: boolean;
+  onChunk?: (chunk: { body?: string; headers?: string }) => void;
 }): Promise<RpcResponseResult> {
   const normalizedUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
   const fullServiceName = packageName ? `${packageName}.${serviceName}` : serviceName;
@@ -57,12 +61,27 @@ export async function sendRpcRequest({
   let body: Uint8Array | string;
 
   if (protocol === 'connect') {
-    // Connect Unary JSON POST
-    headers['Content-Type'] = 'application/json';
-    headers['Connect-Protocol-Version'] = '1';
-    body = toJsonString(inputSchema, parsedRequest);
+    if (isServerStreaming) {
+      // Connect Streaming JSON POST (Request must be enveloped in Connect streaming protocol)
+      headers['Content-Type'] = 'application/connect+json';
+      headers['Connect-Protocol-Version'] = '1';
+      
+      const jsonStr = toJsonString(inputSchema, parsedRequest);
+      const jsonBytes = new TextEncoder().encode(jsonStr);
+      const enveloped = new Uint8Array(5 + jsonBytes.length);
+      enveloped[0] = 0x00; // Flag 0: data
+      const view = new DataView(enveloped.buffer);
+      view.setUint32(1, jsonBytes.length, false);
+      enveloped.set(jsonBytes, 5);
+      body = enveloped;
+    } else {
+      // Connect Unary JSON POST
+      headers['Content-Type'] = 'application/json';
+      headers['Connect-Protocol-Version'] = '1';
+      body = toJsonString(inputSchema, parsedRequest);
+    }
   } else {
-    // gRPC-Web Binary serialization
+    // gRPC-Web Binary serialization (always enveloped)
     const binaryBytes = toBinary(inputSchema, parsedRequest);
 
     // Frame wrapping: 1 byte flag (0 = data), 4 bytes big-endian length
@@ -93,6 +112,71 @@ export async function sendRpcRequest({
       status: `HTTP ${res.status} Error`,
       headers: headerLines,
       body: errorText || `Failed to fetch: Server returned HTTP ${res.status}`,
+    };
+  }
+
+  if (isServerStreaming) {
+    const reader = res.body?.getReader();
+    if (!reader) {
+      throw new Error('Response body reader not available.');
+    }
+
+    let buffer = new Uint8Array(0);
+    const appendToBuffer = (newBytes: Uint8Array) => {
+      const tmp = new Uint8Array(buffer.length + newBytes.length);
+      tmp.set(buffer, 0);
+      tmp.set(newBytes, buffer.length);
+      buffer = tmp;
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        appendToBuffer(value);
+      }
+
+      while (buffer.length >= 5) {
+        const flag = buffer[0];
+        const lenView = new DataView(buffer.buffer, buffer.byteOffset + 1, 4);
+        const len = lenView.getUint32(0, false);
+
+        if (buffer.length < 5 + len) {
+          break; // wait for more data
+        }
+
+        const payload = buffer.subarray(5, 5 + len);
+        buffer = buffer.slice(5 + len);
+
+        if (protocol === 'connect') {
+          if (flag === 0) {
+            // Data message JSON
+            const text = new TextDecoder().decode(payload);
+            const jsonObj = JSON.parse(text);
+            onChunk?.({ body: JSON.stringify(jsonObj, null, 2) });
+          } else if (flag === 2) {
+            // EOS metadata JSON
+            const text = new TextDecoder().decode(payload);
+            onChunk?.({ headers: `[Connect EOS]\n${text}` });
+          }
+        } else {
+          // grpc-web
+          if (flag === 0x00) {
+            const decodedMsg = fromBinary(outputSchema, payload);
+            const responseObj = JSON.parse(toJsonString(outputSchema, decodedMsg));
+            onChunk?.({ body: JSON.stringify(responseObj, null, 2) });
+          } else if (flag === 0x80) {
+            const trailersText = new TextDecoder().decode(payload);
+            onChunk?.({ headers: `[gRPC-Web Trailers]\n${trailersText}` });
+          }
+        }
+      }
+    }
+
+    return {
+      status: `HTTP ${res.status} Stream Completed`,
+      headers: headerLines,
+      body: '',
     };
   }
 

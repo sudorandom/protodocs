@@ -138,34 +138,35 @@ export default function TypeLink({
     );
   }
 
+  const ref = typeIndex[typeName];
   const isWkt = typeName.startsWith('.google.protobuf');
   const shortName = typeName.split('.').pop() || typeName;
 
-  if (isWkt) {
-    const desc = WKT_DESCRIPTIONS[typeName] || { text: 'Google Well-Known Type' };
-    return (
-      <span
-        className="text-syn-type border-b border-dotted border-syn-type/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 font-mono select-text"
-        onMouseEnter={(e) => onMouseEnter(e, typeName, desc, 'wkt', shortName)}
-        onMouseLeave={onMouseLeave}
-        onClick={(e) => onPinClick(e, typeName, desc, 'wkt', shortName)}
-      >
-        {shortName}
-      </span>
-    );
+  let descText = '';
+  let descUrl = '';
+
+  if (WKT_DESCRIPTIONS[typeName]) {
+    descText = WKT_DESCRIPTIONS[typeName].text;
+    descUrl = WKT_DESCRIPTIONS[typeName].url;
+  } else if (ref && ref.obj.description) {
+    descText = ref.obj.description;
+  } else if (isWkt) {
+    descText = 'Google Well-Known Type';
+  } else if (ref) {
+    descText = 'No documentation provided.';
+  } else {
+    descText = 'Custom message/enum type.';
   }
 
-  const ref = typeIndex[typeName];
-  const desc = ref
-    ? { text: ref.obj.description || 'No documentation provided.' }
-    : { text: 'Custom message/enum type.' };
+  const desc = { text: descText, ...(descUrl ? { url: descUrl } : {}) };
+  const category = (isWkt && !ref) ? 'wkt' : 'custom';
 
   return (
     <span
       className="text-syn-type border-b border-dotted border-syn-type/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 font-mono select-text"
-      onMouseEnter={(e) => onMouseEnter(e, typeName, desc, 'custom', shortName)}
+      onMouseEnter={(e) => onMouseEnter(e, typeName, desc, category, shortName)}
       onMouseLeave={onMouseLeave}
-      onClick={(e) => onPinClick(e, typeName, desc, 'custom', shortName)}
+      onClick={(e) => onPinClick(e, typeName, desc, category, shortName)}
     >
       {shortName}
     </span>
