@@ -1053,17 +1053,46 @@ export default function App() {
                 <>
                   {/* File Header metadata */}
                   <div className="mb-8 border-b border-app-border pb-4 font-mono text-xs text-app-textMuted space-y-1.5 select-text w-full overflow-x-auto hide-scrollbar">
-                    {getEditionString(currentFileObj.edition) ? (
-                      <div>
-                        <span className="text-syn-keyword">edition</span> ={' '}
-                        <span className="text-syn-string">"{getEditionString(currentFileObj.edition)}"</span>;
-                      </div>
-                    ) : (
-                      <div>
-                        <span className="text-syn-keyword">syntax</span> ={' '}
-                        <span className="text-syn-string">"{currentFileObj.syntax || 'proto3'}"</span>;
-                      </div>
-                    )}
+                    {getEditionString(currentFileObj.edition) ? (() => {
+                      const edStr = getEditionString(currentFileObj.edition)!;
+                      const edDesc = {
+                        text: `Declares that this file uses Protobuf Editions syntax (edition "${edStr}"). Editions replace the old proto2/proto3 syntax keywords and allow per-feature opt-in/opt-out behaviour.`,
+                        url: 'https://protobuf.dev/editions/overview/',
+                      };
+                      return (
+                        <div>
+                          <span className="text-syn-keyword">edition</span> ={' '}
+                          <span
+                            className="text-syn-string border-b border-dotted border-syn-string/50 cursor-pointer hover:bg-app-hoverBg rounded px-0.5"
+                            onMouseEnter={(e) => handleMouseEnter(e, `edition.${edStr}`, edDesc, 'primitive', `"${edStr}"`)}
+                            onMouseLeave={handleMouseLeave}
+                            onClick={(e) => handlePinClick(e, `edition.${edStr}`, edDesc, 'primitive', `"${edStr}"`)}
+                          >"{edStr}"</span>;
+                        </div>
+                      );
+                    })() : (() => {
+                      const syn = currentFileObj.syntax || 'proto3';
+                      const docsUrl = syn === 'proto2'
+                        ? 'https://protobuf.dev/programming-guides/proto2/'
+                        : 'https://protobuf.dev/programming-guides/proto3/';
+                      const synDesc = {
+                        text: syn === 'proto2'
+                          ? 'Declares that this file uses Protocol Buffers version 2 (proto2). Fields require explicit optional/required/repeated labels and support default values and extensions.'
+                          : 'Declares that this file uses Protocol Buffers version 3 (proto3). Fields are optional by default, required is removed, and the language is simplified compared to proto2.',
+                        url: docsUrl,
+                      };
+                      return (
+                        <div>
+                          <span className="text-syn-keyword">syntax</span> ={' '}
+                          <span
+                            className="text-syn-string border-b border-dotted border-syn-string/50 cursor-pointer hover:bg-app-hoverBg rounded px-0.5"
+                            onMouseEnter={(e) => handleMouseEnter(e, `syntax.${syn}`, synDesc, 'primitive', `"${syn}"`)}
+                            onMouseLeave={handleMouseLeave}
+                            onClick={(e) => handlePinClick(e, `syntax.${syn}`, synDesc, 'primitive', `"${syn}"`)}
+                          >"{syn}"</span>;
+                        </div>
+                      );
+                    })()}
                     {currentFileObj.package && (
                       <div>
                         <span className="text-syn-keyword">package</span>{' '}
