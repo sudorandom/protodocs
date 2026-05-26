@@ -2,4 +2,4 @@
 
 **GitHub Repository:** [github.com/sudorandom/protodocs](https://github.com/sudorandom/protodocs)
 
-&copy; 2025 protodocs.dev. All rights reserved.
+&copy; 2026 protodocs.dev. All rights reserved.
