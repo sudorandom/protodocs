@@ -1,6 +1,6 @@
 # Welcome to ProtoDocs 🚀
 
-**ProtoDocs** is a premium, client-side interactive documentation explorer for Protocol Buffer (Protobuf) schemas. It translates compiled binary descriptors or live server reflection maps into human-readable, cross-linked, and syntax-highlighted specifications.
+**ProtoDocs** is a premium, client-side interactive documentation explorer for Protocol Buffer (Protobuf) schemas. It translates compiled binary descriptors or live server reflection maps into human-readable, cross-linked, and syntax-highlighted specifications. The project is open-source and hosted on [GitHub](https://github.com/sudorandom/protodocs).
 
 ---
 
