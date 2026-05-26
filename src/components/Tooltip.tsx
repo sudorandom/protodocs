@@ -28,7 +28,7 @@ export default function Tooltip({
 
   return (
     <div
-      className={`fixed z-50 bg-app-panel border border-app-border rounded-lg shadow-2xl p-4 w-72 transition-all duration-150 ease-out ${
+      className={`fixed z-50 bg-app-panel border border-app-border rounded-lg shadow-2xl p-4 w-96 transition-all duration-150 ease-out ${
         activeTooltip.isPinned ? 'pointer-events-auto opacity-100 scale-100' : 'pointer-events-none opacity-95 scale-98'
       }`}
       style={{ top: activeTooltip.y, left: activeTooltip.x }}
@@ -37,7 +37,7 @@ export default function Tooltip({
       <div className="flex items-start justify-between mb-2.5 pb-2 border-b border-app-border">
         <div>
           <div
-            className={`font-mono text-sm font-semibold truncate max-w-[200px] ${
+            className={`font-mono text-sm font-semibold truncate max-w-[320px] ${
               activeTooltip.category === 'primitive' ? 'text-syn-primitive' : 'text-syn-type'
             }`}
             title={activeTooltip.fqn}
