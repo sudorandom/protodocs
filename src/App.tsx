@@ -120,7 +120,7 @@ export default function App() {
   const [referencePanel, setReferencePanel] = useState<ReferencePanelState | null>(null);
   const [activeTooltip, setActiveTooltip] = useState<TooltipState | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
   // Build type index for cross-linking
   const typeIndex = useMemo(() => {
@@ -419,85 +419,91 @@ export default function App() {
       setSchema({ file: [] });
     } finally {
       setLoading(false);
+      document.body.classList.remove('loading');
     }
   };
 
   // Load config and initial schema on start
   useEffect(() => {
-    document.body.classList.remove('loading');
-
     const initializeConfig = async () => {
-      let activeConfig = { ...DEFAULT_CONFIG };
+      try {
+        let activeConfig = { ...DEFAULT_CONFIG };
 
-      // 1. Try LocalStorage
-      const saved = localStorage.getItem('protodocs_config');
-      if (saved) {
-        try {
-          activeConfig = JSON.parse(saved);
-        } catch (e) {
-          console.error('Failed to parse saved config from localStorage', e);
-        }
-      } else {
-        // 2. Try URL Search Params
-        const params = new URLSearchParams(window.location.search);
-        const method = params.get('method');
-        const url = params.get('url') || params.get('serverUrl') || params.get('reflectionUrl');
-        const descriptors = params.get('descriptors');
-        const logoText = params.get('logoText');
-        const logoUrl = params.get('logoUrl');
-
-        if (method === 'grpc-web' || method === 'connect' || url) {
-          activeConfig.loadingMethod = (method as any) || activeConfig.loadingMethod;
-          activeConfig.reflectionUrl = url || activeConfig.reflectionUrl;
-        } else if (method === 'http' || descriptors) {
-          activeConfig.loadingMethod = 'http';
-          activeConfig.descriptorFiles = descriptors
-            ? descriptors.split(',').map((d) => d.trim())
-            : activeConfig.descriptorFiles;
-        }
-
-        if (logoText) activeConfig.logoText = logoText;
-        if (logoUrl) activeConfig.logoUrl = logoUrl;
-
-        // 3. Fallback to config.json
-        if (!method && !descriptors) {
+        // 1. Try LocalStorage
+        const saved = localStorage.getItem('protodocs_config');
+        if (saved) {
           try {
-            const res = await fetch('/config.json');
-            if (res.ok) {
-              const fileConfig = await res.json();
-              if (fileConfig.descriptor_files) {
-                activeConfig.loadingMethod = 'http';
-                activeConfig.descriptorFiles = fileConfig.descriptor_files;
-              }
-              if (fileConfig.title) {
-                activeConfig.logoText = fileConfig.title;
-              }
-              if (fileConfig.default_file) {
-                activeConfig.defaultFile = fileConfig.default_file;
-              }
-              if (fileConfig.front_page_markdown_file) {
-                activeConfig.frontPageMarkdownFile = fileConfig.front_page_markdown_file;
-              }
-              if (fileConfig.bottom_of_front_page_markdown_file) {
-                activeConfig.bottomOfFrontPageMarkdownFile = fileConfig.bottom_of_front_page_markdown_file;
-              }
-              if (fileConfig.server_url) {
-                activeConfig.reflectionUrl = fileConfig.server_url;
-              } else if (fileConfig.reflection_url) {
-                activeConfig.reflectionUrl = fileConfig.reflection_url;
-              }
-              if (fileConfig.service_endpoints) {
-                activeConfig.serviceEndpoints = fileConfig.service_endpoints;
-              }
-            }
+            activeConfig = JSON.parse(saved);
           } catch (e) {
-            console.warn('config.json not found or failed to parse, using defaults.', e);
+            console.error('Failed to parse saved config from localStorage', e);
+          }
+        } else {
+          // 2. Try URL Search Params
+          const params = new URLSearchParams(window.location.search);
+          const method = params.get('method');
+          const url = params.get('url') || params.get('serverUrl') || params.get('reflectionUrl');
+          const descriptors = params.get('descriptors');
+          const logoText = params.get('logoText');
+          const logoUrl = params.get('logoUrl');
+
+          if (method === 'grpc-web' || method === 'connect' || url) {
+            activeConfig.loadingMethod = (method as any) || activeConfig.loadingMethod;
+            activeConfig.reflectionUrl = url || activeConfig.reflectionUrl;
+          } else if (method === 'http' || descriptors) {
+            activeConfig.loadingMethod = 'http';
+            activeConfig.descriptorFiles = descriptors
+              ? descriptors.split(',').map((d) => d.trim())
+              : activeConfig.descriptorFiles;
+          }
+
+          if (logoText) activeConfig.logoText = logoText;
+          if (logoUrl) activeConfig.logoUrl = logoUrl;
+
+          // 3. Fallback to config.json
+          if (!method && !descriptors) {
+            try {
+              const res = await fetch('/config.json');
+              if (res.ok) {
+                const fileConfig = await res.json();
+                if (fileConfig.descriptor_files) {
+                  activeConfig.loadingMethod = 'http';
+                  activeConfig.descriptorFiles = fileConfig.descriptor_files;
+                }
+                if (fileConfig.title) {
+                  activeConfig.logoText = fileConfig.title;
+                }
+                if (fileConfig.default_file) {
+                  activeConfig.defaultFile = fileConfig.default_file;
+                }
+                if (fileConfig.front_page_markdown_file) {
+                  activeConfig.frontPageMarkdownFile = fileConfig.front_page_markdown_file;
+                }
+                if (fileConfig.bottom_of_front_page_markdown_file) {
+                  activeConfig.bottomOfFrontPageMarkdownFile = fileConfig.bottom_of_front_page_markdown_file;
+                }
+                if (fileConfig.server_url) {
+                  activeConfig.reflectionUrl = fileConfig.server_url;
+                } else if (fileConfig.reflection_url) {
+                  activeConfig.reflectionUrl = fileConfig.reflection_url;
+                }
+                if (fileConfig.service_endpoints) {
+                  activeConfig.serviceEndpoints = fileConfig.service_endpoints;
+                }
+              }
+            } catch (e) {
+              console.warn('config.json not found or failed to parse, using defaults.', e);
+            }
           }
         }
-      }
 
-      setConfig(activeConfig);
-      loadSchema(activeConfig);
+        setConfig(activeConfig);
+        await loadSchema(activeConfig);
+      } catch (e: any) {
+        console.error('Failed to initialize config or schema:', e);
+        setError(e?.message || 'Failed to initialize Proto schema.');
+        setLoading(false);
+        document.body.classList.remove('loading');
+      }
     };
 
     initializeConfig();
