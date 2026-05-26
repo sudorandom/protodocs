@@ -224,7 +224,6 @@ function RpcMethodTester({
     body: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [cmdTool, setCmdTool] = useState<'buf' | 'curl'>('buf');
   const [copiedProtocol, setCopiedProtocol] = useState<'connect' | 'grpc' | 'grpc-web' | 'curl-connect' | null>(null);
   const [streamMessages, setStreamMessages] = useState<{ id: number; body: string; timestamp: string }[]>([]);
   const [copiedResponse, setCopiedResponse] = useState(false);
@@ -643,111 +642,81 @@ function RpcMethodTester({
 
       {testerView === 'curl' && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-4">
-            {/* CLI Tool Selector */}
-            <div>
-              <label className="block text-[10px] text-app-textMuted uppercase font-bold mb-1 select-none">
-                CLI Tool
+          {/* Connect Protocol (buf curl) */}
+          <div className="relative">
+            <div className="flex items-center justify-between mb-1.5 select-none">
+              <label className="block text-[10px] text-app-textMuted uppercase font-bold">
+                buf curl (connect protocol)
               </label>
-              <div className="flex gap-1.5 bg-app-base border border-app-border rounded p-0.5 select-none">
-                {(['buf', 'curl'] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setCmdTool(t)}
-                    className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase transition-all cursor-pointer select-none ${
-                      cmdTool === t
-                        ? 'bg-app-accent text-white shadow'
-                        : 'text-app-textMuted hover:text-app-textBright'
-                    }`}
-                  >
-                    {t === 'buf' ? 'buf curl' : 'curl'}
-                  </button>
-                ))}
-              </div>
+              <button
+                type="button"
+                onClick={() => handleCopySingleCmd(getBufCurlCommand('connect'), 'connect')}
+                className="text-app-accent hover:text-app-accent/80 font-bold uppercase text-[9px] cursor-pointer select-none"
+              >
+                {copiedProtocol === 'connect' ? 'Copied!' : 'Copy'}
+              </button>
             </div>
+            <pre className="bg-app-code border border-app-border rounded-lg p-4 overflow-x-auto font-mono text-[11px] text-syn-string whitespace-pre select-text leading-relaxed">
+              {getBufCurlCommand('connect')}
+            </pre>
           </div>
 
-          {cmdTool === 'buf' ? (
-            <div className="space-y-4">
-              {/* Connect Protocol */}
-              <div className="relative">
-                <div className="flex items-center justify-between mb-1.5 select-none">
-                  <label className="block text-[10px] text-app-textMuted uppercase font-bold">
-                    buf curl (connect protocol)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleCopySingleCmd(getBufCurlCommand('connect'), 'connect')}
-                    className="text-app-accent hover:text-app-accent/80 font-bold uppercase text-[9px] cursor-pointer select-none"
-                  >
-                    {copiedProtocol === 'connect' ? 'Copied!' : 'Copy'}
-                  </button>
-                </div>
-                <pre className="bg-app-code border border-app-border rounded-lg p-4 overflow-x-auto font-mono text-[11px] text-syn-string whitespace-pre select-text leading-relaxed">
-                  {getBufCurlCommand('connect')}
-                </pre>
-              </div>
-
-              {/* gRPC Protocol */}
-              <div className="relative">
-                <div className="flex items-center justify-between mb-1.5 select-none">
-                  <label className="block text-[10px] text-app-textMuted uppercase font-bold">
-                    buf curl (grpc protocol)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleCopySingleCmd(getBufCurlCommand('grpc'), 'grpc')}
-                    className="text-app-accent hover:text-app-accent/80 font-bold uppercase text-[9px] cursor-pointer select-none"
-                  >
-                    {copiedProtocol === 'grpc' ? 'Copied!' : 'Copy'}
-                  </button>
-                </div>
-                <pre className="bg-app-code border border-app-border rounded-lg p-4 overflow-x-auto font-mono text-[11px] text-syn-string whitespace-pre select-text leading-relaxed">
-                  {getBufCurlCommand('grpc')}
-                </pre>
-              </div>
-
-              {/* gRPC-Web Protocol */}
-              <div className="relative">
-                <div className="flex items-center justify-between mb-1.5 select-none">
-                  <label className="block text-[10px] text-app-textMuted uppercase font-bold">
-                    buf curl (grpc-web protocol)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleCopySingleCmd(getBufCurlCommand('grpc-web'), 'grpc-web')}
-                    className="text-app-accent hover:text-app-accent/80 font-bold uppercase text-[9px] cursor-pointer select-none"
-                  >
-                    {copiedProtocol === 'grpc-web' ? 'Copied!' : 'Copy'}
-                  </button>
-                </div>
-                <pre className="bg-app-code border border-app-border rounded-lg p-4 overflow-x-auto font-mono text-[11px] text-syn-string whitespace-pre select-text leading-relaxed">
-                  {getBufCurlCommand('grpc-web')}
-                </pre>
-              </div>
+          {/* gRPC Protocol (buf curl) */}
+          <div className="relative">
+            <div className="flex items-center justify-between mb-1.5 select-none">
+              <label className="block text-[10px] text-app-textMuted uppercase font-bold">
+                buf curl (grpc protocol)
+              </label>
+              <button
+                type="button"
+                onClick={() => handleCopySingleCmd(getBufCurlCommand('grpc'), 'grpc')}
+                className="text-app-accent hover:text-app-accent/80 font-bold uppercase text-[9px] cursor-pointer select-none"
+              >
+                {copiedProtocol === 'grpc' ? 'Copied!' : 'Copy'}
+              </button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="relative">
-                <div className="flex items-center justify-between mb-1.5 select-none">
-                  <label className="block text-[10px] text-app-textMuted uppercase font-bold">
-                    curl (connect protocol)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleCopySingleCmd(getCurlCommand(), 'curl-connect')}
-                    className="text-app-accent hover:text-app-accent/80 font-bold uppercase text-[9px] cursor-pointer select-none"
-                  >
-                    {copiedProtocol === 'curl-connect' ? 'Copied!' : 'Copy'}
-                  </button>
-                </div>
-                <pre className="bg-app-code border border-app-border rounded-lg p-4 overflow-x-auto font-mono text-[11px] text-syn-string whitespace-pre select-text leading-relaxed">
-                  {getCurlCommand()}
-                </pre>
-              </div>
+            <pre className="bg-app-code border border-app-border rounded-lg p-4 overflow-x-auto font-mono text-[11px] text-syn-string whitespace-pre select-text leading-relaxed">
+              {getBufCurlCommand('grpc')}
+            </pre>
+          </div>
+
+          {/* gRPC-Web Protocol (buf curl) */}
+          <div className="relative">
+            <div className="flex items-center justify-between mb-1.5 select-none">
+              <label className="block text-[10px] text-app-textMuted uppercase font-bold">
+                buf curl (grpc-web protocol)
+              </label>
+              <button
+                type="button"
+                onClick={() => handleCopySingleCmd(getBufCurlCommand('grpc-web'), 'grpc-web')}
+                className="text-app-accent hover:text-app-accent/80 font-bold uppercase text-[9px] cursor-pointer select-none"
+              >
+                {copiedProtocol === 'grpc-web' ? 'Copied!' : 'Copy'}
+              </button>
             </div>
-          )}
+            <pre className="bg-app-code border border-app-border rounded-lg p-4 overflow-x-auto font-mono text-[11px] text-syn-string whitespace-pre select-text leading-relaxed">
+              {getBufCurlCommand('grpc-web')}
+            </pre>
+          </div>
+
+          {/* Connect Protocol (curl) */}
+          <div className="relative">
+            <div className="flex items-center justify-between mb-1.5 select-none">
+              <label className="block text-[10px] text-app-textMuted uppercase font-bold">
+                curl (connect protocol)
+              </label>
+              <button
+                type="button"
+                onClick={() => handleCopySingleCmd(getCurlCommand(), 'curl-connect')}
+                className="text-app-accent hover:text-app-accent/80 font-bold uppercase text-[9px] cursor-pointer select-none"
+              >
+                {copiedProtocol === 'curl-connect' ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+            <pre className="bg-app-code border border-app-border rounded-lg p-4 overflow-x-auto font-mono text-[11px] text-syn-string whitespace-pre select-text leading-relaxed">
+              {getCurlCommand()}
+            </pre>
+          </div>
         </div>
       )}
     </div>
