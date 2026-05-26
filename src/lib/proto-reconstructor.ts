@@ -70,7 +70,14 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
     let hasOptions = false;
     Object.entries(file.options).forEach(([k, v]) => {
       if (k.startsWith('$') || k === 'uninterpretedOption') return;
-      out += `option ${k} = ${formatOptionValue(v, k, 'FileOptions', typeIndex)};\n`;
+      // Repeated option values must be emitted as separate `option` statements
+      if (Array.isArray(v)) {
+        v.forEach((item: any) => {
+          out += `option ${k} = ${formatOptionValue(item, k, 'FileOptions', typeIndex)};\n`;
+        });
+      } else {
+        out += `option ${k} = ${formatOptionValue(v, k, 'FileOptions', typeIndex)};\n`;
+      }
       hasOptions = true;
     });
     if (hasOptions) out += `\n`;
@@ -95,7 +102,11 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
         } else if (field.label === 'LABEL_REQUIRED' || field.label === 2) {
           fieldLine += 'required ';
         } else if (field.label === 'LABEL_OPTIONAL' || field.label === 1) {
-          if (field.proto3Optional) {
+          // proto2 always needs explicit `optional`; proto3 only needs it for proto3optional fields;
+          // editions don't use labels at all
+          const isEditions = !!file.edition;
+          const isProto3 = file.syntax === 'proto3';
+          if (!isEditions && (!isProto3 || field.proto3Optional)) {
             fieldLine += 'optional ';
           }
         }
@@ -112,7 +123,14 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
     if (field.options) {
       Object.entries(field.options).forEach(([k, v]) => {
         if (k.startsWith('$') || k === 'uninterpretedOption') return;
-        opts.push(`${k} = ${formatOptionValue(v, k, 'FieldOptions', typeIndex)}`);
+        // Repeated option values must be emitted as separate key=value pairs inside []
+        if (Array.isArray(v)) {
+          v.forEach((item: any) => {
+            opts.push(`${k} = ${formatOptionValue(item, k, 'FieldOptions', typeIndex)}`);
+          });
+        } else {
+          opts.push(`${k} = ${formatOptionValue(v, k, 'FieldOptions', typeIndex)}`);
+        }
       });
     }
     if (opts.length > 0) {
