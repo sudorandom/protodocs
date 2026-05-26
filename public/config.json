@@ -1,6 +1,6 @@
 {
-  "title": "ProtoDocs",
-  "logo_text": "ProtoDocs",
+  "title": "protodocs.dev",
+  "logo_text": "protodocs.dev",
   "descriptor_files": [
     "/eliza.binpb",
     "/googleapis.binpb",

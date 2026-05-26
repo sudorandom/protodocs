@@ -21,6 +21,9 @@ interface AppConfig {
   descriptorFiles: string[];
   reflectionUrl: string;
   logoUrl: string;
+  logoUrlLight?: string;
+  logoUrlDark?: string;
+  logoUrlCyberpunk?: string;
   logoText: string;
   defaultFile?: string;
   frontPageMarkdownFile?: string;
@@ -445,6 +448,9 @@ export default function App() {
           const descriptors = params.get('descriptors');
           const logoText = params.get('logoText');
           const logoUrl = params.get('logoUrl');
+          const logoUrlLight = params.get('logoUrlLight');
+          const logoUrlDark = params.get('logoUrlDark');
+          const logoUrlCyberpunk = params.get('logoUrlCyberpunk');
 
           if (method === 'grpc-web' || method === 'connect' || url) {
             activeConfig.loadingMethod = (method as any) || activeConfig.loadingMethod;
@@ -458,6 +464,9 @@ export default function App() {
 
           if (logoText) activeConfig.logoText = logoText;
           if (logoUrl) activeConfig.logoUrl = logoUrl;
+          if (logoUrlLight) activeConfig.logoUrlLight = logoUrlLight;
+          if (logoUrlDark) activeConfig.logoUrlDark = logoUrlDark;
+          if (logoUrlCyberpunk) activeConfig.logoUrlCyberpunk = logoUrlCyberpunk;
 
           // 3. Fallback to config.json
           if (!method && !descriptors) {
@@ -471,6 +480,18 @@ export default function App() {
                 }
                 if (fileConfig.title) {
                   activeConfig.logoText = fileConfig.title;
+                }
+                if (fileConfig.logo_url) {
+                  activeConfig.logoUrl = fileConfig.logo_url;
+                }
+                if (fileConfig.logo_url_light) {
+                  activeConfig.logoUrlLight = fileConfig.logo_url_light;
+                }
+                if (fileConfig.logo_url_dark) {
+                  activeConfig.logoUrlDark = fileConfig.logo_url_dark;
+                }
+                if (fileConfig.logo_url_cyberpunk) {
+                  activeConfig.logoUrlCyberpunk = fileConfig.logo_url_cyberpunk;
                 }
                 if (fileConfig.default_file) {
                   activeConfig.defaultFile = fileConfig.default_file;
@@ -810,6 +831,10 @@ export default function App() {
   }, [currentFileObj]);
 
   const themeClass = theme === 'dark' ? 'theme-dark' : `theme-${theme}`;
+  const activeLogoUrl =
+    theme === 'light' ? config.logoUrlLight || config.logoUrl
+    : theme === 'cyberpunk' ? config.logoUrlCyberpunk || config.logoUrl
+    : config.logoUrlDark || config.logoUrl;
 
   return (
     <div className={`flex h-screen w-screen bg-app-base text-app-textMain font-sans overflow-hidden transition-colors duration-200 ${themeClass}`}>
@@ -824,7 +849,7 @@ export default function App() {
 
       {/* Sidebar with grouped directories and popup theme selector */}
       <Sidebar
-        logoUrl={config.logoUrl}
+        logoUrl={activeLogoUrl}
         logoText={config.logoText}
         sidebarView={sidebarView}
         setSidebarView={setSidebarView}
