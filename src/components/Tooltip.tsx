@@ -1,3 +1,5 @@
+import { useLayoutEffect, useState, useRef } from 'react';
+
 export interface TooltipState {
   x: number;
   y: number;
@@ -7,6 +9,12 @@ export interface TooltipState {
   shortName: string;
   isPinned: boolean;
   hasDefinition?: boolean;
+  targetRect?: {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+  };
 }
 
 interface TooltipProps {
@@ -22,6 +30,57 @@ export default function Tooltip({
   onGoToDefinition,
   onFindReferences,
 }: TooltipProps) {
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  
+  // Track coordinates state
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const [prevTooltip, setPrevTooltip] = useState<TooltipState | null>(null);
+
+  // Derive state from activeTooltip prop if it changes
+  if (activeTooltip !== prevTooltip) {
+    setPrevTooltip(activeTooltip);
+    setCoords({
+      top: activeTooltip?.y ?? 0,
+      left: activeTooltip?.x ?? 0,
+    });
+  }
+
+  useLayoutEffect(() => {
+    if (!activeTooltip || !tooltipRef.current) return;
+
+    const tooltipEl = tooltipRef.current;
+    const height = tooltipEl.offsetHeight;
+    const width = tooltipEl.offsetWidth || 384; // w-96 is 384px
+
+    let top = activeTooltip.y;
+    let left = activeTooltip.x;
+
+    if (activeTooltip.targetRect) {
+      const rect = activeTooltip.targetRect;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      
+      // If space below is not enough for the tooltip (height + padding), position above the element
+      if (spaceBelow < height + 10) {
+        top = rect.top - height - 6;
+      } else {
+        top = rect.bottom + 6;
+      }
+
+      // Constrain horizontal position (left) to the viewport
+      left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+    } else {
+      // Fallback alignment if targetRect is not present
+      const spaceBelow = window.innerHeight - activeTooltip.y;
+      if (spaceBelow < height + 10) {
+        // Approximate flip relative to the cursor/click y
+        top = activeTooltip.y - height - 12;
+      }
+      left = Math.max(8, Math.min(activeTooltip.x, window.innerWidth - width - 8));
+    }
+
+    setCoords({ top, left });
+  }, [activeTooltip]);
+
   if (!activeTooltip) return null;
 
   const descText = activeTooltip.description?.text || activeTooltip.description || 'No documentation provided.';
@@ -29,10 +88,11 @@ export default function Tooltip({
 
   return (
     <div
+      ref={tooltipRef}
       className={`fixed z-50 bg-app-panel border border-app-border rounded-lg shadow-2xl p-4 w-96 transition-all duration-150 ease-out ${
         activeTooltip.isPinned ? 'pointer-events-auto opacity-100 scale-100' : 'pointer-events-none opacity-95 scale-98'
       }`}
-      style={{ top: activeTooltip.y, left: activeTooltip.x }}
+      style={{ top: coords.top, left: coords.left }}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-start justify-between mb-2.5 pb-2 border-b border-app-border">

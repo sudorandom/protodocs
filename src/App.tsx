@@ -656,13 +656,19 @@ export default function App() {
     }
     setActiveTooltip({
       x: rect.left,
-      y: rect.bottom + window.scrollY + 6,
+      y: rect.bottom + 6,
       fqn,
       description,
       category,
       shortName,
       isPinned: true,
       hasDefinition,
+      targetRect: {
+        top: rect.top,
+        bottom: rect.bottom,
+        left: rect.left,
+        right: rect.right,
+      },
     });
   };
 
@@ -680,13 +686,19 @@ export default function App() {
       if (prev && prev.isPinned) return prev;
       return {
         x: rect.left,
-        y: rect.bottom + window.scrollY + 6,
+        y: rect.bottom + 6,
         fqn,
         description,
         category,
         shortName,
         isPinned: false,
         hasDefinition,
+        targetRect: {
+          top: rect.top,
+          bottom: rect.bottom,
+          left: rect.left,
+          right: rect.right,
+        },
       };
     });
   };
@@ -1202,6 +1214,7 @@ export default function App() {
 
       {/* Rich Tooltip Overlay */}
       <Tooltip
+        key={activeTooltip ? `${activeTooltip.fqn}-${activeTooltip.x}-${activeTooltip.y}` : 'none'}
         activeTooltip={activeTooltip}
         onClose={() => setActiveTooltip(null)}
         onGoToDefinition={goToDefinition}
