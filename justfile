@@ -25,3 +25,9 @@ descriptors:
     buf build buf.build/gnostic/gnostic \
         -o public/gnostic.binpb \
         --path gnostic/openapi/v3
+    buf build buf.build/connectrpc/eliza \
+        -o public/eliza.binpb
+
+# Build and package static website distribution
+package:
+    pnpm package

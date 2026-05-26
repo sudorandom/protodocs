@@ -1,9 +1,8 @@
 {
-  "title": "protodocs",
+  "title": "Eliza API Documentation",
+  "logo_text": "Eliza API",
   "descriptor_files": [
-    "/gnostic.binpb",
-    "/protovalidate.binpb",
-    "/googleapis.binpb"
+    "/eliza.binpb"
   ],
   "front_page_markdown_file": "/home.md",
   "bottom_of_front_page_markdown_file": "/footer.md"
