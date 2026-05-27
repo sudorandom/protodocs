@@ -6,6 +6,7 @@ import { formatOptionValue } from '../lib/options-formatter-helpers';
 import { generateMockJson } from '../lib/mock-generator';
 import { sendRpcRequest } from '../lib/rpc-sender';
 import KeywordLink from './KeywordLink';
+import { cleanComment } from '../lib/proto-reconstructor';
 
 interface ServiceViewerProps {
   service: any;
@@ -51,7 +52,7 @@ export default function ServiceViewer({
     <div id={fqn} className="mb-8 font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text">
       {service.description && (
         <div className="text-syn-comment mb-1 whitespace-pre-wrap">
-          {service.description.split('\n').map((line: string) => `// ${line}`).join('\n')}
+          {cleanComment(service.description).split('\n').map((line: string) => `// ${line}`).join('\n')}
         </div>
       )}
       <div>
@@ -91,7 +92,7 @@ export default function ServiceViewer({
           return (
             <div key={m.name} id={methodFqn} className="mb-3.5 mt-2">
               {m.description && (
-                <div className="text-syn-comment mb-0.5 whitespace-pre-wrap">{m.description.split('\n').map((line: string) => `// ${line}`).join('\n')}</div>
+                <div className="text-syn-comment mb-0.5 whitespace-pre-wrap">{cleanComment(m.description).split('\n').map((line: string) => `// ${line}`).join('\n')}</div>
               )}
               <div
                 onClick={() => {

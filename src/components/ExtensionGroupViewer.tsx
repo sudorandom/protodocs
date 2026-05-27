@@ -2,6 +2,7 @@ import { MouseEvent } from 'react';
 import TypeLink from './TypeLink';
 import { FormatOptions } from './options-formatter';
 import KeywordLink from './KeywordLink';
+import { cleanComment } from '../lib/proto-reconstructor';
 
 interface ExtensionGroupViewerProps {
   extendee: string;
@@ -51,7 +52,7 @@ export default function ExtensionGroupViewer({
             <div key={f.name} id={extensionFqn} className="mb-2 last:mb-0">
               {f.description && (
                 <div className="text-syn-comment whitespace-pre-wrap mb-0.5 select-text">
-                  {f.description.split('\n').map((line: string) => `// ${line}`).join('\n')}
+                  {cleanComment(f.description).split('\n').map((line: string) => `// ${line}`).join('\n')}
                 </div>
               )}
               <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">

@@ -6,6 +6,7 @@ import { FormatOptions } from './options-formatter';
 import { formatOptionValue } from '../lib/options-formatter-helpers';
 import EnumViewer from './EnumViewer';
 import KeywordLink from './KeywordLink';
+import { cleanComment } from '../lib/proto-reconstructor';
 
 interface MessageViewerProps {
   message: any;
@@ -125,16 +126,16 @@ export default function MessageViewer({
     <div id={fqn} className={`${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors group p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}>
       {message.description && (
         <div className="text-syn-comment mb-1 whitespace-pre-wrap">
-          {message.description.split('\n').map((line: string) => `// ${line}`).join('\n')}
+          {cleanComment(message.description).split('\n').map((line: string) => `// ${line}`).join('\n')}
         </div>
       )}
       <div>
         <KeywordLink keyword="message" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
         <span
           className="text-syn-type font-bold border-b border-dotted border-syn-type/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-text"
-          onMouseEnter={(e) => onMouseEnter(e, fqn, { text: message.description || 'No documentation provided.' }, 'custom', message.name)}
+          onMouseEnter={(e) => onMouseEnter(e, fqn, { text: cleanComment(message.description || 'No documentation provided.') }, 'custom', message.name)}
           onMouseLeave={onMouseLeave}
-          onClick={(e) => onPinClick(e, fqn, { text: message.description || 'No documentation provided.' }, 'custom', message.name)}
+          onClick={(e) => onPinClick(e, fqn, { text: cleanComment(message.description || 'No documentation provided.') }, 'custom', message.name)}
         >
           {message.name}
         </span>{' '}
@@ -164,7 +165,7 @@ export default function MessageViewer({
             return (
               <div key={`oneof-${idx}`} className="mb-4 mt-2">
                 {item.description && (
-                  <div className="text-syn-comment mb-1 whitespace-pre-wrap">{item.description.split('\n').map((line: string) => `// ${line}`).join('\n')}</div>
+                  <div className="text-syn-comment mb-1 whitespace-pre-wrap">{cleanComment(item.description).split('\n').map((line: string) => `// ${line}`).join('\n')}</div>
                 )}
                 <div className="text-app-textMain">
                   <KeywordLink keyword="oneof" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
@@ -177,7 +178,7 @@ export default function MessageViewer({
                       <div key={f.name} id={fieldFqn} className="mb-2 last:mb-0">
                         {f.description && (
                           <div className="text-syn-comment whitespace-pre-wrap mb-0.5 select-text">
-                            {f.description.split('\n').map((line: string) => `// ${line}`).join('\n')}
+                            {cleanComment(f.description).split('\n').map((line: string) => `// ${line}`).join('\n')}
                           </div>
                         )}
                         <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">
@@ -220,7 +221,7 @@ export default function MessageViewer({
               <div key={f.name} id={fieldFqn} className="mb-2 last:mb-0">
                 {f.description && (
                   <div className="text-syn-comment whitespace-pre-wrap mb-0.5 select-text">
-                    {f.description.split('\n').map((line: string) => `// ${line}`).join('\n')}
+                    {cleanComment(f.description).split('\n').map((line: string) => `// ${line}`).join('\n')}
                   </div>
                 )}
                 <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">

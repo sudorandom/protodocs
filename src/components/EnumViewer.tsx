@@ -3,6 +3,7 @@ import OptionLink from './OptionLink';
 import { FormatOptions } from './options-formatter';
 import { formatOptionValue } from '../lib/options-formatter-helpers';
 import KeywordLink from './KeywordLink';
+import { cleanComment } from '../lib/proto-reconstructor';
 
 interface EnumViewerProps {
   enumObj: any;
@@ -49,7 +50,7 @@ export default function EnumViewer({
     <div id={fqn} className={`${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}>
       {enumObj.description && (
         <div className="text-syn-comment mb-1 whitespace-pre-wrap">
-          {enumObj.description.split('\n').map((line: string) => `// ${line}`).join('\n')}
+          {cleanComment(enumObj.description).split('\n').map((line: string) => `// ${line}`).join('\n')}
         </div>
       )}
       <div>
@@ -80,7 +81,7 @@ export default function EnumViewer({
             <div key={v.name} id={valueFqn} className="mb-2 last:mb-0">
               {v.description && (
                 <div className="text-syn-comment whitespace-pre-wrap mb-0.5 select-text">
-                  {v.description.split('\n').map((line: string) => `// ${line}`).join('\n')}
+                  {cleanComment(v.description).split('\n').map((line: string) => `// ${line}`).join('\n')}
                 </div>
               )}
               <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">

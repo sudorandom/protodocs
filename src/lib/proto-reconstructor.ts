@@ -85,7 +85,8 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
 
   const formatComments = (desc?: string, indent: string = ''): string => {
     if (!desc) return '';
-    return desc.split('\n').map(line => `${indent}// ${line}`).join('\n') + '\n';
+    const cleaned = cleanComment(desc);
+    return cleaned.split('\n').map(line => `${indent}// ${line}`).join('\n') + '\n';
   };
 
   const formatField = (field: any, indent: string, mapEntries: Record<string, any>, inOneof = false): string => {
@@ -247,4 +248,31 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
   });
 
   return out.trim() + '\n';
+}
+
+export function cleanComment(desc: string): string {
+  if (!desc) return '';
+  const lines = desc.split('\n');
+  if (lines.length <= 1) return desc;
+
+  let hasExtraLeadingSpace = true;
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.length > 0 && !line.startsWith(' ')) {
+      hasExtraLeadingSpace = false;
+      break;
+    }
+  }
+
+  if (hasExtraLeadingSpace) {
+    return lines
+      .map((line, idx) => {
+        if (idx === 0) return line;
+        if (line.startsWith(' ')) return line.substring(1);
+        return line;
+      })
+      .join('\n');
+  }
+
+  return desc;
 }
