@@ -16,6 +16,8 @@ interface SidebarProps {
   setTheme: (theme: 'dark' | 'light' | 'cyberpunk') => void;
   isSidebarOpen: boolean;
   onCloseSidebar: () => void;
+  prioritizedPaths?: string[];
+  highlightedFiles?: string[];
 }
 
 const IconFile = () => (
@@ -75,6 +77,8 @@ export default function Sidebar({
   setTheme,
   isSidebarOpen,
   onCloseSidebar,
+  prioritizedPaths,
+  highlightedFiles,
 }: SidebarProps) {
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
 
@@ -99,20 +103,45 @@ export default function Sidebar({
       groups[dir].push({ ...file, displayName: fileName });
     });
 
-    // Sort files within each directory alphabetically
+    // Sort files within each directory. Highlighted or prioritized files rise to the top.
     Object.keys(groups).forEach((dir) => {
-      groups[dir].sort((a, b) => a.displayName.localeCompare(b.displayName));
+      groups[dir].sort((a, b) => {
+        const aIsPrioritized = highlightedFiles?.includes(a.name) || prioritizedPaths?.includes(a.name);
+        const bIsPrioritized = highlightedFiles?.includes(b.name) || prioritizedPaths?.includes(b.name);
+        
+        if (aIsPrioritized && bIsPrioritized) {
+          return a.displayName.localeCompare(b.displayName);
+        }
+        if (aIsPrioritized) return -1;
+        if (bIsPrioritized) return 1;
+        
+        return a.displayName.localeCompare(b.displayName);
+      });
     });
 
-    // Sort directories alphabetically (with 'root' files shown first)
+    // Sort directories: 'root' first, then prioritizedPaths, then alphabetical
     const sortedDirs = Object.keys(groups).sort((a, b) => {
       if (a === 'root') return -1;
       if (b === 'root') return 1;
+
+      if (prioritizedPaths && prioritizedPaths.length > 0) {
+        // Find if directories match or are subdirectories of any prioritized paths
+        const aIndex = prioritizedPaths.findIndex(p => a === p || a.startsWith(p + '/'));
+        const bIndex = prioritizedPaths.findIndex(p => b === p || b.startsWith(p + '/'));
+
+        if (aIndex !== -1 && bIndex !== -1) {
+          if (aIndex !== bIndex) return aIndex - bIndex;
+          return a.localeCompare(b);
+        }
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+      }
+
       return a.localeCompare(b);
     });
 
     return { sortedDirs, groups };
-  }, [schema]);
+  }, [schema, prioritizedPaths, highlightedFiles]);
 
   // Sort packages alphabetically
   const sortedPackages = useMemo(() => {
@@ -270,27 +299,37 @@ export default function Sidebar({
                     </span>
                   </div>
                 )}
-                {files.map((file) => (
-                  <div
-                    key={file.name}
-                    onClick={() => {
-                      setActiveFile(file.name);
-                      onCloseSidebar();
-                    }}
-                    className={`flex items-center py-1.5 text-xs cursor-pointer group transition-colors ${
-                      dir === 'root' ? 'px-6' : 'pl-8 pr-6'
-                    } ${
-                      activeFile === file.name
-                        ? 'bg-app-accentBg text-app-accent border-r-2 border-app-accent font-semibold'
-                        : 'hover:bg-app-hoverBg hover:text-app-textBright'
-                    }`}
-                  >
-                    <IconFile />
-                    <span className="ml-2.5 truncate" title={file.name}>
-                      {file.displayName}
-                    </span>
-                  </div>
-                ))}
+                {files.map((file) => {
+                  const isHighlighted = highlightedFiles?.includes(file.name);
+                  return (
+                    <div
+                      key={file.name}
+                      onClick={() => {
+                        setActiveFile(file.name);
+                        onCloseSidebar();
+                      }}
+                      className={`flex items-center py-1.5 text-xs cursor-pointer group transition-colors justify-between ${
+                        dir === 'root' ? 'px-6' : 'pl-8 pr-6'
+                      } ${
+                        activeFile === file.name
+                          ? 'bg-app-accentBg text-app-accent border-r-2 border-app-accent font-semibold'
+                          : 'hover:bg-app-hoverBg hover:text-app-textBright'
+                      }`}
+                    >
+                      <div className="flex items-center min-w-0 flex-1">
+                        <IconFile />
+                        <span className="ml-2.5 truncate" title={file.name}>
+                          {file.displayName}
+                        </span>
+                      </div>
+                      {isHighlighted && (
+                        <span className="ml-2 text-amber-500 font-bold select-none text-xs shrink-0" title="Core Schema File">
+                          ★
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             );
           })

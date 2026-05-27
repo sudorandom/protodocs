@@ -70,5 +70,14 @@ test.describe('Screenshot tests', () => {
     await page.waitForTimeout(500);
     await page.screenshot({ path: 'e2e/screenshots/04-search-results.png' });
   });
-});
 
+  test('prioritized paths and file highlights', async ({ page }) => {
+    // Navigate with query parameters setting google/protobuf prioritized and descriptor.proto highlighted
+    await page.goto('/?descriptors=/googleapis.binpb,/gnostic.binpb,/protovalidate.binpb&prioritizedPaths=google/protobuf&highlightedFiles=google/protobuf/descriptor.proto');
+    
+    // The google/protobuf/ folder and descriptor.proto file with its Core badge should be visible
+    await expect(page.locator('span', { hasText: 'google/protobuf/' }).first()).toBeVisible();
+    await expect(page.locator('span', { hasText: 'descriptor.proto' }).first()).toBeVisible();
+    await expect(page.locator('span', { hasText: '★' }).first()).toBeVisible();
+  });
+});

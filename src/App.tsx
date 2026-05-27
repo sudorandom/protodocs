@@ -30,6 +30,8 @@ interface AppConfig {
   frontPageMarkdownFile?: string;
   bottomOfFrontPageMarkdownFile?: string;
   serviceEndpoints?: Record<string, string>;
+  prioritizedPaths?: string[];
+  highlightedFiles?: string[];
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -452,6 +454,8 @@ export default function App() {
           const logoUrlLight = params.get('logoUrlLight');
           const logoUrlDark = params.get('logoUrlDark');
           const logoUrlCyberpunk = params.get('logoUrlCyberpunk');
+          const prioritizedPathsParam = params.get('prioritizedPaths') || params.get('prioritized_paths');
+          const highlightedFilesParam = params.get('highlightedFiles') || params.get('highlighted_files');
 
           if (method === 'grpc-web' || method === 'connect' || url) {
             activeConfig.loadingMethod = (method as any) || activeConfig.loadingMethod;
@@ -468,6 +472,12 @@ export default function App() {
           if (logoUrlLight) activeConfig.logoUrlLight = logoUrlLight;
           if (logoUrlDark) activeConfig.logoUrlDark = logoUrlDark;
           if (logoUrlCyberpunk) activeConfig.logoUrlCyberpunk = logoUrlCyberpunk;
+          if (prioritizedPathsParam) {
+            activeConfig.prioritizedPaths = prioritizedPathsParam.split(',').map((p) => p.trim());
+          }
+          if (highlightedFilesParam) {
+            activeConfig.highlightedFiles = highlightedFilesParam.split(',').map((f) => f.trim());
+          }
 
           // 3. Fallback to config.json
           if (!method && !descriptors) {
@@ -510,6 +520,12 @@ export default function App() {
                 }
                 if (fileConfig.service_endpoints) {
                   activeConfig.serviceEndpoints = fileConfig.service_endpoints;
+                }
+                if (fileConfig.prioritized_paths) {
+                  activeConfig.prioritizedPaths = fileConfig.prioritized_paths;
+                }
+                if (fileConfig.highlighted_files) {
+                  activeConfig.highlightedFiles = fileConfig.highlighted_files;
                 }
               }
             } catch (e) {
@@ -865,6 +881,8 @@ export default function App() {
         setTheme={setTheme}
         isSidebarOpen={isSidebarOpen}
         onCloseSidebar={() => setIsSidebarOpen(false)}
+        prioritizedPaths={config.prioritizedPaths}
+        highlightedFiles={config.highlightedFiles}
       />
 
       {/* Main Container - Size is fully constrained and fixed to flex flow */}
