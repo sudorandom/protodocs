@@ -279,3 +279,24 @@
   padding-bottom: 0.5em;
   padding-left: 0.5em;
 }
+
+/* Tooltip Markdown overrides */
+.prose-tooltip p:last-child {
+  margin-bottom: 0;
+}
+.prose-tooltip p {
+  margin-bottom: 0.5em;
+  line-height: 1.5;
+}
+.prose-tooltip h1,
+.prose-tooltip h2,
+.prose-tooltip h3,
+.prose-tooltip h4 {
+  margin-top: 0.5em;
+  margin-bottom: 0.2em;
+  font-size: 1.1em;
+}
+.prose-tooltip ul,
+.prose-tooltip ol {
+  margin-bottom: 0.5em;
+}

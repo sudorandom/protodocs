@@ -1,4 +1,6 @@
 import { useLayoutEffect, useState, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export interface TooltipState {
   x: number;
@@ -50,7 +52,7 @@ export default function Tooltip({
 
     const tooltipEl = tooltipRef.current;
     const height = tooltipEl.offsetHeight;
-    const width = tooltipEl.offsetWidth || 384; // w-96 is 384px
+    const width = tooltipEl.offsetWidth || 512; // w-[32rem] is 512px
 
     let top = activeTooltip.y;
     let left = activeTooltip.x;
@@ -89,7 +91,7 @@ export default function Tooltip({
   return (
     <div
       ref={tooltipRef}
-      className={`fixed z-50 bg-app-panel border border-app-border rounded-lg shadow-2xl p-4 w-96 transition-all duration-150 ease-out ${
+      className={`fixed z-50 bg-app-panel border border-app-border rounded-lg shadow-2xl p-4 w-[32rem] transition-all duration-150 ease-out ${
         activeTooltip.isPinned ? 'pointer-events-auto opacity-100 scale-100' : 'pointer-events-none opacity-95 scale-98'
       }`}
       style={{ top: coords.top, left: coords.left }}
@@ -98,7 +100,7 @@ export default function Tooltip({
       <div className="flex items-start justify-between mb-2.5 pb-2 border-b border-app-border">
         <div>
           <div
-            className={`font-mono text-sm font-semibold truncate max-w-[320px] ${
+            className={`font-mono text-sm font-semibold truncate max-w-[440px] ${
               activeTooltip.category === 'primitive' ? 'text-syn-primitive' : 'text-syn-type'
             }`}
             title={activeTooltip.fqn}
@@ -106,7 +108,9 @@ export default function Tooltip({
             {activeTooltip.shortName}
           </div>
           <div className="text-[9px] uppercase tracking-wider text-app-textMuted font-bold bg-app-base px-1.5 py-0.5 rounded border border-app-border inline-block mt-1">
-            {activeTooltip.category === 'primitive'
+            {['message', 'option', 'enum', 'optional', 'oneof', 'syntax', 'edition', 'package', 'import', 'extend', 'repeated', 'required', 'service', 'rpc', 'stream', 'returns'].includes(activeTooltip.fqn)
+              ? 'Protobuf Keyword'
+              : activeTooltip.category === 'primitive'
               ? 'Primitive Type'
               : activeTooltip.category === 'wkt'
               ? 'Well-Known Type'
@@ -129,8 +133,10 @@ export default function Tooltip({
         )}
       </div>
 
-      <div className="text-xs text-app-textMain leading-relaxed break-words font-sans max-h-32 overflow-y-auto hide-scrollbar">
-        {descText}
+      <div className="text-xs text-app-textMain leading-relaxed break-words font-sans max-h-80 overflow-y-auto hide-scrollbar prose dark:prose-invert prose-tooltip max-w-none">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {descText}
+        </ReactMarkdown>
         {descUrl && (
           <a
             href={descUrl}

@@ -5,6 +5,7 @@ import { FormatOptions } from './options-formatter';
 import { formatOptionValue } from '../lib/options-formatter-helpers';
 import { generateMockJson } from '../lib/mock-generator';
 import { sendRpcRequest } from '../lib/rpc-sender';
+import KeywordLink from './KeywordLink';
 
 interface ServiceViewerProps {
   service: any;
@@ -54,7 +55,12 @@ export default function ServiceViewer({
         </div>
       )}
       <div>
-        <span className="text-syn-keyword">service</span>{' '}
+        <KeywordLink
+          keyword="service"
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          onPinClick={onPinClick}
+        />{' '}
         <span className="text-app-textBright font-bold">{service.name}</span> {'{'}
       </div>
 
@@ -64,7 +70,12 @@ export default function ServiceViewer({
             .filter(([k]) => !k.startsWith('$') && k !== 'uninterpretedOption')
             .map(([k, v]) => (
               <div key={k} className="text-app-textMuted px-2 py-0.5 rounded -ml-2">
-                <span className="text-syn-keyword">option</span>{' '}
+                <KeywordLink
+                  keyword="option"
+                  onMouseEnter={onMouseEnter}
+                  onMouseLeave={onMouseLeave}
+                  onPinClick={onPinClick}
+                />{' '}
                 <OptionLink
                   optionKey={k}
                   parentOptionsMessage="ServiceOptions"
@@ -96,11 +107,24 @@ export default function ServiceViewer({
                   </svg>
                 </span>
                 
-                <span className="text-syn-keyword">rpc</span>{' '}
+                <KeywordLink
+                  keyword="rpc"
+                  onMouseEnter={onMouseEnter}
+                  onMouseLeave={onMouseLeave}
+                  onPinClick={onPinClick}
+                />{' '}
                 <span className="text-app-textBright font-semibold group-hover:underline">{m.name}</span>
                 
                 <span className="text-app-textMuted">(</span>
-                {m.clientStreaming && <span className="text-syn-keyword mr-1">stream</span>}
+                {m.clientStreaming && (
+                  <KeywordLink
+                    keyword="stream"
+                    className="text-syn-keyword border-b border-dotted border-syn-keyword/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-none font-mono mr-1"
+                    onMouseEnter={onMouseEnter}
+                    onMouseLeave={onMouseLeave}
+                    onPinClick={onPinClick}
+                  />
+                )}
                 <TypeLink
                   typeName={m.inputType}
                   typeIndex={typeIndex}
@@ -110,10 +134,24 @@ export default function ServiceViewer({
                 />
                 <span className="text-app-textMuted">)</span>
                 
-                {' '}<span className="text-syn-keyword">returns</span>{' '}
+                {' '}
+                <KeywordLink
+                  keyword="returns"
+                  onMouseEnter={onMouseEnter}
+                  onMouseLeave={onMouseLeave}
+                  onPinClick={onPinClick}
+                />{' '}
 
                 <span className="text-app-textMuted">(</span>
-                {m.serverStreaming && <span className="text-syn-keyword mr-1">stream</span>}
+                {m.serverStreaming && (
+                  <KeywordLink
+                    keyword="stream"
+                    className="text-syn-keyword border-b border-dotted border-syn-keyword/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-none font-mono mr-1"
+                    onMouseEnter={onMouseEnter}
+                    onMouseLeave={onMouseLeave}
+                    onPinClick={onPinClick}
+                  />
+                )}
                 <TypeLink
                   typeName={m.outputType}
                   typeIndex={typeIndex}

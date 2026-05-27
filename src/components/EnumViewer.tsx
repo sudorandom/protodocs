@@ -2,6 +2,7 @@ import React from 'react';
 import OptionLink from './OptionLink';
 import { FormatOptions } from './options-formatter';
 import { formatOptionValue } from '../lib/options-formatter-helpers';
+import KeywordLink from './KeywordLink';
 
 interface EnumViewerProps {
   enumObj: any;
@@ -52,7 +53,7 @@ export default function EnumViewer({
         </div>
       )}
       <div>
-        <span className="text-syn-keyword">enum</span>{' '}
+        <KeywordLink keyword="enum" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
         <span className="text-syn-type font-bold">{enumObj.name}</span> {'{'}
       </div>
       
@@ -62,7 +63,7 @@ export default function EnumViewer({
             .filter(([k]) => !k.startsWith('$') && k !== 'uninterpretedOption')
             .map(([k, v]) => (
               <div key={k} className="text-app-textMuted px-2 py-0.5 rounded -ml-2">
-                <span className="text-syn-keyword">option</span>{' '}
+                <KeywordLink keyword="option" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
                 <OptionLink
                   optionKey={k}
                   parentOptionsMessage="EnumOptions"

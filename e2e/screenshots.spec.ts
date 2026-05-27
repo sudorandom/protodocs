@@ -42,6 +42,17 @@ test.describe('Screenshot tests', () => {
     await page.goto('/?descriptors=/googleapis.binpb,/gnostic.binpb,/protovalidate.binpb#/files/google/api/resource.proto');
     await expect(page.locator('span', { hasText: 'resource.proto' }).first()).toBeVisible();
     await page.waitForTimeout(500);
+
+    // Verify syntax keyword tooltip works
+    const syntaxKeyword = page.locator('span', { hasText: 'syntax' }).first();
+    await expect(syntaxKeyword).toBeVisible();
+    await syntaxKeyword.click();
+    await expect(page.locator('div', { hasText: 'Protobuf Keyword' }).first()).toBeVisible();
+    await expect(page.locator('a', { hasText: 'View Docs ↗' })).toBeVisible();
+
+    // Close the tooltip
+    await page.locator('div.fixed.z-50 button').first().click();
+
     await page.screenshot({ path: 'e2e/screenshots/03-file-source.png' });
   });
 

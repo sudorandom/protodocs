@@ -1,6 +1,7 @@
 import { MouseEvent } from 'react';
 import TypeLink from './TypeLink';
 import { FormatOptions } from './options-formatter';
+import KeywordLink from './KeywordLink';
 
 interface ExtensionGroupViewerProps {
   extendee: string;
@@ -39,7 +40,7 @@ export default function ExtensionGroupViewer({
   return (
     <div className="mb-8 font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text">
       <div>
-        <span className="text-syn-keyword">extend</span>{' '}
+        <KeywordLink keyword="extend" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
         <span className="text-syn-type font-bold">{displayExtendee}</span> {'{'}
       </div>
       
@@ -54,8 +55,8 @@ export default function ExtensionGroupViewer({
                 </div>
               )}
               <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">
-                {f.label === 3 && <span className="text-syn-keyword">repeated </span>}
-                {f.label === 1 && <span className="text-syn-keyword">optional </span>}
+                {f.label === 3 && <KeywordLink keyword="repeated" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>repeated </KeywordLink>}
+                {f.label === 1 && <KeywordLink keyword="optional" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>optional </KeywordLink>}
                 <TypeLink
                   typeName={f.typeName}
                   typeId={f.type}

@@ -15,6 +15,7 @@ import ExtensionGroupViewer from './components/ExtensionGroupViewer';
 import OptionLink from './components/OptionLink';
 import { populateTypeIndexWithOptions, normalizeFileDescriptor } from './lib/option-resolver';
 import { reconstructProto, getEditionString } from './lib/proto-reconstructor';
+import KeywordLink from './components/KeywordLink';
 
 interface AppConfig {
   loadingMethod: 'http' | 'grpc-web' | 'connect';
@@ -1104,7 +1105,12 @@ export default function App() {
                       };
                       return (
                         <div>
-                          <span className="text-syn-keyword">edition</span> ={' '}
+                          <KeywordLink
+                            keyword="edition"
+                            onMouseEnter={handleMouseEnter}
+                            onMouseLeave={handleMouseLeave}
+                            onPinClick={handlePinClick}
+                          /> ={' '}
                           <span
                             className="text-syn-string border-b border-dotted border-syn-string/50 cursor-pointer hover:bg-app-hoverBg rounded px-0.5"
                             onMouseEnter={(e) => handleMouseEnter(e, `edition.${edStr}`, edDesc, 'primitive', `"${edStr}"`)}
@@ -1126,7 +1132,12 @@ export default function App() {
                       };
                       return (
                         <div>
-                          <span className="text-syn-keyword">syntax</span> ={' '}
+                          <KeywordLink
+                            keyword="syntax"
+                            onMouseEnter={handleMouseEnter}
+                            onMouseLeave={handleMouseLeave}
+                            onPinClick={handlePinClick}
+                          /> ={' '}
                           <span
                             className="text-syn-string border-b border-dotted border-syn-string/50 cursor-pointer hover:bg-app-hoverBg rounded px-0.5"
                             onMouseEnter={(e) => handleMouseEnter(e, `syntax.${syn}`, synDesc, 'primitive', `"${syn}"`)}
@@ -1138,7 +1149,12 @@ export default function App() {
                     })()}
                     {currentFileObj.package && (
                       <div>
-                        <span className="text-syn-keyword">package</span>{' '}
+                        <KeywordLink
+                          keyword="package"
+                          onMouseEnter={handleMouseEnter}
+                          onMouseLeave={handleMouseLeave}
+                          onPinClick={handlePinClick}
+                        />{' '}
                         <span className="text-app-textMain">{currentFileObj.package}</span>;
                       </div>
                     )}
@@ -1152,7 +1168,12 @@ export default function App() {
                           }
                         }}
                       >
-                        <span className="text-syn-keyword">import</span>{' '}
+                        <KeywordLink
+                          keyword="import"
+                          onMouseEnter={handleMouseEnter}
+                          onMouseLeave={handleMouseLeave}
+                          onPinClick={handlePinClick}
+                        />{' '}
                         <span className="text-syn-string">"{dep}"</span>;
                       </div>
                     ))}
@@ -1161,7 +1182,12 @@ export default function App() {
                         .filter(([k]) => !k.startsWith('$') && k !== 'uninterpretedOption')
                         .map(([k, v]) => (
                           <div key={k}>
-                            <span className="text-syn-keyword">option</span>{' '}
+                            <KeywordLink
+                              keyword="option"
+                              onMouseEnter={handleMouseEnter}
+                              onMouseLeave={handleMouseLeave}
+                              onPinClick={handlePinClick}
+                            />{' '}
                             <OptionLink
                               optionKey={k}
                               parentOptionsMessage="FileOptions"

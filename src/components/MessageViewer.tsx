@@ -5,6 +5,7 @@ import OptionLink from './OptionLink';
 import { FormatOptions } from './options-formatter';
 import { formatOptionValue } from '../lib/options-formatter-helpers';
 import EnumViewer from './EnumViewer';
+import KeywordLink from './KeywordLink';
 
 interface MessageViewerProps {
   message: any;
@@ -128,7 +129,7 @@ export default function MessageViewer({
         </div>
       )}
       <div>
-        <span className="text-syn-keyword">message</span>{' '}
+        <KeywordLink keyword="message" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
         <span
           className="text-syn-type font-bold border-b border-dotted border-syn-type/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-text"
           onMouseEnter={(e) => onMouseEnter(e, fqn, { text: message.description || 'No documentation provided.' }, 'custom', message.name)}
@@ -146,7 +147,7 @@ export default function MessageViewer({
             .filter(([k]) => !k.startsWith('$') && k !== 'uninterpretedOption')
             .map(([k, v]) => (
               <div key={k} className="text-app-textMuted px-2 py-0.5 rounded -ml-2">
-                <span className="text-syn-keyword">option</span>{' '}
+                <KeywordLink keyword="option" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
                 <OptionLink
                   optionKey={k}
                   parentOptionsMessage="MessageOptions"
@@ -166,7 +167,7 @@ export default function MessageViewer({
                   <div className="text-syn-comment mb-1 whitespace-pre-wrap">{item.description.split('\n').map((line: string) => `// ${line}`).join('\n')}</div>
                 )}
                 <div className="text-app-textMain">
-                  <span className="text-syn-keyword">oneof</span>{' '}
+                  <KeywordLink keyword="oneof" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
                   <span className="text-app-textBright font-semibold">{item.name}</span> {'{'}
                 </div>
                 <div className="pl-6 border-l border-l-app-border/40 ml-2 my-1">
@@ -223,12 +224,12 @@ export default function MessageViewer({
                   </div>
                 )}
                 <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">
-                  {f.label === 3 && <span className="text-syn-keyword">repeated </span>}
+                  {f.label === 3 && <KeywordLink keyword="repeated" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>repeated </KeywordLink>}
                   {((!isProto3 && f.label === 1) || f.proto3Optional) && (
-                    <span className="text-syn-keyword">optional </span>
+                    <KeywordLink keyword="optional" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>optional </KeywordLink>
                   )}
                   {!isProto3 && f.label === 2 && (
-                    <span className="text-syn-keyword">required </span>
+                    <KeywordLink keyword="required" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>required </KeywordLink>
                   )}
                   <TypeLink
                     typeName={f.typeName}
