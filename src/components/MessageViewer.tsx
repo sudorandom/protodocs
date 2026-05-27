@@ -224,12 +224,12 @@ export default function MessageViewer({
                   </div>
                 )}
                 <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">
-                  {f.label === 3 && <KeywordLink keyword="repeated" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>repeated </KeywordLink>}
+                  {f.label === 3 && <><KeywordLink keyword="repeated" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>repeated</KeywordLink>{' '}</>}
                   {((!isProto3 && f.label === 1) || f.proto3Optional) && (
-                    <KeywordLink keyword="optional" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>optional </KeywordLink>
+                    <><KeywordLink keyword="optional" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>optional</KeywordLink>{' '}</>
                   )}
                   {!isProto3 && f.label === 2 && (
-                    <KeywordLink keyword="required" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>required </KeywordLink>
+                    <><KeywordLink keyword="required" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>required</KeywordLink>{' '}</>
                   )}
                   <TypeLink
                     typeName={f.typeName}
