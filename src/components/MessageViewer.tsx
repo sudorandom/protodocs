@@ -51,6 +51,20 @@ export default function MessageViewer({
     ? `.${file.package}.${message.name}`
     : `.${message.name}`;
 
+  const mapEntries = useMemo(() => {
+    const entries: Record<string, { keyField: any; valField: any }> = {};
+    message.nestedType?.forEach((nm: any) => {
+      if (nm.options?.mapEntry || nm.options?.map_entry) {
+        const keyField = nm.field?.find((f: any) => f.number === 1);
+        const valField = nm.field?.find((f: any) => f.number === 2);
+        if (keyField && valField) {
+          entries[nm.name] = { keyField, valField };
+        }
+      }
+    });
+    return entries;
+  }, [message.nestedType]);
+
   // Group nested extensions by extendee
   const extensionGroups = useMemo(() => {
     if (!message.extension) return {};
@@ -147,7 +161,7 @@ export default function MessageViewer({
 
       <div className="my-1">
         {message.options && (() => {
-          const optionEntries = Object.entries(message.options).filter(([k]) => !k.startsWith('$') && k !== 'uninterpretedOption' && k !== 'mapEntry');
+          const optionEntries = Object.entries(message.options).filter(([k]) => !k.startsWith('$') && k !== 'uninterpretedOption' && k !== 'mapEntry' && k !== 'map_entry');
           const isCustom = (key: string) => key.startsWith('[') || key.startsWith('(');
           const standardEntries = optionEntries.filter(([k]) => !isCustom(k));
           const customEntries = optionEntries.filter(([k]) => isCustom(k));
@@ -235,6 +249,9 @@ export default function MessageViewer({
             const f = item.field;
             const isProto3 = file.syntax === 'proto3';
             const fieldFqn = `${fqn}.${f.name}`;
+            const lastPart = f.typeName ? f.typeName.split('.').pop() : '';
+            const isMap = (f.type === 11 || f.type === 'TYPE_MESSAGE') && lastPart && mapEntries[lastPart];
+
             return (
               <div key={f.name} id={fieldFqn} className="mb-2 last:mb-0">
                 {f.description && (
@@ -244,21 +261,48 @@ export default function MessageViewer({
                 )}
                 <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap text-app-textMuted">
                   {'  '.repeat(indent + 1)}
-                  {f.label === 3 && <><KeywordLink keyword="repeated" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>repeated</KeywordLink>{' '}</>}
-                  {((!isProto3 && f.label === 1) || f.proto3Optional) && (
-                    <><KeywordLink keyword="optional" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>optional</KeywordLink>{' '}</>
+                  {isMap ? (
+                    <>
+                      <KeywordLink keyword="map" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>map</KeywordLink>
+                      {'<'}
+                      <TypeLink
+                        typeName={mapEntries[lastPart].keyField.typeName}
+                        typeId={mapEntries[lastPart].keyField.type}
+                        typeIndex={typeIndex}
+                        onMouseEnter={onMouseEnter}
+                        onMouseLeave={onMouseLeave}
+                        onPinClick={onPinClick}
+                      />
+                      {', '}
+                      <TypeLink
+                        typeName={mapEntries[lastPart].valField.typeName}
+                        typeId={mapEntries[lastPart].valField.type}
+                        typeIndex={typeIndex}
+                        onMouseEnter={onMouseEnter}
+                        onMouseLeave={onMouseLeave}
+                        onPinClick={onPinClick}
+                      />
+                      {'>'}
+                    </>
+                  ) : (
+                    <>
+                      {f.label === 3 && <><KeywordLink keyword="repeated" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>repeated</KeywordLink>{' '}</>}
+                      {((!isProto3 && f.label === 1) || f.proto3Optional) && (
+                        <><KeywordLink keyword="optional" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>optional</KeywordLink>{' '}</>
+                      )}
+                      {!isProto3 && f.label === 2 && (
+                        <><KeywordLink keyword="required" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>required</KeywordLink>{' '}</>
+                      )}
+                      <TypeLink
+                        typeName={f.typeName}
+                        typeId={f.type}
+                        typeIndex={typeIndex}
+                        onMouseEnter={onMouseEnter}
+                        onMouseLeave={onMouseLeave}
+                        onPinClick={onPinClick}
+                      />
+                    </>
                   )}
-                  {!isProto3 && f.label === 2 && (
-                    <><KeywordLink keyword="required" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>required</KeywordLink>{' '}</>
-                  )}
-                  <TypeLink
-                    typeName={f.typeName}
-                    typeId={f.type}
-                    typeIndex={typeIndex}
-                    onMouseEnter={onMouseEnter}
-                    onMouseLeave={onMouseLeave}
-                    onPinClick={onPinClick}
-                  />
                   {' '}
                   <span className="text-app-textMain">{f.name}</span>
                   {' '}
@@ -313,7 +357,7 @@ export default function MessageViewer({
       ))}
 
       {/* Nested messages (skip synthetic map-entry messages) */}
-      {message.nestedType?.filter((nested: any) => !nested.options?.mapEntry).map((nested: any) => (
+      {message.nestedType?.filter((nested: any) => !(nested.options?.mapEntry || nested.options?.map_entry)).map((nested: any) => (
         <div key={nested.name} className="-ml-3">
           <MessageViewer
             message={nested}

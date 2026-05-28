@@ -117,7 +117,7 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
     let fieldLine = indent;
 
     const lastPart = field.typeName ? field.typeName.split('.').pop() : '';
-    if (field.type === 11 && lastPart && mapEntries[lastPart]) {
+    if ((field.type === 11 || field.type === 'TYPE_MESSAGE') && lastPart && mapEntries[lastPart]) {
       const entry = mapEntries[lastPart];
       fieldLine += `map<${entry.keyType}, ${entry.valueType}> ${field.name} = ${field.number}`;
     } else {
@@ -270,7 +270,7 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
     if (msg.options) {
       const optionEntries: [string, any][] = [];
       Object.entries(msg.options).forEach(([k, v]) => {
-        if (k.startsWith('$') || k === 'uninterpretedOption' || k === 'mapEntry') return;
+        if (k.startsWith('$') || k === 'uninterpretedOption' || k === 'mapEntry' || k === 'map_entry') return;
         optionEntries.push([k, v]);
       });
 
@@ -299,7 +299,7 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
     // Map nested types to map entries to avoid printing them as standard nested messages
     const mapEntries: Record<string, { keyType: string, valueType: string }> = {};
     msg.nestedType?.forEach((nm: any) => {
-      if (nm.options?.mapEntry) {
+      if (nm.options?.mapEntry || nm.options?.map_entry) {
         const keyField = nm.field?.find((f: any) => f.number === 1);
         const valField = nm.field?.find((f: any) => f.number === 2);
         if (keyField && valField) {
@@ -318,7 +318,7 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
     });
 
     // 3. Nested Messages (filtering out map entry messages)
-    msg.nestedType?.filter((nm: any) => !nm.options?.mapEntry).forEach((nestedMsg: any) => {
+    msg.nestedType?.filter((nm: any) => !(nm.options?.mapEntry || nm.options?.map_entry)).forEach((nestedMsg: any) => {
       if (body !== '' && !body.endsWith('\n\n')) body += '\n';
       body += formatMessage(nestedMsg, indent + '  ');
     });

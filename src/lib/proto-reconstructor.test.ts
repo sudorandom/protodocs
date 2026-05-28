@@ -179,4 +179,48 @@ describe('proto-reconstructor', () => {
       '}\n'
     );
   });
+
+  it('should reconstruct map fields correctly', () => {
+    const file = {
+      syntax: 'proto3',
+      package: 'test.package',
+      messageType: [
+        {
+          name: 'MyMessage',
+          nestedType: [
+            {
+              name: 'FieldsEntry',
+              options: {
+                map_entry: true,
+              },
+              field: [
+                { name: 'key', number: 1, type: 9, label: 'LABEL_OPTIONAL' },
+                { name: 'value', number: 2, type: 9, label: 'LABEL_OPTIONAL' },
+              ],
+            },
+          ],
+          field: [
+            {
+              name: 'fields',
+              number: 1,
+              type: 'TYPE_MESSAGE',
+              label: 'LABEL_REPEATED',
+              typeName: '.test.package.MyMessage.FieldsEntry',
+            },
+          ],
+        },
+      ],
+    };
+
+    const output = reconstructProto(file);
+    expect(output).toBe(
+      'syntax = "proto3";\n' +
+      '\n' +
+      'package test.package;\n' +
+      '\n' +
+      'message MyMessage {\n' +
+      '  map<string, string> fields = 1;\n' +
+      '}\n'
+    );
+  });
 });

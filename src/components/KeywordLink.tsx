@@ -49,6 +49,10 @@ const KEYWORD_DESCRIPTIONS: Record<string, { text: string; url: string }> = {
     text: 'Defines a group of mutually exclusive fields where at most one field can be set at a time. Setting a value clears other fields in the group.',
     url: 'https://protobuf.dev/programming-guides/proto3/#oneof',
   },
+  map: {
+    text: 'Specifies an unordered map type linking unique keys to values (e.g. map<string, Value>).',
+    url: 'https://protobuf.dev/programming-guides/proto3/#maps',
+  },
   service: {
     text: 'Defines a set of Remote Procedure Call (RPC) methods exported by a server, specifying their request and response message types.',
     url: 'https://protobuf.dev/programming-guides/proto3/#services',
