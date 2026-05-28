@@ -99,10 +99,10 @@ test.describe('Screenshot tests', () => {
     // Fill search query to filter
     await searchInput.fill('ElizaService');
     
-    // Verify the ElizaService item is visible with its service badge
-    const item = page.locator('span', { hasText: 'ElizaService' }).first();
+    // Verify the ElizaService item is visible with its service badge (scoped to the modal overlay)
+    const item = page.locator('div.fixed.z-50 span', { hasText: 'ElizaService' }).first();
     await expect(item).toBeVisible();
-    await expect(page.locator('span', { hasText: 'service' }).first()).toBeVisible();
+    await expect(page.locator('div.fixed.z-50 span', { hasText: 'service' }).first()).toBeVisible();
 
     // Click the item to navigate
     await item.click();
@@ -123,7 +123,7 @@ test.describe('Screenshot tests', () => {
 
     // Verify hash changed to #/ and Welcome message is visible
     await expect(page).toHaveURL(/#\/$/);
-    await expect(page.locator('h2', { hasText: 'Welcome to ProtoDocs' })).toBeVisible();
+    await expect(page.locator('h1', { hasText: 'Welcome to ProtoDocs' })).toBeVisible();
 
     // Navigate to a file manually via sidebar
     const fileLink = page.locator('span', { hasText: 'http.proto' }).first();
@@ -136,6 +136,6 @@ test.describe('Screenshot tests', () => {
 
     // Verify hash goes back to #/ and Welcome message is visible again
     await expect(page).toHaveURL(/#\/$/);
-    await expect(page.locator('h2', { hasText: 'Welcome to ProtoDocs' })).toBeVisible();
+    await expect(page.locator('h1', { hasText: 'Welcome to ProtoDocs' })).toBeVisible();
   });
 });
