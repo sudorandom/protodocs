@@ -91,16 +91,16 @@ export default function Tooltip({
   return (
     <div
       ref={tooltipRef}
-      className={`fixed z-50 bg-app-panel border border-app-border rounded-lg shadow-2xl p-4 w-[32rem] transition-all duration-150 ease-out ${
+      className={`fixed z-50 bg-app-panel border border-app-border rounded-lg shadow-2xl p-4 max-w-[calc(100vw-16px)] w-[32rem] transition-all duration-150 ease-out ${
         activeTooltip.isPinned ? 'pointer-events-auto opacity-100 scale-100' : 'pointer-events-none opacity-95 scale-98'
       }`}
       style={{ top: coords.top, left: coords.left }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="flex items-start justify-between mb-2.5 pb-2 border-b border-app-border">
-        <div>
+      <div className="flex items-start justify-between mb-2.5 pb-2 border-b border-app-border gap-2">
+        <div className="min-w-0 flex-1">
           <div
-            className={`font-mono text-sm font-semibold truncate max-w-[440px] ${
+            className={`font-mono text-sm font-semibold truncate max-w-[calc(100vw-96px)] md:max-w-[440px] ${
               activeTooltip.category === 'primitive' ? 'text-syn-primitive' : 'text-syn-type'
             }`}
             title={activeTooltip.fqn}

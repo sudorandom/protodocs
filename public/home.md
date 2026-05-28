@@ -4,6 +4,11 @@
 
 ---
 
+### Core Schema Definitions
+Explore the core definitions of Protocol Buffers by visiting the [google/protobuf/descriptor.proto](/#/files/google/protobuf/descriptor.proto) file, where all custom options, messages, enums, and compiler settings are defined.
+
+---
+
 ## What is ProtoDocs?
 
 ProtoDocs solves the challenge of sharing and exploring complex Protobuf structures, services, and extensions. Instead of relying on static HTML generation steps or IDE-bound codebases, ProtoDocs provides an interactive interface to:

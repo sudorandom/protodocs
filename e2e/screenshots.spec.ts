@@ -80,4 +80,62 @@ test.describe('Screenshot tests', () => {
     await expect(page.locator('span', { hasText: 'descriptor.proto' }).first()).toBeVisible();
     await expect(page.locator('span', { hasText: '★' }).first()).toBeVisible();
   });
+
+  test('quickbrowse outline browser and navigation', async ({ page }) => {
+    // Navigate directly to the eliza.proto file to activate the Quick Browse button
+    await page.goto('/?descriptors=/eliza.binpb#/files/connectrpc/eliza/v1/eliza.proto');
+    
+    // Verify the Quick Browse button in the top navbar is visible
+    const fabButton = page.locator('button[title*="Quick Browse Outline"]');
+    await expect(fabButton).toBeVisible();
+
+    // Click the button to open the modal
+    await fabButton.click();
+    
+    // Verify modal and search input is visible
+    const searchInput = page.locator('input[placeholder*="Search services, messages, enums"]');
+    await expect(searchInput).toBeVisible();
+
+    // Fill search query to filter
+    await searchInput.fill('ElizaService');
+    
+    // Verify the ElizaService item is visible with its service badge
+    const item = page.locator('span', { hasText: 'ElizaService' }).first();
+    await expect(item).toBeVisible();
+    await expect(page.locator('span', { hasText: 'service' }).first()).toBeVisible();
+
+    // Click the item to navigate
+    await item.click();
+
+    // Verify the modal is closed
+    await expect(searchInput).not.toBeVisible();
+  });
+
+  test('home page hash navigation and logo clicks', async ({ page }) => {
+    // Start at a file page
+    await page.goto('/?descriptors=/googleapis.binpb,/gnostic.binpb,/protovalidate.binpb#/files/google/api/http.proto');
+    await expect(page.locator('[id=".google.api.HttpRule"]')).toBeVisible();
+
+    // Click the home logo link in the sidebar
+    const logoLink = page.locator('div.flex.items-center.gap-2.truncate.cursor-pointer').first();
+    await expect(logoLink).toBeVisible();
+    await logoLink.click();
+
+    // Verify hash changed to #/ and Welcome message is visible
+    await expect(page).toHaveURL(/#\/$/);
+    await expect(page.locator('h2', { hasText: 'Welcome to ProtoDocs' })).toBeVisible();
+
+    // Navigate to a file manually via sidebar
+    const fileLink = page.locator('span', { hasText: 'http.proto' }).first();
+    await expect(fileLink).toBeVisible();
+    await fileLink.click();
+    await expect(page.locator('[id=".google.api.HttpRule"]')).toBeVisible();
+
+    // Go back using browser back button
+    await page.goBack();
+
+    // Verify hash goes back to #/ and Welcome message is visible again
+    await expect(page).toHaveURL(/#\/$/);
+    await expect(page.locator('h2', { hasText: 'Welcome to ProtoDocs' })).toBeVisible();
+  });
 });

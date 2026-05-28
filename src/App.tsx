@@ -16,6 +16,7 @@ import OptionLink from './components/OptionLink';
 import { populateTypeIndexWithOptions, normalizeFileDescriptor } from './lib/option-resolver';
 import { reconstructProto, getEditionString } from './lib/proto-reconstructor';
 import KeywordLink from './components/KeywordLink';
+import QuickBrowse from './components/QuickBrowse';
 
 interface AppConfig {
   loadingMethod: 'http' | 'grpc-web' | 'connect';
@@ -82,6 +83,7 @@ export default function App() {
   const [schema, setSchema] = useState<{ file: any[] }>({ file: [] });
   const [activeFile, setActiveFile] = useState<string>('');
   const [isDownloadOpen, setIsDownloadOpen] = useState<boolean>(false);
+  const [isQuickBrowseOpen, setIsQuickBrowseOpen] = useState<boolean>(false);
 
   const registry = useMemo(() => {
     if (!schema.file || schema.file.length === 0) return null;
@@ -557,6 +559,8 @@ export default function App() {
         } else {
           setActiveFile(filepath);
         }
+      } else if (!filepath) {
+        setActiveFile('');
       }
     };
     window.addEventListener('hashchange', handleHashChange);
@@ -576,12 +580,18 @@ export default function App() {
 
   // Update hash when active file changes manually
   useEffect(() => {
-    if (!activeFile) return;
+    if (loading) return;
     const { filepath } = parseHash(window.location.hash);
-    if (filepath !== activeFile) {
-      window.location.hash = `#/files/${activeFile}`;
+    if (activeFile) {
+      if (filepath !== activeFile) {
+        window.location.hash = `#/files/${activeFile}`;
+      }
+    } else {
+      if (window.location.hash && window.location.hash !== '#/' && window.location.hash !== '#') {
+        window.location.hash = '#/';
+      }
     }
-  }, [activeFile]);
+  }, [activeFile, loading]);
 
   // Close unpinned tooltips and download dropdown when clicking around
   useEffect(() => {
@@ -969,6 +979,19 @@ export default function App() {
               </div>
             )}
 
+            {activeFile && (
+              <button
+                type="button"
+                onClick={() => setIsQuickBrowseOpen(true)}
+                title="Quick Browse Outline (Cmd+K)"
+                className="text-app-textMuted hover:text-app-textBright p-1.5 rounded-lg hover:bg-app-hoverBg cursor-pointer transition-colors flex items-center justify-center shrink-0"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.25">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                </svg>
+              </button>
+            )}
+
             {/* Mobile Search Trigger Icon */}
             {!isMobileSearchExpanded && (
               <button
@@ -1295,6 +1318,17 @@ export default function App() {
         onGoToDefinition={goToDefinition}
         onFindReferences={findReferences}
       />
+
+      {/* QuickBrowse outline outline catalog */}
+      {schema && schema.file && (
+        <QuickBrowse
+          schema={schema}
+          activeFile={activeFile}
+          onNavigate={goToElement}
+          isOpen={isQuickBrowseOpen}
+          setIsOpen={setIsQuickBrowseOpen}
+        />
+      )}
 
     </div>
   );
