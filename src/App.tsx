@@ -193,7 +193,7 @@ export default function App() {
         }
       }
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         el.classList.remove('highlight-flash');
         void el.offsetWidth; // trigger reflow
         el.classList.add('highlight-flash');
@@ -410,7 +410,7 @@ export default function App() {
             setTimeout(() => {
               const el = document.getElementById(symbol);
               if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 el.classList.add('highlight-flash');
               }
             }, 200);
