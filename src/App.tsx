@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createFileRegistry } from '@bufbuild/protobuf';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -129,6 +129,7 @@ export default function App() {
   const [activeTooltip, setActiveTooltip] = useState<TooltipState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const contentAreaRef = useRef<HTMLDivElement>(null);
 
   // Build type index for cross-linking
   const typeIndex = useMemo(() => {
@@ -592,6 +593,13 @@ export default function App() {
       }
     }
   }, [activeFile, loading]);
+
+  // Scroll content area back to top when switching files/pages
+  useEffect(() => {
+    if (contentAreaRef.current) {
+      contentAreaRef.current.scrollTop = 0;
+    }
+  }, [activeFile]);
 
   // Close unpinned tooltips and download dropdown when clicking around
   useEffect(() => {
@@ -1096,7 +1104,7 @@ export default function App() {
         </div>
 
         {/* Content Area - Fixed width & overflow-x-hidden ensures no horizontal stretching */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-8 bg-app-code transition-colors duration-200 relative select-text w-full">
+        <div ref={contentAreaRef} className="flex-1 overflow-y-auto overflow-x-hidden p-8 bg-app-code transition-colors duration-200 relative select-text w-full">
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center bg-app-code z-10 text-app-textMuted font-mono">
               <div className="flex flex-col items-center gap-4">
