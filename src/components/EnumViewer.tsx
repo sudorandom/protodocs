@@ -58,7 +58,15 @@ export default function EnumViewer({
       <div className="font-mono whitespace-pre-wrap text-app-textMain">
         {'  '.repeat(indent)}
         <KeywordLink keyword="enum" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
-        <span className="text-syn-type font-bold">{enumObj.name}</span> {'{'}
+        <span
+          className="text-syn-type font-bold border-b border-dotted border-syn-type/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-text"
+          onMouseEnter={(e) => onMouseEnter(e, fqn, { text: cleanComment(enumObj.description || 'No documentation provided.') }, 'custom', enumObj.name)}
+          onMouseLeave={onMouseLeave}
+          onClick={(e) => onPinClick(e, fqn, { text: cleanComment(enumObj.description || 'No documentation provided.') }, 'custom', enumObj.name)}
+        >
+          {enumObj.name}
+        </span>{' '}
+        {'{'}
       </div>
       
       <div className="my-1">
