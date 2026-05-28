@@ -9,7 +9,7 @@
     "lint": "eslint . && tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
-    "package": "npm run build && rm -rf dist-static && mkdir -p dist-static && cp -R dist/assets dist/index.html dist/404.html dist/favicon.svg dist/logo.png dist/config.json dist/eliza.binpb dist/home.md dist/footer.md dist-static/ && tar -czf protodocs-static.tar.gz -C dist-static . && rm -rf dist-static"
+    "package": "npm run build && rm -rf dist-static && mkdir -p dist-static && cp -R dist/assets dist/index.html dist/404.html dist/favicon.svg dist/logo.png dist/config.json dist/*.binpb dist/home.md dist/footer.md dist-static/ && tar -czf protodocs-static.tar.gz -C dist-static . && rm -rf dist-static"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.12.0",

@@ -1,4 +1,4 @@
-import { formatOptionValue } from './options-formatter-helpers';
+import { formatOptionValue, formatOptionKey } from './options-formatter-helpers';
 
 /**
  * Helper to clean type name based on package scoping.
@@ -59,28 +59,52 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
   }
 
   if (file.dependency && file.dependency.length > 0) {
-    file.dependency.forEach((dep: string) => {
-      out += `import "${dep}";\n`;
+    const publicSet = new Set<number>(file.publicDependency || []);
+    const weakSet = new Set<number>(file.weakDependency || []);
+    const depsWithMetadata = file.dependency.map((dep: string, index: number) => ({
+      name: dep,
+      isPublic: publicSet.has(index),
+      isWeak: weakSet.has(index)
+    }));
+
+    // Sort alphabetically by dependency name
+    depsWithMetadata.sort((a: any, b: any) => a.name.localeCompare(b.name));
+
+    depsWithMetadata.forEach((dep: any) => {
+      const modifier = dep.isPublic ? 'public ' : dep.isWeak ? 'weak ' : '';
+      out += `import ${modifier}"${dep.name}";\n`;
     });
     out += `\n`;
   }
 
   // File Options
   if (file.options) {
-    let hasOptions = false;
+    const optionEntries: [string, any][] = [];
     Object.entries(file.options).forEach(([k, v]) => {
       if (k.startsWith('$') || k === 'uninterpretedOption') return;
-      // Repeated option values must be emitted as separate `option` statements
-      if (Array.isArray(v)) {
-        v.forEach((item: any) => {
-          out += `option ${k} = ${formatOptionValue(item, k, 'FileOptions', typeIndex)};\n`;
-        });
-      } else {
-        out += `option ${k} = ${formatOptionValue(v, k, 'FileOptions', typeIndex)};\n`;
-      }
-      hasOptions = true;
+      optionEntries.push([k, v]);
     });
-    if (hasOptions) out += `\n`;
+
+    if (optionEntries.length > 0) {
+      const isCustom = (key: string) => key.startsWith('[') || key.startsWith('(');
+      const standardEntries = optionEntries.filter(([k]) => !isCustom(k));
+      const customEntries = optionEntries.filter(([k]) => isCustom(k));
+      standardEntries.sort((a, b) => a[0].localeCompare(b[0]));
+      customEntries.sort((a, b) => formatOptionKey(a[0]).localeCompare(formatOptionKey(b[0])));
+
+      const sortedEntries = [...standardEntries, ...customEntries];
+      sortedEntries.forEach(([k, v]) => {
+        const formattedKey = formatOptionKey(k);
+        if (Array.isArray(v)) {
+          v.forEach((item: any) => {
+            out += `option ${formattedKey} = ${formatOptionValue(item, k, 'FileOptions', typeIndex)};\n`;
+          });
+        } else {
+          out += `option ${formattedKey} = ${formatOptionValue(v, k, 'FileOptions', typeIndex)};\n`;
+        }
+      });
+      out += `\n`;
+    }
   }
 
   const formatComments = (desc?: string, indent: string = ''): string => {
@@ -117,24 +141,36 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
       fieldLine += `${typeName} ${field.name} = ${field.number}`;
     }
 
-    const opts: string[] = [];
+    const optionEntries: [string, any][] = [];
     if (field.jsonName && field.jsonName !== field.name) {
-      opts.push(`json_name = "${field.jsonName}"`);
+      optionEntries.push(['json_name', field.jsonName]);
     }
     if (field.options) {
       Object.entries(field.options).forEach(([k, v]) => {
         if (k.startsWith('$') || k === 'uninterpretedOption') return;
-        // Repeated option values must be emitted as separate key=value pairs inside []
-        if (Array.isArray(v)) {
-          v.forEach((item: any) => {
-            opts.push(`${k} = ${formatOptionValue(item, k, 'FieldOptions', typeIndex)}`);
-          });
-        } else {
-          opts.push(`${k} = ${formatOptionValue(v, k, 'FieldOptions', typeIndex)}`);
-        }
+        optionEntries.push([k, v]);
       });
     }
-    if (opts.length > 0) {
+
+    if (optionEntries.length > 0) {
+      const isCustom = (key: string) => key.startsWith('[') || key.startsWith('(');
+      const standardEntries = optionEntries.filter(([k]) => !isCustom(k));
+      const customEntries = optionEntries.filter(([k]) => isCustom(k));
+      standardEntries.sort((a, b) => a[0].localeCompare(b[0]));
+      customEntries.sort((a, b) => formatOptionKey(a[0]).localeCompare(formatOptionKey(b[0])));
+
+      const sortedEntries = [...standardEntries, ...customEntries];
+      const opts: string[] = [];
+      sortedEntries.forEach(([k, v]) => {
+        const formattedKey = formatOptionKey(k);
+        if (Array.isArray(v)) {
+          v.forEach((item: any) => {
+            opts.push(`${formattedKey} = ${formatOptionValue(item, k, 'FieldOptions', typeIndex)}`);
+          });
+        } else {
+          opts.push(`${formattedKey} = ${formatOptionValue(v, k, 'FieldOptions', typeIndex)}`);
+        }
+      });
       fieldLine += ` [${opts.join(', ')}]`;
     }
 
@@ -143,21 +179,122 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
   };
 
   const formatEnum = (enm: any, indent: string): string => {
+    let body = '';
+
+    // 1. Enum options
+    if (enm.options) {
+      const optionEntries: [string, any][] = [];
+      Object.entries(enm.options).forEach(([k, v]) => {
+        if (k.startsWith('$') || k === 'uninterpretedOption') return;
+        optionEntries.push([k, v]);
+      });
+
+      if (optionEntries.length > 0) {
+        const isCustom = (key: string) => key.startsWith('[') || key.startsWith('(');
+        const standardEntries = optionEntries.filter(([k]) => !isCustom(k));
+        const customEntries = optionEntries.filter(([k]) => isCustom(k));
+        standardEntries.sort((a, b) => a[0].localeCompare(b[0]));
+        customEntries.sort((a, b) => formatOptionKey(a[0]).localeCompare(formatOptionKey(b[0])));
+
+        const sortedEntries = [...standardEntries, ...customEntries];
+        sortedEntries.forEach(([k, v]) => {
+          const formattedKey = formatOptionKey(k);
+          const currentIndentLevel = indent.length / 2 + 1;
+          if (Array.isArray(v)) {
+            v.forEach((item: any) => {
+              body += `${indent}  option ${formattedKey} = ${formatOptionValue(item, k, 'EnumOptions', typeIndex, currentIndentLevel)};\n`;
+            });
+          } else {
+            body += `${indent}  option ${formattedKey} = ${formatOptionValue(v, k, 'EnumOptions', typeIndex, currentIndentLevel)};\n`;
+          }
+        });
+      }
+    }
+
+    // 2. Enum values
+    if (enm.value && enm.value.length > 0) {
+      if (body !== '') {
+        body += '\n'; // Blank line after enum options
+      }
+      enm.value.forEach((val: any) => {
+        body += formatComments(val.description, indent + '  ');
+        let valLine = `${indent}  ${val.name} = ${val.number}`;
+
+        const optionEntries: [string, any][] = [];
+        if (val.options) {
+          Object.entries(val.options).forEach(([k, v]) => {
+            if (k.startsWith('$') || k === 'uninterpretedOption') return;
+            optionEntries.push([k, v]);
+          });
+        }
+
+        if (optionEntries.length > 0) {
+          const isCustom = (key: string) => key.startsWith('[') || key.startsWith('(');
+          const standardEntries = optionEntries.filter(([k]) => !isCustom(k));
+          const customEntries = optionEntries.filter(([k]) => isCustom(k));
+          standardEntries.sort((a, b) => a[0].localeCompare(b[0]));
+          customEntries.sort((a, b) => formatOptionKey(a[0]).localeCompare(formatOptionKey(b[0])));
+
+          const sortedEntries = [...standardEntries, ...customEntries];
+          const opts: string[] = [];
+          sortedEntries.forEach(([k, v]) => {
+            const formattedKey = formatOptionKey(k);
+            if (Array.isArray(v)) {
+              v.forEach((item: any) => {
+                opts.push(`${formattedKey} = ${formatOptionValue(item, k, 'EnumValueOptions', typeIndex)}`);
+              });
+            } else {
+              opts.push(`${formattedKey} = ${formatOptionValue(v, k, 'EnumValueOptions', typeIndex)}`);
+            }
+          });
+          valLine += ` [${opts.join(', ')}]`;
+        }
+
+        valLine += ';\n';
+        body += valLine;
+      });
+    }
+
     let enumStr = '';
     enumStr += formatComments(enm.description, indent);
     enumStr += `${indent}enum ${enm.name} {\n`;
-    enm.value?.forEach((val: any) => {
-      enumStr += formatComments(val.description, indent + '  ');
-      enumStr += `${indent}  ${val.name} = ${val.number};\n`;
-    });
+    enumStr += body;
     enumStr += `${indent}}\n\n`;
     return enumStr;
   };
 
   const formatMessage = (msg: any, indent: string): string => {
-    let msgStr = '';
-    msgStr += formatComments(msg.description, indent);
-    msgStr += `${indent}message ${msg.name} {\n`;
+    let body = '';
+
+    // 1. Message options
+    if (msg.options) {
+      const optionEntries: [string, any][] = [];
+      Object.entries(msg.options).forEach(([k, v]) => {
+        if (k.startsWith('$') || k === 'uninterpretedOption' || k === 'mapEntry') return;
+        optionEntries.push([k, v]);
+      });
+
+      if (optionEntries.length > 0) {
+        const isCustom = (key: string) => key.startsWith('[') || key.startsWith('(');
+        const standardEntries = optionEntries.filter(([k]) => !isCustom(k));
+        const customEntries = optionEntries.filter(([k]) => isCustom(k));
+        standardEntries.sort((a, b) => a[0].localeCompare(b[0]));
+        customEntries.sort((a, b) => formatOptionKey(a[0]).localeCompare(formatOptionKey(b[0])));
+
+        const sortedEntries = [...standardEntries, ...customEntries];
+        sortedEntries.forEach(([k, v]) => {
+          const formattedKey = formatOptionKey(k);
+          const currentIndentLevel = indent.length / 2 + 1;
+          if (Array.isArray(v)) {
+            v.forEach((item: any) => {
+              body += `${indent}  option ${formattedKey} = ${formatOptionValue(item, k, 'MessageOptions', typeIndex, currentIndentLevel)};\n`;
+            });
+          } else {
+            body += `${indent}  option ${formattedKey} = ${formatOptionValue(v, k, 'MessageOptions', typeIndex, currentIndentLevel)};\n`;
+          }
+        });
+      }
+    }
 
     // Map nested types to map entries to avoid printing them as standard nested messages
     const mapEntries: Record<string, { keyType: string, valueType: string }> = {};
@@ -174,14 +311,16 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
       }
     });
 
-    // Nested Enums
+    // 2. Nested Enums
     msg.enumType?.forEach((enm: any) => {
-      msgStr += formatEnum(enm, indent + '  ');
+      if (body !== '' && !body.endsWith('\n\n')) body += '\n';
+      body += formatEnum(enm, indent + '  ');
     });
 
-    // Nested Messages (filtering out map entry messages)
+    // 3. Nested Messages (filtering out map entry messages)
     msg.nestedType?.filter((nm: any) => !nm.options?.mapEntry).forEach((nestedMsg: any) => {
-      msgStr += formatMessage(nestedMsg, indent + '  ');
+      if (body !== '' && !body.endsWith('\n\n')) body += '\n';
+      body += formatMessage(nestedMsg, indent + '  ');
     });
 
     // Group fields by oneof index
@@ -199,25 +338,73 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
       }
     });
 
-    // Render normal fields
-    normalFields.forEach((field) => {
-      msgStr += formatComments(field.description, indent + '  ');
-      msgStr += formatField(field, indent + '  ', mapEntries);
-    });
+    // 4. Normal fields
+    if (normalFields.length > 0) {
+      if (body !== '' && !body.endsWith('\n\n')) body += '\n';
+      normalFields.forEach((field) => {
+        body += formatComments(field.description, indent + '  ');
+        body += formatField(field, indent + '  ', mapEntries);
+      });
+    }
 
-    // Render oneofs
+    // 5. Oneofs
     msg.oneofDecl?.forEach((oneof: any, oneofIdx: number) => {
       const fields = oneofFields[oneofIdx] || [];
       if (fields.length === 0) return;
-      msgStr += formatComments(oneof.description, indent + '  ');
-      msgStr += `${indent}  oneof ${oneof.name} {\n`;
+      if (body !== '' && !body.endsWith('\n\n')) body += '\n';
+
+      body += formatComments(oneof.description, indent + '  ');
+      body += `${indent}  oneof ${oneof.name} {\n`;
+
+      let hasOneofOptions = false;
+      let oneofBody = '';
+      if (oneof.options) {
+        const optionEntries: [string, any][] = [];
+        Object.entries(oneof.options).forEach(([k, v]) => {
+          if (k.startsWith('$') || k === 'uninterpretedOption') return;
+          optionEntries.push([k, v]);
+        });
+
+        if (optionEntries.length > 0) {
+          const isCustom = (key: string) => key.startsWith('[') || key.startsWith('(');
+          const standardEntries = optionEntries.filter(([k]) => !isCustom(k));
+          const customEntries = optionEntries.filter(([k]) => isCustom(k));
+          standardEntries.sort((a, b) => a[0].localeCompare(b[0]));
+          customEntries.sort((a, b) => formatOptionKey(a[0]).localeCompare(formatOptionKey(b[0])));
+
+          const sortedEntries = [...standardEntries, ...customEntries];
+          sortedEntries.forEach(([k, v]) => {
+            const formattedKey = formatOptionKey(k);
+            const currentIndentLevel = indent.length / 2 + 2;
+            if (Array.isArray(v)) {
+              v.forEach((item: any) => {
+                oneofBody += `${indent}    option ${formattedKey} = ${formatOptionValue(item, k, 'OneofOptions', typeIndex, currentIndentLevel)};\n`;
+              });
+            } else {
+              oneofBody += `${indent}    option ${formattedKey} = ${formatOptionValue(v, k, 'OneofOptions', typeIndex, currentIndentLevel)};\n`;
+            }
+          });
+          hasOneofOptions = true;
+        }
+      }
+
+      if (hasOneofOptions && fields.length > 0) {
+        oneofBody += '\n';
+      }
+
       fields.forEach((field) => {
-        msgStr += formatComments(field.description, indent + '    ');
-        msgStr += formatField(field, indent + '    ', mapEntries, true);
+        oneofBody += formatComments(field.description, indent + '    ');
+        oneofBody += formatField(field, indent + '    ', mapEntries, true);
       });
-      msgStr += `${indent}  }\n\n`;
+
+      body += oneofBody;
+      body += `${indent}  }\n`;
     });
 
+    let msgStr = '';
+    msgStr += formatComments(msg.description, indent);
+    msgStr += `${indent}message ${msg.name} {\n`;
+    msgStr += body;
     msgStr += `${indent}}\n\n`;
     return msgStr;
   };
@@ -234,16 +421,93 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
 
   // Services
   file.service?.forEach((svc: any) => {
+    let body = '';
+
+    // Service options
+    if (svc.options) {
+      const optionEntries: [string, any][] = [];
+      Object.entries(svc.options).forEach(([k, v]) => {
+        if (k.startsWith('$') || k === 'uninterpretedOption') return;
+        optionEntries.push([k, v]);
+      });
+
+      if (optionEntries.length > 0) {
+        const isCustom = (key: string) => key.startsWith('[') || key.startsWith('(');
+        const standardEntries = optionEntries.filter(([k]) => !isCustom(k));
+        const customEntries = optionEntries.filter(([k]) => isCustom(k));
+        standardEntries.sort((a, b) => a[0].localeCompare(b[0]));
+        customEntries.sort((a, b) => formatOptionKey(a[0]).localeCompare(formatOptionKey(b[0])));
+
+        const sortedEntries = [...standardEntries, ...customEntries];
+        sortedEntries.forEach(([k, v]) => {
+          const formattedKey = formatOptionKey(k);
+          if (Array.isArray(v)) {
+            v.forEach((item: any) => {
+              body += `  option ${formattedKey} = ${formatOptionValue(item, k, 'ServiceOptions', typeIndex, 1)};\n`;
+            });
+          } else {
+            body += `  option ${formattedKey} = ${formatOptionValue(v, k, 'ServiceOptions', typeIndex, 1)};\n`;
+          }
+        });
+      }
+    }
+
+    // Methods
+    if (svc.method && svc.method.length > 0) {
+      if (body !== '') {
+        body += '\n'; // Blank line after service options
+      }
+      svc.method.forEach((method: any) => {
+        body += formatComments(method.description, '  ');
+        const streamInput = method.clientStreaming ? 'stream ' : '';
+        const streamOutput = method.serverStreaming ? 'stream ' : '';
+        const input = getFieldTypeName({ typeName: method.inputType }, file.package);
+        const output = getFieldTypeName({ typeName: method.outputType }, file.package);
+
+        let hasMethodOptions = false;
+        let optionLines = '';
+        if (method.options) {
+          const optionEntries: [string, any][] = [];
+          Object.entries(method.options).forEach(([k, v]) => {
+            if (k.startsWith('$') || k === 'uninterpretedOption') return;
+            optionEntries.push([k, v]);
+          });
+
+          if (optionEntries.length > 0) {
+            const isCustom = (key: string) => key.startsWith('[') || key.startsWith('(');
+            const standardEntries = optionEntries.filter(([k]) => !isCustom(k));
+            const customEntries = optionEntries.filter(([k]) => isCustom(k));
+            standardEntries.sort((a, b) => a[0].localeCompare(b[0]));
+            customEntries.sort((a, b) => formatOptionKey(a[0]).localeCompare(formatOptionKey(b[0])));
+
+            const sortedEntries = [...standardEntries, ...customEntries];
+            sortedEntries.forEach(([k, v]) => {
+              const formattedKey = formatOptionKey(k);
+              if (Array.isArray(v)) {
+                v.forEach((item: any) => {
+                  optionLines += `    option ${formattedKey} = ${formatOptionValue(item, k, 'MethodOptions', typeIndex, 2)};\n`;
+                });
+              } else {
+                optionLines += `    option ${formattedKey} = ${formatOptionValue(v, k, 'MethodOptions', typeIndex, 2)};\n`;
+              }
+            });
+            hasMethodOptions = true;
+          }
+        }
+
+        if (hasMethodOptions) {
+          body += `  rpc ${method.name}(${streamInput}${input}) returns (${streamOutput}${output}) {\n`;
+          body += optionLines;
+          body += `  }\n`;
+        } else {
+          body += `  rpc ${method.name}(${streamInput}${input}) returns (${streamOutput}${output});\n`;
+        }
+      });
+    }
+
     out += formatComments(svc.description, '');
     out += `service ${svc.name} {\n`;
-    svc.method?.forEach((method: any) => {
-      out += formatComments(method.description, '  ');
-      const streamInput = method.clientStreaming ? 'stream ' : '';
-      const streamOutput = method.serverStreaming ? 'stream ' : '';
-      const input = getFieldTypeName({ typeName: method.inputType }, file.package);
-      const output = getFieldTypeName({ typeName: method.outputType }, file.package);
-      out += `  rpc ${method.name}(${streamInput}${input}) returns (${streamOutput}${output});\n`;
-    });
+    out += body;
     out += `}\n\n`;
   });
 

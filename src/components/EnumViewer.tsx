@@ -1,7 +1,7 @@
 import React from 'react';
 import OptionLink from './OptionLink';
 import { FormatOptions } from './options-formatter';
-import { formatOptionValue } from '../lib/options-formatter-helpers';
+import { formatOptionValue, formatOptionKey } from '../lib/options-formatter-helpers';
 import KeywordLink from './KeywordLink';
 import { cleanComment } from '../lib/proto-reconstructor';
 
@@ -13,6 +13,7 @@ interface EnumViewerProps {
   parentFqn?: string;
   /** When true, renders with reduced bottom margin (for nesting inside a parent message). */
   nested?: boolean;
+  indent?: number;
   onMouseEnter: (
     e: React.MouseEvent,
     fqn: string,
@@ -36,6 +37,7 @@ export default function EnumViewer({
   typeIndex,
   parentFqn,
   nested,
+  indent = 0,
   onMouseEnter,
   onMouseLeave,
   onPinClick,
@@ -49,42 +51,52 @@ export default function EnumViewer({
   return (
     <div id={fqn} className={`${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}>
       {enumObj.description && (
-        <div className="text-syn-comment mb-1 whitespace-pre-wrap">
-          {cleanComment(enumObj.description).split('\n').map((line: string) => `// ${line}`).join('\n')}
+        <div className="text-syn-comment mb-1 whitespace-pre-wrap font-mono">
+          {cleanComment(enumObj.description).split('\n').map((line: string) => `${'  '.repeat(indent)}// ${line}`).join('\n')}
         </div>
       )}
-      <div>
+      <div className="font-mono whitespace-pre-wrap text-app-textMain">
+        {'  '.repeat(indent)}
         <KeywordLink keyword="enum" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
         <span className="text-syn-type font-bold">{enumObj.name}</span> {'{'}
       </div>
       
-      <div className="pl-8 my-1">
-        {enumObj.options &&
-          Object.entries(enumObj.options)
-            .filter(([k]) => !k.startsWith('$') && k !== 'uninterpretedOption')
-            .map(([k, v]) => (
-              <div key={k} className="text-app-textMuted px-2 py-0.5 rounded -ml-2">
-                <KeywordLink keyword="option" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
-                <OptionLink
-                  optionKey={k}
-                  parentOptionsMessage="EnumOptions"
-                  typeIndex={typeIndex}
-                  onMouseEnter={onMouseEnter}
-                  onMouseLeave={onMouseLeave}
-                  onPinClick={onPinClick}
-                /> = {formatOptionValue(v, k, 'EnumOptions', typeIndex)};
-              </div>
-            ))}
+      <div className="my-1">
+        {enumObj.options && (() => {
+          const optionEntries = Object.entries(enumObj.options).filter(([k]) => !k.startsWith('$') && k !== 'uninterpretedOption');
+          const isCustom = (key: string) => key.startsWith('[') || key.startsWith('(');
+          const standardEntries = optionEntries.filter(([k]) => !isCustom(k));
+          const customEntries = optionEntries.filter(([k]) => isCustom(k));
+          standardEntries.sort((a, b) => a[0].localeCompare(b[0]));
+          customEntries.sort((a, b) => formatOptionKey(a[0]).localeCompare(formatOptionKey(b[0])));
+
+          const sortedEntries = [...standardEntries, ...customEntries];
+          return sortedEntries.map(([k, v]) => (
+            <div key={k} className="text-app-textMuted px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">
+              {'  '.repeat(indent + 1)}
+              <KeywordLink keyword="option" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
+              <OptionLink
+                optionKey={k}
+                parentOptionsMessage="EnumOptions"
+                typeIndex={typeIndex}
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
+                onPinClick={onPinClick}
+              /> = {formatOptionValue(v, k, 'EnumOptions', typeIndex)};
+            </div>
+          ));
+        })()}
         {enumObj.value?.map((v: any) => {
           const valueFqn = `${fqn}.${v.name}`;
           return (
             <div key={v.name} id={valueFqn} className="mb-2 last:mb-0">
               {v.description && (
-                <div className="text-syn-comment whitespace-pre-wrap mb-0.5 select-text">
-                  {cleanComment(v.description).split('\n').map((line: string) => `// ${line}`).join('\n')}
+                <div className="text-syn-comment whitespace-pre-wrap mb-0.5 select-text font-mono">
+                  {cleanComment(v.description).split('\n').map((line: string) => `${'  '.repeat(indent + 1)}// ${line}`).join('\n')}
                 </div>
               )}
-              <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">
+              <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap text-app-textMuted">
+                {'  '.repeat(indent + 1)}
                 <span className="text-app-textMain">{v.name}</span>
                 {' '}
                 <span className="text-app-textMuted">=</span>
@@ -105,7 +117,10 @@ export default function EnumViewer({
         })}
       </div>
       
-      <div>{'}'}</div>
+      <div className="font-mono whitespace-pre-wrap text-app-textMain">
+        {'  '.repeat(indent)}
+        {'}'}
+      </div>
     </div>
   );
 }

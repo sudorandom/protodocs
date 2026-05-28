@@ -27,6 +27,8 @@ descriptors:
         --path gnostic/openapi/v3
     buf build buf.build/connectrpc/eliza \
         -o public/eliza.binpb
+    buf build buf.build/protocolbuffers/wellknowntypes \
+        -o public/wellknowntypes.binpb
 
 # Build and package static website distribution
 package:

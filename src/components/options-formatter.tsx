@@ -1,6 +1,7 @@
 import React from 'react';
 import OptionLink from './OptionLink';
 import OptionValueLink from './OptionValueLink';
+import { formatOptionKey } from '../lib/options-formatter-helpers';
 
 interface FormatOptionsProps {
   options: any;
@@ -38,12 +39,19 @@ export function FormatOptions({
   );
   if (entries.length === 0) return null;
 
+  const isCustom = (key: string) => key.startsWith('[') || key.startsWith('(');
+  const standardEntries = entries.filter(([k]) => !isCustom(k));
+  const customEntries = entries.filter(([k]) => isCustom(k));
+  standardEntries.sort((a, b) => a[0].localeCompare(b[0]));
+  customEntries.sort((a, b) => formatOptionKey(a[0]).localeCompare(formatOptionKey(b[0])));
+  const sortedEntries = [...standardEntries, ...customEntries];
+
   // Multi-line formatting if there are multiple options
-  if (entries.length > 1) {
+  if (sortedEntries.length > 1) {
     return (
       <span className="text-syn-comment ml-2 select-text font-mono whitespace-pre-wrap">
         {`[\n`}
-        {entries.map(([k, v], idx) => (
+        {sortedEntries.map(([k, v], idx) => (
           <span key={k}>
             {'  '}
             <OptionLink
@@ -65,7 +73,7 @@ export function FormatOptions({
               onPinClick={onPinClick}
               indent={1}
             />
-            {idx < entries.length - 1 ? `,\n` : `\n`}
+            {idx < sortedEntries.length - 1 ? `,\n` : `\n`}
           </span>
         ))}
         ]
@@ -77,7 +85,7 @@ export function FormatOptions({
   return (
     <span className="text-syn-comment ml-2 select-text font-mono whitespace-pre-wrap">
       [
-      {entries.map(([k, v]) => (
+      {sortedEntries.map(([k, v]) => (
         <React.Fragment key={k}>
           <OptionLink
             optionKey={k}
@@ -104,4 +112,3 @@ export function FormatOptions({
     </span>
   );
 }
-

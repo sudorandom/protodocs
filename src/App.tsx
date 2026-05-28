@@ -1204,47 +1204,87 @@ export default function App() {
                         <span className="text-app-textMain">{currentFileObj.package}</span>;
                       </div>
                     )}
-                    {currentFileObj.dependency?.map((dep: string) => (
-                      <div
-                        key={dep}
-                        className="cursor-pointer hover:text-app-textBright group transition-colors whitespace-pre-wrap"
-                        onClick={() => {
-                          if (schema.file.some((f) => f.name === dep)) {
-                            setActiveFile(dep);
-                          }
-                        }}
-                      >
-                        <KeywordLink
-                          keyword="import"
-                          onMouseEnter={handleMouseEnter}
-                          onMouseLeave={handleMouseLeave}
-                          onPinClick={handlePinClick}
-                        />{' '}
-                        <span className="text-syn-string">"{dep}"</span>;
-                      </div>
-                    ))}
-                    {currentFileObj.options &&
-                      Object.entries(currentFileObj.options)
-                        .filter(([k]) => !k.startsWith('$') && k !== 'uninterpretedOption')
-                        .map(([k, v]) => (
-                          <div key={k}>
-                            <KeywordLink
-                              keyword="option"
-                              onMouseEnter={handleMouseEnter}
-                              onMouseLeave={handleMouseLeave}
-                              onPinClick={handlePinClick}
-                            />{' '}
-                            <OptionLink
-                              optionKey={k}
-                              parentOptionsMessage="FileOptions"
-                              typeIndex={typeIndex}
-                              onMouseEnter={handleMouseEnter}
-                              onMouseLeave={handleMouseLeave}
-                              onPinClick={handlePinClick}
-                            /> ={' '}
-                            <span className="text-syn-string">{formatOptionValue(v, k, 'FileOptions', typeIndex)}</span>;
-                          </div>
-                        ))}
+                    {(() => {
+                      if (!currentFileObj.dependency) return null;
+                      const publicSet = new Set<number>(currentFileObj.publicDependency || []);
+                      const weakSet = new Set<number>(currentFileObj.weakDependency || []);
+                      const depsWithMetadata = currentFileObj.dependency.map((dep: string, index: number) => ({
+                        name: dep,
+                        isPublic: publicSet.has(index),
+                        isWeak: weakSet.has(index),
+                      }));
+
+                      depsWithMetadata.sort((a: any, b: any) => a.name.localeCompare(b.name));
+
+                      return depsWithMetadata.map((dep: any) => (
+                        <div
+                          key={dep.name}
+                          className="cursor-pointer hover:text-app-textBright group transition-colors whitespace-pre-wrap"
+                          onClick={() => {
+                            if (schema.file.some((f) => f.name === dep.name)) {
+                              setActiveFile(dep.name);
+                            }
+                          }}
+                        >
+                          <KeywordLink
+                            keyword="import"
+                            onMouseEnter={handleMouseEnter}
+                            onMouseLeave={handleMouseLeave}
+                            onPinClick={handlePinClick}
+                          />{' '}
+                          {dep.isPublic && (
+                            <>
+                              <KeywordLink
+                                keyword="public"
+                                onMouseEnter={handleMouseEnter}
+                                onMouseLeave={handleMouseLeave}
+                                onPinClick={handlePinClick}
+                              />{' '}
+                            </>
+                          )}
+                          {dep.isWeak && (
+                            <>
+                              <KeywordLink
+                                keyword="weak"
+                                onMouseEnter={handleMouseEnter}
+                                onMouseLeave={handleMouseLeave}
+                                onPinClick={handlePinClick}
+                              />{' '}
+                            </>
+                          )}
+                          <span className="text-syn-string">"{dep.name}"</span>;
+                        </div>
+                      ));
+                    })()}
+                    {currentFileObj.options && (() => {
+                      const optionEntries = Object.entries(currentFileObj.options).filter(([k]) => !k.startsWith('$') && k !== 'uninterpretedOption');
+                      const isCustom = (key: string) => key.startsWith('[') || key.startsWith('(');
+                      const standardEntries = optionEntries.filter(([k]) => !isCustom(k));
+                      const customEntries = optionEntries.filter(([k]) => isCustom(k));
+                      standardEntries.sort((a, b) => a[0].localeCompare(b[0]));
+                      customEntries.sort((a, b) => formatOptionKey(a[0]).localeCompare(formatOptionKey(b[0])));
+
+                      const sortedEntries = [...standardEntries, ...customEntries];
+                      return sortedEntries.map(([k, v]) => (
+                        <div key={k}>
+                          <KeywordLink
+                            keyword="option"
+                            onMouseEnter={handleMouseEnter}
+                            onMouseLeave={handleMouseLeave}
+                            onPinClick={handlePinClick}
+                          />{' '}
+                          <OptionLink
+                            optionKey={k}
+                            parentOptionsMessage="FileOptions"
+                            typeIndex={typeIndex}
+                            onMouseEnter={handleMouseEnter}
+                            onMouseLeave={handleMouseLeave}
+                            onPinClick={handlePinClick}
+                          /> ={' '}
+                          <span className="text-syn-string">{formatOptionValue(v, k, 'FileOptions', typeIndex)}</span>;
+                        </div>
+                      ));
+                    })()}
                   </div>
 
                   {/* Viewers */}

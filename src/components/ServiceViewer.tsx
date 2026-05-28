@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import TypeLink from './TypeLink';
 import OptionLink from './OptionLink';
 import { FormatOptions } from './options-formatter';
-import { formatOptionValue } from '../lib/options-formatter-helpers';
+import { formatOptionValue, formatOptionKey } from '../lib/options-formatter-helpers';
 import { generateMockJson } from '../lib/mock-generator';
 import { sendRpcRequest } from '../lib/rpc-sender';
 import KeywordLink from './KeywordLink';
@@ -51,11 +51,11 @@ export default function ServiceViewer({
   return (
     <div id={fqn} className="mb-8 font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text">
       {service.description && (
-        <div className="text-syn-comment mb-1 whitespace-pre-wrap">
+        <div className="text-syn-comment mb-1 whitespace-pre-wrap font-mono">
           {cleanComment(service.description).split('\n').map((line: string) => `// ${line}`).join('\n')}
         </div>
       )}
-      <div>
+      <div className="font-mono whitespace-pre-wrap">
         <KeywordLink
           keyword="service"
           onMouseEnter={onMouseEnter}
@@ -65,34 +65,44 @@ export default function ServiceViewer({
         <span className="text-app-textBright font-bold">{service.name}</span> {'{'}
       </div>
 
-      <div className="pl-8 my-1">
-        {service.options &&
-          Object.entries(service.options)
-            .filter(([k]) => !k.startsWith('$') && k !== 'uninterpretedOption')
-            .map(([k, v]) => (
-              <div key={k} className="text-app-textMuted px-2 py-0.5 rounded -ml-2">
-                <KeywordLink
-                  keyword="option"
-                  onMouseEnter={onMouseEnter}
-                  onMouseLeave={onMouseLeave}
-                  onPinClick={onPinClick}
-                />{' '}
-                <OptionLink
-                  optionKey={k}
-                  parentOptionsMessage="ServiceOptions"
-                  typeIndex={typeIndex}
-                  onMouseEnter={onMouseEnter}
-                  onMouseLeave={onMouseLeave}
-                  onPinClick={onPinClick}
-                /> = {formatOptionValue(v, k, 'ServiceOptions', typeIndex)};
-              </div>
-            ))}
+      <div className="my-1">
+        {service.options && (() => {
+          const optionEntries = Object.entries(service.options).filter(([k]) => !k.startsWith('$') && k !== 'uninterpretedOption');
+          const isCustom = (key: string) => key.startsWith('[') || key.startsWith('(');
+          const standardEntries = optionEntries.filter(([k]) => !isCustom(k));
+          const customEntries = optionEntries.filter(([k]) => isCustom(k));
+          standardEntries.sort((a, b) => a[0].localeCompare(b[0]));
+          customEntries.sort((a, b) => formatOptionKey(a[0]).localeCompare(formatOptionKey(b[0])));
+
+          const sortedEntries = [...standardEntries, ...customEntries];
+          return sortedEntries.map(([k, v]) => (
+            <div key={k} className="text-app-textMuted px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">
+              {'  '}
+              <KeywordLink
+                keyword="option"
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
+                onPinClick={onPinClick}
+              />{' '}
+              <OptionLink
+                optionKey={k}
+                parentOptionsMessage="ServiceOptions"
+                typeIndex={typeIndex}
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
+                onPinClick={onPinClick}
+              /> = {formatOptionValue(v, k, 'ServiceOptions', typeIndex)};
+            </div>
+          ));
+        })()}
         {service.method?.map((m: any) => {
           const methodFqn = `${fqn}.${m.name}`;
           return (
-            <div key={m.name} id={methodFqn} className="mb-3.5 mt-2">
+            <div key={m.name} id={methodFqn} className="mb-3.5 mt-2 font-mono">
               {m.description && (
-                <div className="text-syn-comment mb-0.5 whitespace-pre-wrap">{cleanComment(m.description).split('\n').map((line: string) => `// ${line}`).join('\n')}</div>
+                <div className="text-syn-comment mb-0.5 whitespace-pre-wrap font-mono">
+                  {cleanComment(m.description).split('\n').map((line: string) => `  // ${line}`).join('\n')}
+                </div>
               )}
               <div
                 onClick={() => {
@@ -100,8 +110,9 @@ export default function ServiceViewer({
                   if (selection && selection.toString()) return;
                   setExpandedMethod(expandedMethod === m.name ? null : m.name);
                 }}
-                className="hover:bg-app-hoverBg px-2 py-1 rounded -ml-2 cursor-pointer group whitespace-pre-wrap font-mono relative pr-20"
+                className="hover:bg-app-hoverBg px-2 py-1 rounded -ml-2 cursor-pointer group whitespace-pre-wrap font-mono relative pr-20 text-app-textMuted"
               >
+                {'  '}
                 <span className="inline-flex items-center text-app-textMuted group-hover:text-app-textBright select-none mr-1.5">
                   <svg className="w-3.5 h-3.5 text-app-textMuted group-hover:text-app-accent transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
@@ -120,7 +131,7 @@ export default function ServiceViewer({
                 {m.clientStreaming && (
                   <KeywordLink
                     keyword="stream"
-                    className="text-syn-keyword border-b border-dotted border-syn-keyword/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-none font-mono mr-1"
+                    className="text-syn-keyword border-b border-dotted border-syn-keyword/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-text font-mono mr-1"
                     onMouseEnter={onMouseEnter}
                     onMouseLeave={onMouseLeave}
                     onPinClick={onPinClick}
@@ -147,7 +158,7 @@ export default function ServiceViewer({
                 {m.serverStreaming && (
                   <KeywordLink
                     keyword="stream"
-                    className="text-syn-keyword border-b border-dotted border-syn-keyword/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-none font-mono mr-1"
+                    className="text-syn-keyword border-b border-dotted border-syn-keyword/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-text font-mono mr-1"
                     onMouseEnter={onMouseEnter}
                     onMouseLeave={onMouseLeave}
                     onPinClick={onPinClick}
@@ -202,7 +213,7 @@ export default function ServiceViewer({
         })}
       </div>
       
-      <div>{'}'}</div>
+      <div className="font-mono whitespace-pre-wrap">{'}'}</div>
     </div>
   );
 }

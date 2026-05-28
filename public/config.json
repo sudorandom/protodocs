@@ -5,7 +5,8 @@
     "/eliza.binpb",
     "/googleapis.binpb",
     "/protovalidate.binpb",
-    "/gnostic.binpb"
+    "/gnostic.binpb",
+    "/wellknowntypes.binpb"
   ],
   "front_page_markdown_file": "/home.md",
   "bottom_of_front_page_markdown_file": "/footer.md",

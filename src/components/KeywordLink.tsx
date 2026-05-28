@@ -90,7 +90,7 @@ interface KeywordLinkProps {
 
 export default function KeywordLink({
   keyword,
-  className = 'text-syn-keyword border-b border-dotted border-syn-keyword/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-none font-mono',
+  className = 'text-syn-keyword border-b border-dotted border-syn-keyword/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-text font-mono',
   onMouseEnter,
   onMouseLeave,
   onPinClick,

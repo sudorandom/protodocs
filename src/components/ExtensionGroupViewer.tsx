@@ -40,22 +40,23 @@ export default function ExtensionGroupViewer({
 
   return (
     <div className="mb-8 font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text">
-      <div>
+      <div className="font-mono whitespace-pre-wrap">
         <KeywordLink keyword="extend" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
         <span className="text-syn-type font-bold">{displayExtendee}</span> {'{'}
       </div>
       
-      <div className="pl-8 my-1">
+      <div className="my-1">
         {fields.map((f: any) => {
           const extensionFqn = parentFqn ? `${parentFqn}.${f.name}` : `.${f.name}`;
           return (
             <div key={f.name} id={extensionFqn} className="mb-2 last:mb-0">
               {f.description && (
-                <div className="text-syn-comment whitespace-pre-wrap mb-0.5 select-text">
-                  {cleanComment(f.description).split('\n').map((line: string) => `// ${line}`).join('\n')}
+                <div className="text-syn-comment whitespace-pre-wrap mb-0.5 select-text font-mono">
+                  {cleanComment(f.description).split('\n').map((line: string) => `  // ${line}`).join('\n')}
                 </div>
               )}
-              <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">
+              <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap text-app-textMuted">
+                {'  '}
                 {f.label === 3 && <><KeywordLink keyword="repeated" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>repeated</KeywordLink>{' '}</>}
                 {f.label === 1 && <><KeywordLink keyword="optional" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>optional</KeywordLink>{' '}</>}
                 <TypeLink
@@ -87,7 +88,7 @@ export default function ExtensionGroupViewer({
         })}
       </div>
 
-      <div>{'}'}</div>
+      <div className="font-mono whitespace-pre-wrap">{'}'}</div>
     </div>
   );
 }
