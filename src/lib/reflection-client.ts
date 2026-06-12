@@ -100,7 +100,7 @@ async function reflectionCall(
   const res = await fetch(proxied.url, {
     method: 'POST',
     headers: proxied.headers,
-    body,
+    body: body as any,
   });
 
   if (!res.ok) {

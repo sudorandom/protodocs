@@ -124,7 +124,7 @@ export async function sendRpcRequest({
             enveloped.set(binaryBytes, 5);
             payloadBytes = enveloped;
           }
-          ws.send(payloadBytes);
+          ws.send(payloadBytes as any);
         }
 
         // Signal End of Stream to proxy
@@ -261,7 +261,7 @@ export async function sendRpcRequest({
   const res = await fetch(proxied.url, {
     method: 'POST',
     headers: proxied.headers,
-    body,
+    body: body as any,
   });
 
   const headerLines = Array.from(res.headers.entries())
