@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"google.golang.org/protobuf/proto"
@@ -52,6 +53,25 @@ func TestNewHandler_Default(t *testing.T) {
 
 	if resHtml.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200, got %d", resHtml.StatusCode)
+	}
+
+	// 3. Get /robots.txt
+	resRobots, err := http.Get(ts.URL + "/robots.txt")
+	if err != nil {
+		t.Fatalf("failed to get robots.txt: %v", err)
+	}
+	defer func() { _ = resRobots.Body.Close() }()
+
+	if resRobots.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200 for robots.txt, got %d", resRobots.StatusCode)
+	}
+
+	robotsBytes, err := io.ReadAll(resRobots.Body)
+	if err != nil {
+		t.Fatalf("failed to read robots.txt body: %v", err)
+	}
+	if !strings.Contains(string(robotsBytes), "User-agent: *") {
+		t.Errorf("expected robots.txt content to contain 'User-agent: *', got %q", string(robotsBytes))
 	}
 }
 
