@@ -1,6 +1,7 @@
 import { fromBinary, toJsonString, createFileRegistry } from '@bufbuild/protobuf';
 import { FileDescriptorSetSchema, FileDescriptorProtoSchema } from '@bufbuild/protobuf/wkt';
 import { resolveUrl } from './proxy';
+import { getWellKnownTypes } from './wellknowntypes';
 
 export interface UnifiedSchema {
   file: any[];
@@ -91,14 +92,14 @@ export function attachComments(file: any) {
 export async function loadDescriptorsFromUrls(urls: string[]): Promise<UnifiedSchema> {
   const fileDescriptorsMap = new Map<string, any>();
 
-  const urlsToLoad = [...urls];
-  const hasWkt = urls.some(url => url.includes('wellknowntypes.binpb'));
-  if (!hasWkt) {
-    urlsToLoad.unshift('/wellknowntypes.binpb');
+  // Initialize with inlined well-known types
+  const wktFiles = getWellKnownTypes();
+  for (const fd of wktFiles) {
+    fileDescriptorsMap.set(fd.name, fd);
   }
 
   // Fetch and parse all files
-  const fetchPromises = urlsToLoad.map(async (url) => {
+  const fetchPromises = urls.map(async (url) => {
     try {
       const res = await fetch(resolveUrl(url));
       if (!res.ok) {

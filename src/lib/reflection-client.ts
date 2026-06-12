@@ -1,7 +1,8 @@
 import { fromBinary, createFileRegistry, toBinary, create, toJsonString } from '@bufbuild/protobuf';
-import { FileDescriptorProtoSchema, FileDescriptorSetSchema } from '@bufbuild/protobuf/wkt';
+import { FileDescriptorProtoSchema } from '@bufbuild/protobuf/wkt';
 import { attachComments } from './descriptor-loader';
-import { getProxiedUrlAndHeaders, resolveUrl } from './proxy';
+import { getProxiedUrlAndHeaders } from './proxy';
+import { getWellKnownTypes } from './wellknowntypes';
 import { ServerReflectionRequestSchema, ServerReflectionResponseSchema } from '../gen/grpc/reflection/v1alpha/reflection_pb';
 
 export const ServerReflectionRequest = ServerReflectionRequestSchema;
@@ -141,21 +142,10 @@ export async function loadSchemaFromReflection(
   const services: string[] = serviceResponse.service.map((s: any) => s.name);
   const fileDescriptors = new Map<string, any>();
 
-  // Fetch and merge well-known types
-  try {
-    const res = await fetch(resolveUrl('/wellknowntypes.binpb'));
-    if (res.ok) {
-      const buffer = await res.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      const descriptorSet = fromBinary(FileDescriptorSetSchema, bytes);
-      for (const fd of descriptorSet.file) {
-        fileDescriptors.set(fd.name, fd);
-      }
-    } else {
-      console.warn(`Non-fatal warning: Failed to fetch /wellknowntypes.binpb: HTTP ${res.status}`);
-    }
-  } catch (err) {
-    console.warn('Non-fatal warning: Failed to load well-known types:', err);
+  // Initialize with inlined well-known types
+  const wktFiles = getWellKnownTypes();
+  for (const fd of wktFiles) {
+    fileDescriptors.set(fd.name, fd);
   }
 
   // Fetch descriptors for all non-reflection services
