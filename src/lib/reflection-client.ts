@@ -1,16 +1,11 @@
 import { fromBinary, createFileRegistry, toBinary, create, toJsonString } from '@bufbuild/protobuf';
-import { FileDescriptorSetSchema } from '@bufbuild/protobuf/wkt';
-import { REFLECTION_BIN_BASE64 } from './reflection/reflection-binary';
+import { FileDescriptorProtoSchema } from '@bufbuild/protobuf/wkt';
 import { attachComments } from './descriptor-loader';
 import { getProxiedUrlAndHeaders } from './proxy';
+import { ServerReflectionRequestSchema, ServerReflectionResponseSchema } from '../gen/grpc/reflection/v1alpha/reflection_pb';
 
-// Load reflection schema from compiled inlined Base64
-const reflectionBytes = Uint8Array.from(atob(REFLECTION_BIN_BASE64), c => c.charCodeAt(0));
-const reflectionFds = fromBinary(FileDescriptorSetSchema, reflectionBytes);
-const reflectionRegistry = createFileRegistry(reflectionFds);
-
-export const ServerReflectionRequest = reflectionRegistry.getMessage('grpc.reflection.v1alpha.ServerReflectionRequest')!;
-export const ServerReflectionResponse = reflectionRegistry.getMessage('grpc.reflection.v1alpha.ServerReflectionResponse')!;
+export const ServerReflectionRequest = ServerReflectionRequestSchema;
+export const ServerReflectionResponse = ServerReflectionResponseSchema;
 
 export interface ReflectionService {
   name: string;
@@ -165,7 +160,6 @@ export async function loadSchemaFromReflection(
       const fdr = fileRes[0]?.messageResponse?.value?.fileDescriptorProto;
       if (fdr) {
         // Load into registry to parse them as file descriptors
-        const FileDescriptorProtoSchema = reflectionRegistry.getMessage('google.protobuf.FileDescriptorProto');
         if (FileDescriptorProtoSchema) {
           for (const fBytes of fdr) {
             const fd = fromBinary(FileDescriptorProtoSchema, fBytes) as any;
@@ -183,8 +177,6 @@ export async function loadSchemaFromReflection(
   }
 
   // Convert FileDescriptorProto messages to JSON representation
-  const FileDescriptorProtoSchema = reflectionRegistry.getMessage('google.protobuf.FileDescriptorProto')!;
-  
   // Create a unified registry from the fetched file descriptors map to resolve custom options
   const unifiedFds = {
     $typeName: 'google.protobuf.FileDescriptorSet',

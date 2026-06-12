@@ -42,6 +42,7 @@ descriptors:
         -o public/eliza.binpb
     buf build buf.build/protocolbuffers/wellknowntypes \
         -o public/wellknowntypes.binpb
+    pnpm exec buf generate buf.build/grpc/grpc --path grpc/reflection/v1alpha/reflection.proto --template buf.gen.yaml
 
 # Build and package static website distribution
 package:

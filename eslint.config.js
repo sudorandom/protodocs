@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { globalIgnores } from 'eslint/config'
 
 export default tseslint.config([
-  globalIgnores(['dist', 'new.js', 'jules-scratch/**', 'playwright-report/**', 'e2e/screenshots/**']),
+  globalIgnores(['dist', 'src/gen/**', 'new.js', 'jules-scratch/**', 'playwright-report/**', 'e2e/screenshots/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

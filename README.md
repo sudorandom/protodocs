@@ -54,6 +54,12 @@ pnpm dev
 
 This will open a browser window with the application running on `http://localhost:5173`.
 
+If you are running the full stack locally and want the Vite development server to proxy API requests to the Go backend, provide the `PROXY_TARGET` environment variable with the backend's address:
+
+```sh
+PROXY_TARGET="http://127.0.0.1:8080" pnpm dev
+```
+
 To build the application for production, run:
 
 ```sh
