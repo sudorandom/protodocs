@@ -26,16 +26,16 @@ jobs:
       run: npx playwright install
 
     - name: Run lint
-      run: pnpm lint
+      run: just lint
 
     - name: Run tests
-      run: pnpm test
+      run: just test
 
     - name: Run Playwright tests
       run: just playwright
 
     - name: Build project
-      run: pnpm run build
+      run: just build
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4

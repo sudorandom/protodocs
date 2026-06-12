@@ -4,4 +4,5 @@ just = "latest"
 node = "latest"
 "npm:pnpm" = "11.3.0"
 go = "latest"
+"golangci-lint" = "latest"
 

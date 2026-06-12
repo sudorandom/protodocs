@@ -187,7 +187,7 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Proxy connection failed: %v", err), http.StatusBadGateway)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Copy response headers
 	for k, vv := range resp.Header {
@@ -239,7 +239,7 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var trailerBuilder strings.Builder
 		for k, vv := range resp.Trailer {
 			for _, v := range vv {
-				trailerBuilder.WriteString(fmt.Sprintf("%s: %s\r\n", strings.ToLower(k), v))
+				_, _ = fmt.Fprintf(&trailerBuilder, "%s: %s\r\n", strings.ToLower(k), v)
 			}
 		}
 
@@ -254,10 +254,10 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if !hasGrpcStatus {
 			statusVal := resp.Header.Get("Grpc-Status")
 			if statusVal != "" {
-				trailerBuilder.WriteString(fmt.Sprintf("grpc-status: %s\r\n", statusVal))
+				_, _ = fmt.Fprintf(&trailerBuilder, "grpc-status: %s\r\n", statusVal)
 				msgVal := resp.Header.Get("Grpc-Message")
 				if msgVal != "" {
-					trailerBuilder.WriteString(fmt.Sprintf("grpc-message: %s\r\n", msgVal))
+					_, _ = fmt.Fprintf(&trailerBuilder, "grpc-message: %s\r\n", msgVal)
 				}
 			} else {
 				trailerBuilder.WriteString("grpc-status: 0\r\n")
@@ -285,7 +285,7 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 		log.Printf("upgrade error: %v", err)
 		return
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	// First message must be the initial configuration
 	var initMsg struct {
@@ -300,7 +300,7 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 
 	targetURL, err := url.Parse(initMsg.URL)
 	if err != nil {
-		c.WriteJSON(map[string]interface{}{"status": 400, "error": "invalid URL"})
+		_ = c.WriteJSON(map[string]interface{}{"status": 400, "error": "invalid URL"})
 		return
 	}
 
@@ -308,7 +308,7 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 
 	proxyReq, err := http.NewRequestWithContext(r.Context(), http.MethodPost, initMsg.URL, pr)
 	if err != nil {
-		c.WriteJSON(map[string]interface{}{"status": 500, "error": err.Error()})
+		_ = c.WriteJSON(map[string]interface{}{"status": 500, "error": err.Error()})
 		return
 	}
 
@@ -347,23 +347,23 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 		for {
 			mt, message, err := c.ReadMessage()
 			if err != nil {
-				pw.Close()
+				_ = pw.Close()
 				break
 			}
 			if mt == websocket.TextMessage && string(message) == `{"eos":true}` {
-				pw.Close() // Signal EOF to the server
+				_ = pw.Close() // Signal EOF to the server
 			} else if mt == websocket.BinaryMessage || mt == websocket.TextMessage {
-				pw.Write(message)
+				_, _ = pw.Write(message)
 			}
 		}
 	}()
 
 	resp, err := httpClient.Do(proxyReq)
 	if err != nil {
-		c.WriteJSON(map[string]interface{}{"status": 502, "error": err.Error()})
+		_ = c.WriteJSON(map[string]interface{}{"status": 502, "error": err.Error()})
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Send back response headers
 	headers := make(map[string]string)
@@ -377,7 +377,7 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 		headers["Content-Type"] = strings.Replace(headers["Content-Type"], "application/grpc", "application/grpc-web", 1)
 	}
 
-	c.WriteJSON(map[string]interface{}{
+	_ = c.WriteJSON(map[string]interface{}{
 		"status":  resp.StatusCode,
 		"headers": headers,
 	})
@@ -387,7 +387,7 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 	for {
 		n, err := resp.Body.Read(buf)
 		if n > 0 {
-			c.WriteMessage(websocket.BinaryMessage, buf[:n])
+			_ = c.WriteMessage(websocket.BinaryMessage, buf[:n])
 		}
 		if err != nil {
 			break
@@ -410,7 +410,7 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 			frame[0] = 0x80
 			binary.BigEndian.PutUint32(frame[1:5], uint32(len(tBytes)))
 			copy(frame[5:], tBytes)
-			c.WriteMessage(websocket.BinaryMessage, frame)
+			_ = c.WriteMessage(websocket.BinaryMessage, frame)
 		}
 	}
 }
@@ -440,7 +440,7 @@ func main() {
 	pflag.Bool("open", true, "Automatically open ProtoDocs in the browser")
 	pflag.Parse()
 
-	viper.BindPFlags(pflag.CommandLine)
+	_ = viper.BindPFlags(pflag.CommandLine)
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
 
@@ -518,7 +518,7 @@ func main() {
 	http.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Write([]byte(`{"status":"ok","proxy":true,"version":"1.0.0"}`))
+		_, _ = w.Write([]byte(`{"status":"ok","proxy":true,"version":"1.0.0"}`))
 	})
 
 	// Proxy
@@ -531,16 +531,16 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		if len(dynamicConfig) > 0 {
-			w.Write(dynamicConfig)
+			_, _ = w.Write(dynamicConfig)
 			return
 		}
 		// Fallback to static config.json
 		f, err := staticFS.Open("config.json")
 		if err != nil {
-			w.Write([]byte("{}"))
+			_, _ = w.Write([]byte("{}"))
 			return
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		_, _ = io.Copy(w, f)
 	})
 

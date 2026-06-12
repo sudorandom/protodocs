@@ -62,7 +62,7 @@ export async function sendRpcRequest({
     } else {
       requestObjs = [parsed];
     }
-  } catch (err) {
+  } catch {
     throw new Error('Invalid JSON request');
   }
 
@@ -145,7 +145,7 @@ export async function sendRpcRequest({
               statusLine = `HTTP ${msg.status} OK`;
               const hLines = [];
               for (const [k, v] of Object.entries(msg.headers || {})) {
-                let displayK = k;
+                const displayK = k;
                 let displayV = v as string;
                 if (protocol === 'grpc' && k.toLowerCase() === 'content-type' && displayV.startsWith('application/grpc-web')) {
                   displayV = 'application/grpc';
@@ -154,7 +154,7 @@ export async function sendRpcRequest({
               }
               headerLines = hLines.join('\n');
             }
-          } catch (e) {
+          } catch {
             statusLine = 'Error parsing proxy response';
           }
           return;

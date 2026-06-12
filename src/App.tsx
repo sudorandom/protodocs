@@ -441,7 +441,7 @@ export default function App() {
     const initializeConfig = async () => {
       try {
         await checkProxyAvailable();
-        let activeConfig = { ...DEFAULT_CONFIG };
+        const activeConfig = { ...DEFAULT_CONFIG };
 
         // 1. Fetch config.json first as the base config
         try {

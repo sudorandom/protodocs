@@ -16,6 +16,13 @@ run-cli *args:
 
 lint:
     pnpm lint
+    golangci-lint run
+
+test:
+    pnpm test
+
+build:
+    pnpm run build
 
 descriptors:
     buf build buf.build/bufbuild/protovalidate \
