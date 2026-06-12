@@ -37,6 +37,8 @@ interface AppConfig {
   serviceEndpoints?: Record<string, string>;
   prioritizedPaths?: string[];
   highlightedFiles?: string[];
+  backToText?: string;
+  backToUrl?: string;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -490,6 +492,12 @@ export default function App() {
             if (fileConfig.highlighted_files) {
               activeConfig.highlightedFiles = fileConfig.highlighted_files;
             }
+            if (fileConfig.back_to_text) {
+              activeConfig.backToText = fileConfig.back_to_text;
+            }
+            if (fileConfig.back_to_url) {
+              activeConfig.backToUrl = fileConfig.back_to_url;
+            }
           }
         } catch (e) {
           console.warn('config.json not found or failed to parse, using defaults.', e);
@@ -507,6 +515,8 @@ export default function App() {
         const logoUrlCyberpunk = params.get('logoUrlCyberpunk');
         const prioritizedPathsParam = params.get('prioritizedPaths') || params.get('prioritized_paths');
         const highlightedFilesParam = params.get('highlightedFiles') || params.get('highlighted_files');
+        const backToText = params.get('backToText') || params.get('back_to_text');
+        const backToUrl = params.get('backToUrl') || params.get('back_to_url');
 
         if (method === 'grpc-web' || method === 'connect' || url) {
           activeConfig.loadingMethod = (method as any) || activeConfig.loadingMethod;
@@ -529,6 +539,8 @@ export default function App() {
         if (highlightedFilesParam) {
           activeConfig.highlightedFiles = highlightedFilesParam.split(',').map((f) => f.trim());
         }
+        if (backToText) activeConfig.backToText = backToText;
+        if (backToUrl) activeConfig.backToUrl = backToUrl;
 
         setConfig(activeConfig);
         await loadSchema(activeConfig);
@@ -915,6 +927,19 @@ export default function App() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
+
+            {config.backToUrl && (
+              <a
+                href={config.backToUrl}
+                className="flex items-center gap-1 text-app-textMuted hover:text-app-textBright hover:bg-app-hoverBg px-2.5 py-1.5 rounded-lg font-sans text-sm font-semibold transition-colors shrink-0 mr-2 border border-app-border/40"
+                title={config.backToText || 'Back'}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>{config.backToText || 'Back'}</span>
+              </a>
+            )}
 
             <div className="min-w-0 flex-1 flex items-center truncate">
               {activeFile.split('/').map((part, i, arr) => (

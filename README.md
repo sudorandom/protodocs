@@ -187,6 +187,8 @@ The `protodocs.Config` struct supports the following options:
 *   **`Prefix`**: The URL prefix under which the handler is hosted (e.g. `"/docs/"`). The router will automatically strip this prefix before serving assets.
 *   **`Descriptors`**: In-memory `*descriptorpb.FileDescriptorSet`. It is automatically registered and served at `"/descriptors.binpb"` for the UI to load.
 *   **`Registry`**: Optional `*protoregistry.Files` registry. If specified, the handler will dynamically construct the `FileDescriptorSet` from the registry on each request. This allows any runtime updates to the registry to be immediately reflected in the documentation.
+*   **`BackToText`**: Optional text label for the "back" button displayed at the top of the navigation bar.
+*   **`BackToURL`**: Optional URL the "back" button navigates to (e.g., your developer portal main page).
 *   **`MarkdownFiles`**: In-memory mapping of virtual path (e.g., `"/home.md"`) to markdown string content.
 *   **`LocalPath`**: Local filesystem path to serve override static assets from (instead of embedded files).
 

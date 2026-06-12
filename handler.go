@@ -51,6 +51,8 @@ type AppConfig struct {
 	ServiceEndpoints              map[string]string `json:"service_endpoints,omitempty"`
 	PrioritizedPaths              []string          `json:"prioritized_paths,omitempty"`
 	HighlightedFiles              []string          `json:"highlighted_files,omitempty"`
+	BackToText                    string            `json:"back_to_text,omitempty"`
+	BackToURL                     string            `json:"back_to_url,omitempty"`
 }
 
 // Config defines the configuration for the ProtoDocs handler.
@@ -81,6 +83,11 @@ type Config struct {
 	PrioritizedPaths []string
 	// HighlightedFiles is a list of files to highlight in the UI.
 	HighlightedFiles []string
+
+	// BackToText is the text for the 'back' button in the navbar (e.g. "Back to Developer Portal").
+	BackToText string
+	// BackToURL is the URL the 'back' button in the navbar navigates to.
+	BackToURL string
 
 	// LocalPath to static assets (overrides embedded files).
 	LocalPath string
@@ -507,6 +514,8 @@ func NewHandler(cfg Config) (http.Handler, error) {
 		len(cfg.HighlightedFiles) > 0 ||
 		cfg.Descriptors != nil ||
 		cfg.Registry != nil ||
+		cfg.BackToText != "" ||
+		cfg.BackToURL != "" ||
 		len(cfg.MarkdownFiles) > 0
 
 	if hasConfig {
@@ -524,6 +533,8 @@ func NewHandler(cfg Config) (http.Handler, error) {
 			ServiceEndpoints:              cfg.ServiceEndpoints,
 			PrioritizedPaths:              cfg.PrioritizedPaths,
 			HighlightedFiles:              cfg.HighlightedFiles,
+			BackToText:                    cfg.BackToText,
+			BackToURL:                     cfg.BackToURL,
 		}
 
 		// Register in-memory FileDescriptorSet under the default path
@@ -600,19 +611,19 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		path = "/" + path
 	}
 
-	switch {
-	case path == "/api/health":
+	switch path {
+	case "/api/health":
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		_, _ = w.Write([]byte(`{"status":"ok","proxy":true,"version":"1.0.0"}`))
 
-	case path == "/api/proxy":
+	case "/api/proxy":
 		h.proxyHandler.ServeHTTP(w, r)
 
-	case path == "/api/proxy/ws":
+	case "/api/proxy/ws":
 		h.proxyHandler.ServeWs(w, r)
 
-	case path == "/config.json":
+	case "/config.json":
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		if len(h.dynamicConfig) > 0 {

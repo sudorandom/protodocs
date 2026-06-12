@@ -27,7 +27,7 @@ func TestNewHandler_Default(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get config.json: %v", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200, got %d", res.StatusCode)
@@ -48,7 +48,7 @@ func TestNewHandler_Default(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get index.html: %v", err)
 	}
-	defer resHtml.Body.Close()
+	defer func() { _ = resHtml.Body.Close() }()
 
 	if resHtml.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200, got %d", resHtml.StatusCode)
@@ -71,7 +71,7 @@ func TestNewHandler_Prefix(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get prefix config.json: %v", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200, got %d", res.StatusCode)
@@ -100,6 +100,8 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 		MarkdownFiles: map[string]string{
 			"/home.md": markdownContent,
 		},
+		BackToText: "Back to Home",
+		BackToURL:  "https://example.com/home",
 	})
 	if err != nil {
 		t.Fatalf("failed to create handler: %v", err)
@@ -113,7 +115,7 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get config.json: %v", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	var appCfg AppConfig
 	if err := json.NewDecoder(res.Body).Decode(&appCfg); err != nil {
@@ -122,6 +124,14 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 
 	if appCfg.Title != "Custom API Portal" {
 		t.Errorf("expected title 'Custom API Portal', got %q", appCfg.Title)
+	}
+
+	if appCfg.BackToText != "Back to Home" {
+		t.Errorf("expected back_to_text 'Back to Home', got %q", appCfg.BackToText)
+	}
+
+	if appCfg.BackToURL != "https://example.com/home" {
+		t.Errorf("expected back_to_url 'https://example.com/home', got %q", appCfg.BackToURL)
 	}
 
 	foundDescriptor := false
@@ -144,7 +154,7 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to fetch descriptor: %v", err)
 	}
-	defer resDesc.Body.Close()
+	defer func() { _ = resDesc.Body.Close() }()
 
 	descBytes, _ := io.ReadAll(resDesc.Body)
 	if string(descBytes) != string(descriptorBytes) {
@@ -156,7 +166,7 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to fetch markdown: %v", err)
 	}
-	defer resMD.Body.Close()
+	defer func() { _ = resMD.Body.Close() }()
 
 	mdBytes, _ := io.ReadAll(resMD.Body)
 	if string(mdBytes) != markdownContent {
@@ -194,7 +204,7 @@ func TestNewHandler_Registry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to fetch descriptor: %v", err)
 	}
-	defer resDesc.Body.Close()
+	defer func() { _ = resDesc.Body.Close() }()
 
 	descBytes, _ := io.ReadAll(resDesc.Body)
 	var fds1 descriptorpb.FileDescriptorSet
@@ -223,7 +233,7 @@ func TestNewHandler_Registry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to fetch descriptor: %v", err)
 	}
-	defer resDesc2.Body.Close()
+	defer func() { _ = resDesc2.Body.Close() }()
 
 	descBytes2, _ := io.ReadAll(resDesc2.Body)
 	var fds2 descriptorpb.FileDescriptorSet
