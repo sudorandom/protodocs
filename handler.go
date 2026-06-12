@@ -52,6 +52,7 @@ type AppConfig struct {
 	HighlightedFiles          []string          `json:"highlighted_files,omitempty" yaml:"highlighted_files,omitempty"`
 	BackToText                string            `json:"back_to_text,omitempty" yaml:"back_to_text,omitempty"`
 	BackToURL                 string            `json:"back_to_url,omitempty" yaml:"back_to_url,omitempty"`
+	Proxy                     bool              `json:"proxy,omitempty" yaml:"proxy,omitempty"`
 }
 
 // Config defines the configuration for the ProtoDocs handler.
@@ -98,6 +99,8 @@ type Config struct {
 	// Registry is an optional protobuf registry to dynamically generate the FileDescriptorSet from.
 	// If set, updates to the registry will be dynamically reflected in the documentation.
 	Registry *protoregistry.Files
+	// Proxy enables proxy features and tells the UI to check/use the proxy.
+	Proxy bool
 }
 
 type layeredFileSystem struct {
@@ -525,6 +528,7 @@ func NewHandler(cfg Config) (http.Handler, error) {
 			HighlightedFiles:          cfg.HighlightedFiles,
 			BackToText:                cfg.BackToText,
 			BackToURL:                 cfg.BackToURL,
+			Proxy:                     cfg.Proxy,
 		}
 
 		// Register in-memory FileDescriptorSet under the default path
@@ -586,6 +590,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch path {
+	case "/api/health":
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		_, _ = w.Write([]byte(`{"status":"ok","proxy":true,"version":"1.0.0"}`))
+
 	case "/api/proxy":
 		h.proxyHandler.ServeHTTP(w, r)
 

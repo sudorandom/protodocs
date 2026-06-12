@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import YAML from 'yaml';
 import { loadDescriptorsFromUrls } from './lib/descriptor-loader';
 import { loadSchemaFromReflection } from './lib/reflection-client';
-import { resolveUrl } from './lib/proxy';
+import { checkProxyAvailable, resolveUrl } from './lib/proxy';
 import type { TooltipState } from './components/Tooltip';
 import type { ReferencePanelState } from './components/ReferencePanel';
 import { formatOptionKey, formatOptionValue } from './lib/options-formatter-helpers';
@@ -39,6 +39,7 @@ interface AppConfig {
   highlightedFiles?: string[];
   backToText?: string;
   backToUrl?: string;
+  proxy?: boolean;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -503,6 +504,12 @@ export default function App() {
             }
             if (fileConfig.back_to_url) {
               activeConfig.backToUrl = fileConfig.back_to_url;
+            }
+            if (fileConfig.proxy !== undefined) {
+              activeConfig.proxy = fileConfig.proxy;
+              if (fileConfig.proxy) {
+                await checkProxyAvailable();
+              }
             }
           }
         } catch (e) {

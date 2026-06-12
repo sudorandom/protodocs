@@ -73,6 +73,17 @@ func TestNewHandler_Default(t *testing.T) {
 	if !strings.Contains(string(robotsBytes), "User-agent: *") {
 		t.Errorf("expected robots.txt content to contain 'User-agent: *', got %q", string(robotsBytes))
 	}
+
+	// 4. Get /api/health
+	resHealth, err := http.Get(ts.URL + "/api/health")
+	if err != nil {
+		t.Fatalf("failed to get api/health: %v", err)
+	}
+	defer func() { _ = resHealth.Body.Close() }()
+
+	if resHealth.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200 for api/health, got %d", resHealth.StatusCode)
+	}
 }
 
 func TestNewHandler_Prefix(t *testing.T) {

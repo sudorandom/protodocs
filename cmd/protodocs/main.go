@@ -61,6 +61,7 @@ func main() {
 		LogoText:      "ProtoDocs (CLI)",
 		LoadingMethod: loadingMethod,
 		LocalPath:     staticDir,
+		Proxy:         true,
 	}
 
 	if reflectionURL != "" {
@@ -95,6 +96,7 @@ func main() {
 
 	// Add the demo config defaults if nothing was supplied (mimics standard CLI behavior)
 	if len(descriptorFiles) == 0 && reflectionURL == "" {
+		cfg.DescriptorFiles = []string{"/eliza.binpb"}
 		cfg.FrontPageMarkdown = "# Welcome to ProtoDocs 🚀\n\nSelect a file or service in the sidebar to start browsing the schema documentation."
 		cfg.ServiceEndpoints = map[string]string{
 			"connectrpc.eliza.v1.ElizaService": "https://demo.connectrpc.com",
