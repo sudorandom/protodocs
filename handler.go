@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"embed"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -25,6 +24,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
+	"gopkg.in/yaml.v3"
 )
 
 var upgrader = websocket.Upgrader{
@@ -36,23 +36,22 @@ var upgrader = websocket.Upgrader{
 //go:embed dist/*
 var embeddedFiles embed.FS
 
-// AppConfig matches the structure of config.json in frontend
+// AppConfig matches the structure of config.yaml in frontend
 type AppConfig struct {
-	Title                         string            `json:"title,omitempty"`
-	LogoText                      string            `json:"logo_text,omitempty"`
-	LogoURL                       string            `json:"logo_url,omitempty"`
-	LoadingMethod                 string            `json:"loading_method,omitempty"`
-	DescriptorFiles               []string          `json:"descriptor_files,omitempty"`
-	ServerURL                     string            `json:"server_url,omitempty"`
-	ReflectionURL                 string            `json:"reflection_url,omitempty"`
-	DefaultFile                   string            `json:"default_file,omitempty"`
-	FrontPageMarkdownFile         string            `json:"front_page_markdown_file,omitempty"`
-	BottomOfFrontPageMarkdownFile string            `json:"bottom_of_front_page_markdown_file,omitempty"`
-	ServiceEndpoints              map[string]string `json:"service_endpoints,omitempty"`
-	PrioritizedPaths              []string          `json:"prioritized_paths,omitempty"`
-	HighlightedFiles              []string          `json:"highlighted_files,omitempty"`
-	BackToText                    string            `json:"back_to_text,omitempty"`
-	BackToURL                     string            `json:"back_to_url,omitempty"`
+	Title                     string            `json:"title,omitempty" yaml:"title,omitempty"`
+	LogoText                  string            `json:"logo_text,omitempty" yaml:"logo_text,omitempty"`
+	LogoURL                   string            `json:"logo_url,omitempty" yaml:"logo_url,omitempty"`
+	LoadingMethod             string            `json:"loading_method,omitempty" yaml:"loading_method,omitempty"`
+	DescriptorFiles           []string          `json:"descriptor_files,omitempty" yaml:"descriptor_files,omitempty"`
+	ServerURL                 string            `json:"server_url,omitempty" yaml:"server_url,omitempty"`
+	ReflectionURL             string            `json:"reflection_url,omitempty" yaml:"reflection_url,omitempty"`
+	FrontPageMarkdown         string            `json:"front_page_markdown,omitempty" yaml:"front_page_markdown,omitempty"`
+	BottomOfFrontPageMarkdown string            `json:"bottom_of_front_page_markdown,omitempty" yaml:"bottom_of_front_page_markdown,omitempty"`
+	ServiceEndpoints          map[string]string `json:"service_endpoints,omitempty" yaml:"service_endpoints,omitempty"`
+	PrioritizedPaths          []string          `json:"prioritized_paths,omitempty" yaml:"prioritized_paths,omitempty"`
+	HighlightedFiles          []string          `json:"highlighted_files,omitempty" yaml:"highlighted_files,omitempty"`
+	BackToText                string            `json:"back_to_text,omitempty" yaml:"back_to_text,omitempty"`
+	BackToURL                 string            `json:"back_to_url,omitempty" yaml:"back_to_url,omitempty"`
 }
 
 // Config defines the configuration for the ProtoDocs handler.
@@ -71,12 +70,10 @@ type Config struct {
 	ServerURL string
 	// ReflectionURL is the default server reflection URL.
 	ReflectionURL string
-	// DefaultFile is the default proto file to load.
-	DefaultFile string
-	// FrontPageMarkdownFile is the path/URL to the front page markdown.
-	FrontPageMarkdownFile string
-	// BottomOfFrontPageMarkdownFile is the path/URL to the footer markdown.
-	BottomOfFrontPageMarkdownFile string
+	// FrontPageMarkdown is the markdown string content for the front page.
+	FrontPageMarkdown string
+	// BottomOfFrontPageMarkdown is the markdown string content for the footer.
+	BottomOfFrontPageMarkdown string
 	// ServiceEndpoints maps service names to default server URLs.
 	ServiceEndpoints map[string]string
 	// PrioritizedPaths is a list of paths to prioritize in the UI.
@@ -101,10 +98,6 @@ type Config struct {
 	// Registry is an optional protobuf registry to dynamically generate the FileDescriptorSet from.
 	// If set, updates to the registry will be dynamically reflected in the documentation.
 	Registry *protoregistry.Files
-
-	// MarkdownFiles contains in-memory markdown content.
-	// Map keys are the path they should be served at (e.g. "/home.md").
-	MarkdownFiles map[string]string
 }
 
 type layeredFileSystem struct {
@@ -506,35 +499,32 @@ func NewHandler(cfg Config) (http.Handler, error) {
 		len(cfg.DescriptorFiles) > 0 ||
 		cfg.ServerURL != "" ||
 		cfg.ReflectionURL != "" ||
-		cfg.DefaultFile != "" ||
-		cfg.FrontPageMarkdownFile != "" ||
-		cfg.BottomOfFrontPageMarkdownFile != "" ||
+		cfg.FrontPageMarkdown != "" ||
+		cfg.BottomOfFrontPageMarkdown != "" ||
 		len(cfg.ServiceEndpoints) > 0 ||
 		len(cfg.PrioritizedPaths) > 0 ||
 		len(cfg.HighlightedFiles) > 0 ||
 		cfg.Descriptors != nil ||
 		cfg.Registry != nil ||
 		cfg.BackToText != "" ||
-		cfg.BackToURL != "" ||
-		len(cfg.MarkdownFiles) > 0
+		cfg.BackToURL != ""
 
 	if hasConfig {
 		appCfg := AppConfig{
-			Title:                         cfg.Title,
-			LogoText:                      cfg.LogoText,
-			LogoURL:                       cfg.LogoURL,
-			LoadingMethod:                 cfg.LoadingMethod,
-			DescriptorFiles:               cfg.DescriptorFiles,
-			ServerURL:                     cfg.ServerURL,
-			ReflectionURL:                 cfg.ReflectionURL,
-			DefaultFile:                   cfg.DefaultFile,
-			FrontPageMarkdownFile:         cfg.FrontPageMarkdownFile,
-			BottomOfFrontPageMarkdownFile: cfg.BottomOfFrontPageMarkdownFile,
-			ServiceEndpoints:              cfg.ServiceEndpoints,
-			PrioritizedPaths:              cfg.PrioritizedPaths,
-			HighlightedFiles:              cfg.HighlightedFiles,
-			BackToText:                    cfg.BackToText,
-			BackToURL:                     cfg.BackToURL,
+			Title:                     cfg.Title,
+			LogoText:                  cfg.LogoText,
+			LogoURL:                   cfg.LogoURL,
+			LoadingMethod:             cfg.LoadingMethod,
+			DescriptorFiles:           cfg.DescriptorFiles,
+			ServerURL:                 cfg.ServerURL,
+			ReflectionURL:             cfg.ReflectionURL,
+			FrontPageMarkdown:         cfg.FrontPageMarkdown,
+			BottomOfFrontPageMarkdown: cfg.BottomOfFrontPageMarkdown,
+			ServiceEndpoints:          cfg.ServiceEndpoints,
+			PrioritizedPaths:          cfg.PrioritizedPaths,
+			HighlightedFiles:          cfg.HighlightedFiles,
+			BackToText:                cfg.BackToText,
+			BackToURL:                 cfg.BackToURL,
 		}
 
 		// Register in-memory FileDescriptorSet under the default path
@@ -546,23 +536,7 @@ func NewHandler(cfg Config) (http.Handler, error) {
 			}
 		}
 
-		// Setup default markdown files if in-memory ones are provided
-		if appCfg.FrontPageMarkdownFile == "" {
-			if _, ok := cfg.MarkdownFiles["/home.md"]; ok {
-				appCfg.FrontPageMarkdownFile = "/home.md"
-			} else if _, ok := cfg.MarkdownFiles["home.md"]; ok {
-				appCfg.FrontPageMarkdownFile = "/home.md"
-			}
-		}
-		if appCfg.BottomOfFrontPageMarkdownFile == "" {
-			if _, ok := cfg.MarkdownFiles["/footer.md"]; ok {
-				appCfg.BottomOfFrontPageMarkdownFile = "/footer.md"
-			} else if _, ok := cfg.MarkdownFiles["footer.md"]; ok {
-				appCfg.BottomOfFrontPageMarkdownFile = "/footer.md"
-			}
-		}
-
-		dynamicConfig, err = json.MarshalIndent(appCfg, "", "  ")
+		dynamicConfig, err = yaml.Marshal(appCfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate dynamic configuration: %w", err)
 		}
@@ -623,15 +597,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/api/proxy/ws":
 		h.proxyHandler.ServeWs(w, r)
 
-	case "/config.json":
-		w.Header().Set("Content-Type", "application/json")
+	case "/config.yaml":
+		w.Header().Set("Content-Type", "application/yaml")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		if len(h.dynamicConfig) > 0 {
 			_, _ = w.Write(h.dynamicConfig)
 			return
 		}
-		// Fallback to static config.json
-		f, err := h.staticFS.Open("config.json")
+		// Fallback to static config.yaml
+		f, err := h.staticFS.Open("config.yaml")
 		if err != nil {
 			_, _ = w.Write([]byte("{}"))
 			return
@@ -667,19 +641,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Check in-memory markdown files
-		if len(h.config.MarkdownFiles) > 0 {
-			content, ok := h.config.MarkdownFiles[path]
-			if !ok && strings.HasPrefix(path, "/") {
-				content, ok = h.config.MarkdownFiles[path[1:]]
-			}
-			if ok {
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-				w.Header().Set("Content-Type", "text/markdown")
-				_, _ = w.Write([]byte(content))
-				return
-			}
-		}
+
 
 		// Serve static file
 		r2 := new(http.Request)

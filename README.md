@@ -183,13 +183,13 @@ The `protodocs.Config` struct supports the following options:
 *   **`DescriptorFiles`**: URLs or paths to load pre-compiled protobuf descriptor sets.
 *   **`ServerURL`**: Default endpoint URL for reflection and sending RPC requests.
 *   **`ReflectionURL`**: Default endpoint URL for reflection.
-*   **`DefaultFile`**: Path of the default `.proto` file to focus on.
 *   **`Prefix`**: The URL prefix under which the handler is hosted (e.g. `"/docs/"`). The router will automatically strip this prefix before serving assets.
 *   **`Descriptors`**: In-memory `*descriptorpb.FileDescriptorSet`. It is automatically registered and served at `"/descriptors.binpb"` for the UI to load.
 *   **`Registry`**: Optional `*protoregistry.Files` registry. If specified, the handler will dynamically construct the `FileDescriptorSet` from the registry on each request. This allows any runtime updates to the registry to be immediately reflected in the documentation.
 *   **`BackToText`**: Optional text label for the "back" button displayed at the top of the navigation bar.
 *   **`BackToURL`**: Optional URL the "back" button navigates to (e.g., your developer portal main page).
-*   **`MarkdownFiles`**: In-memory mapping of virtual path (e.g., `"/home.md"`) to markdown string content.
+*   **`FrontPageMarkdown`**: Optional markdown string content to display on the landing welcome page.
+*   **`BottomOfFrontPageMarkdown`**: Optional markdown string content to display on the page footer.
 *   **`LocalPath`**: Local filesystem path to serve override static assets from (instead of embedded files).
 
 ## Static Website Distribution & Configuration
@@ -207,34 +207,32 @@ pnpm package # or npm run package
 This compiles the application and produces a lightweight `protodocs-static.tar.gz` archive in the root directory. This archive contains:
 - `index.html` & `404.html` (the client router entry points)
 - `assets/` (bundled JS & CSS)
-- `config.json` (configured to load the Eliza sample API by default)
+- `config.yaml` (configured to load the Eliza sample API by default)
 - `eliza.binpb` (the compiled Eliza gRPC-Web/Connect descriptor set)
-- `home.md` & `footer.md` (the template landing/footer markdown files)
 
 To customize the documentation for your team, you do not need to recompile the React source code. Instead, you only need to extract this archive onto your web host, and modify the following files in the web root:
-1. `config.json` (defines the configurations and file paths to load).
+1. `config.yaml` (defines the configurations and file paths to load).
 2. Your compiled protobuf binary descriptor sets (`.binpb` or `.pb` files).
-3. `home.md` (renders custom markdown content on the landing/welcome page).
-4. `footer.md` (renders custom markdown content on the page footer).
 
-### How `config.json` works
+### How `config.yaml` works
 
-At startup, the pre-built ProtoDocs application attempts to fetch `/config.json` from the web root. Below is an example schema showing all available configurations:
+At startup, the pre-built ProtoDocs application attempts to fetch `/config.yaml` from the web root. Below is an example schema showing all available configurations:
 
-```json
-{
-  "title": "My API Docs",
-  "logo_text": "My API Docs",
-  "logo_url": "/custom-logo.svg",
-  "loading_method": "http",
-  "descriptor_files": [
-    "/my-descriptors.binpb"
-  ],
-  "server_url": "http://127.0.0.1",
-  "default_file": "my-app/v1/service.proto",
-  "front_page_markdown_file": "/home.md",
-  "bottom_of_front_page_markdown_file": "/footer.md"
-}
+```yaml
+title: "My API Docs"
+logo_text: "My API Docs"
+logo_url: "/custom-logo.svg"
+loading_method: "http"
+descriptor_files:
+  - "/my-descriptors.binpb"
+server_url: "http://127.0.0.1"
+default_file: "my-app/v1/service.proto"
+front_page_markdown: |
+  # Welcome
+  This is the front page.
+bottom_of_front_page_markdown: |
+  # Footer
+  This is the footer.
 ```
 
 #### Fields Description:
@@ -244,8 +242,8 @@ At startup, the pre-built ProtoDocs application attempts to fetch `/config.json`
 * **`descriptor_files`**: An array of URLs pointing to the binary protobuf descriptor sets (`.binpb` or `.pb` files) to fetch and index.
 * **`server_url`**: Default endpoint URL to use for both live Server Reflection APIs and the interactive "Try it out" RPC client console.
 * **`default_file`**: Path of the default `.proto` file to display on initial page load (if none is specified in the URL hash).
-* **`front_page_markdown_file`**: Path to the markdown file (e.g., `/home.md`) containing content for the landing welcome page.
-* **`bottom_of_front_page_markdown_file`**: Path to the markdown file (e.g., `/footer.md`) containing custom footer content.
+* **`front_page_markdown`**: Markdown content to display on the landing welcome page as a multi-line string literal.
+* **`bottom_of_front_page_markdown`**: Markdown content to display on the page footer as a multi-line string literal.
 
 ## Contributing
 

@@ -9,6 +9,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	golang.org/x/net v0.56.0
 	google.golang.org/protobuf v1.36.11
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

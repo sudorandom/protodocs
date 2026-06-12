@@ -1,7 +1,6 @@
 package protodocs
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +10,7 @@ import (
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
+	"gopkg.in/yaml.v3"
 )
 
 func TestNewHandler_Default(t *testing.T) {
@@ -22,10 +22,10 @@ func TestNewHandler_Default(t *testing.T) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 
-	// 1. Get /config.json
-	res, err := http.Get(ts.URL + "/config.json")
+	// 1. Get /config.yaml
+	res, err := http.Get(ts.URL + "/config.yaml")
 	if err != nil {
-		t.Fatalf("failed to get config.json: %v", err)
+		t.Fatalf("failed to get config.yaml: %v", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
@@ -34,8 +34,8 @@ func TestNewHandler_Default(t *testing.T) {
 	}
 
 	var appCfg AppConfig
-	if err := json.NewDecoder(res.Body).Decode(&appCfg); err != nil {
-		t.Fatalf("failed to decode config.json: %v", err)
+	if err := yaml.NewDecoder(res.Body).Decode(&appCfg); err != nil {
+		t.Fatalf("failed to decode config.yaml: %v", err)
 	}
 
 	// Default config should contain default descriptor files
@@ -67,9 +67,9 @@ func TestNewHandler_Prefix(t *testing.T) {
 	defer ts.Close()
 
 	// Request prefix path
-	res, err := http.Get(ts.URL + "/docs/config.json")
+	res, err := http.Get(ts.URL + "/docs/config.yaml")
 	if err != nil {
-		t.Fatalf("failed to get prefix config.json: %v", err)
+		t.Fatalf("failed to get prefix config.yaml: %v", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
@@ -97,9 +97,7 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 		Title:    "Custom API Portal",
 		LogoText: "MyLogo",
 		Descriptors: descriptorSet,
-		MarkdownFiles: map[string]string{
-			"/home.md": markdownContent,
-		},
+		FrontPageMarkdown: markdownContent,
 		BackToText: "Back to Home",
 		BackToURL:  "https://example.com/home",
 	})
@@ -110,16 +108,16 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 
-	// 1. Check config.json is customized and contains the in-memory descriptor
-	res, err := http.Get(ts.URL + "/config.json")
+	// 1. Check config.yaml is customized and contains the in-memory descriptor
+	res, err := http.Get(ts.URL + "/config.yaml")
 	if err != nil {
-		t.Fatalf("failed to get config.json: %v", err)
+		t.Fatalf("failed to get config.yaml: %v", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	var appCfg AppConfig
-	if err := json.NewDecoder(res.Body).Decode(&appCfg); err != nil {
-		t.Fatalf("failed to decode config.json: %v", err)
+	if err := yaml.NewDecoder(res.Body).Decode(&appCfg); err != nil {
+		t.Fatalf("failed to decode config.yaml: %v", err)
 	}
 
 	if appCfg.Title != "Custom API Portal" {
@@ -145,8 +143,8 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 		t.Error("expected '/descriptors.binpb' in descriptor_files list, but not found")
 	}
 
-	if appCfg.FrontPageMarkdownFile != "/home.md" {
-		t.Errorf("expected FrontPageMarkdownFile '/home.md', got %q", appCfg.FrontPageMarkdownFile)
+	if appCfg.FrontPageMarkdown != markdownContent {
+		t.Errorf("expected FrontPageMarkdown %q, got %q", markdownContent, appCfg.FrontPageMarkdown)
 	}
 
 	// 2. Fetch the in-memory descriptor file
@@ -159,18 +157,6 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 	descBytes, _ := io.ReadAll(resDesc.Body)
 	if string(descBytes) != string(descriptorBytes) {
 		t.Errorf("expected descriptor content %q, got %q", descriptorBytes, descBytes)
-	}
-
-	// 3. Fetch the in-memory markdown file
-	resMD, err := http.Get(ts.URL + "/home.md")
-	if err != nil {
-		t.Fatalf("failed to fetch markdown: %v", err)
-	}
-	defer func() { _ = resMD.Body.Close() }()
-
-	mdBytes, _ := io.ReadAll(resMD.Body)
-	if string(mdBytes) != markdownContent {
-		t.Errorf("expected markdown content %q, got %q", markdownContent, mdBytes)
 	}
 }
 

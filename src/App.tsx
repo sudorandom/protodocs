@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspens
 import { createFileRegistry } from '@bufbuild/protobuf';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import YAML from 'yaml';
 import { loadDescriptorsFromUrls } from './lib/descriptor-loader';
 import { loadSchemaFromReflection } from './lib/reflection-client';
 import { checkProxyAvailable, resolveUrl } from './lib/proxy';
@@ -31,9 +32,8 @@ interface AppConfig {
   logoUrlDark?: string;
   logoUrlCyberpunk?: string;
   logoText: string;
-  defaultFile?: string;
-  frontPageMarkdownFile?: string;
-  bottomOfFrontPageMarkdownFile?: string;
+  frontPageMarkdown?: string;
+  bottomOfFrontPageMarkdown?: string;
   serviceEndpoints?: Record<string, string>;
   prioritizedPaths?: string[];
   highlightedFiles?: string[];
@@ -47,8 +47,8 @@ const DEFAULT_CONFIG: AppConfig = {
   reflectionUrl: 'https://demo.connectrpc.com',
   logoUrl: '',
   logoText: 'ProtoDocs',
-  frontPageMarkdownFile: '/home.md',
-  bottomOfFrontPageMarkdownFile: '/footer.md',
+  frontPageMarkdown: '',
+  bottomOfFrontPageMarkdown: '',
 };
 
 interface ParsedHash {
@@ -422,8 +422,6 @@ export default function App() {
               }
             }, 200);
           }
-        } else if (targetConfig.defaultFile && loadedSchema.file.some((f: any) => f.name === targetConfig.defaultFile)) {
-          setActiveFile(targetConfig.defaultFile);
         } else {
           setActiveFile('');
         }
@@ -445,11 +443,12 @@ export default function App() {
         await checkProxyAvailable();
         const activeConfig = { ...DEFAULT_CONFIG };
 
-        // 1. Fetch config.json first as the base config
+        // 1. Fetch config.yaml first as the base config
         try {
-          const res = await fetch(resolveUrl('/config.json?t=' + new Date().getTime()));
+          const res = await fetch(resolveUrl('/config.yaml?t=' + new Date().getTime()));
           if (res.ok) {
-            const fileConfig = await res.json();
+            const yamlText = await res.text();
+            const fileConfig = YAML.parse(yamlText);
             if (fileConfig.descriptor_files) {
               activeConfig.loadingMethod = 'http';
               activeConfig.descriptorFiles = fileConfig.descriptor_files;
@@ -469,14 +468,11 @@ export default function App() {
             if (fileConfig.logo_url_cyberpunk) {
               activeConfig.logoUrlCyberpunk = fileConfig.logo_url_cyberpunk;
             }
-            if (fileConfig.default_file) {
-              activeConfig.defaultFile = fileConfig.default_file;
+            if (fileConfig.front_page_markdown) {
+              activeConfig.frontPageMarkdown = fileConfig.front_page_markdown;
             }
-            if (fileConfig.front_page_markdown_file) {
-              activeConfig.frontPageMarkdownFile = fileConfig.front_page_markdown_file;
-            }
-            if (fileConfig.bottom_of_front_page_markdown_file) {
-              activeConfig.bottomOfFrontPageMarkdownFile = fileConfig.bottom_of_front_page_markdown_file;
+            if (fileConfig.bottom_of_front_page_markdown) {
+              activeConfig.bottomOfFrontPageMarkdown = fileConfig.bottom_of_front_page_markdown;
             }
             if (fileConfig.server_url) {
               activeConfig.reflectionUrl = fileConfig.server_url;
@@ -500,7 +496,7 @@ export default function App() {
             }
           }
         } catch (e) {
-          console.warn('config.json not found or failed to parse, using defaults.', e);
+          console.warn('config.yaml not found or failed to parse, using defaults.', e);
         }
 
         // 2. Override with URL search params
@@ -800,28 +796,14 @@ export default function App() {
     }
   };
 
-  // Fetch front page and footer markdown content
+  // Synchronize front page and footer markdown content from config
   useEffect(() => {
-    if (config.frontPageMarkdownFile) {
-      fetch(resolveUrl(config.frontPageMarkdownFile))
-        .then((res) => (res.ok ? res.text() : ''))
-        .then((text) => setFrontPageMarkdown(text))
-        .catch((err) => console.warn('Failed to load front page markdown:', err));
-    } else {
-      setFrontPageMarkdown('');
-    }
-  }, [config.frontPageMarkdownFile]);
+    setFrontPageMarkdown(config.frontPageMarkdown || '');
+  }, [config.frontPageMarkdown]);
 
   useEffect(() => {
-    if (config.bottomOfFrontPageMarkdownFile) {
-      fetch(resolveUrl(config.bottomOfFrontPageMarkdownFile))
-        .then((res) => (res.ok ? res.text() : ''))
-        .then((text) => setFooterMarkdown(text))
-        .catch((err) => console.warn('Failed to load footer markdown:', err));
-    } else {
-      setFooterMarkdown('');
-    }
-  }, [config.bottomOfFrontPageMarkdownFile]);
+    setFooterMarkdown(config.bottomOfFrontPageMarkdown || '');
+  }, [config.bottomOfFrontPageMarkdown]);
 
   const currentFileObj = schema.file.find((f) => f.name === activeFile);
 
