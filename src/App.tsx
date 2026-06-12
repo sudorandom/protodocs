@@ -408,6 +408,17 @@ export default function App() {
       
       setSchema(loadedSchema);
       
+      // Focus services tab if there is a > 0 count of services
+      let totalServices = 0;
+      if (loadedSchema.file) {
+        loadedSchema.file.forEach((f: any) => {
+          if (f.service && f.service.length > 0) {
+            totalServices += f.service.length;
+          }
+        });
+      }
+      setSidebarView(totalServices > 0 ? 'services' : 'files');
+
       if (loadedSchema.file && loadedSchema.file.length > 0) {
         // Apply routing from initial hash if available
         const { filepath, symbol } = parseHash(window.location.hash);
