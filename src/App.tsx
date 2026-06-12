@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import YAML from 'yaml';
 import { loadDescriptorsFromUrls } from './lib/descriptor-loader';
 import { loadSchemaFromReflection } from './lib/reflection-client';
-import { checkProxyAvailable, resolveUrl } from './lib/proxy';
+import { resolveUrl } from './lib/proxy';
 import type { TooltipState } from './components/Tooltip';
 import type { ReferencePanelState } from './components/ReferencePanel';
 import { formatOptionKey, formatOptionValue } from './lib/options-formatter-helpers';
@@ -451,7 +451,6 @@ export default function App() {
   useEffect(() => {
     const initializeConfig = async () => {
       try {
-        await checkProxyAvailable();
         const activeConfig = { ...DEFAULT_CONFIG };
 
         // 1. Fetch config.yaml first as the base config

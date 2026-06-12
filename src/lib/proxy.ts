@@ -1,6 +1,3 @@
-let proxyChecked = false;
-let proxyAvailable = false;
-
 export function getBaseUrl(): string {
   if (typeof window === 'undefined') {
     return '/';
@@ -27,31 +24,12 @@ export function resolveUrl(relativeUrl: string): string {
   return base + rel;
 }
 
-export async function checkProxyAvailable(): Promise<boolean> {
-  if (proxyChecked) {
-    return proxyAvailable;
-  }
-  try {
-    const res = await fetch(resolveUrl('/api/health'));
-    if (res.ok) {
-      const data = await res.json();
-      proxyAvailable = data.proxy === true || data.status === 'ok';
-    }
-  } catch {
-    proxyAvailable = false;
-  }
-  proxyChecked = true;
-  return proxyAvailable;
-}
-
 export function isProxyEnabled(): boolean {
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('proxy') === 'false') {
-      return false;
-    }
+    return params.get('proxy') === 'true';
   }
-  return proxyAvailable;
+  return false;
 }
 
 export function getProxiedUrlAndHeaders(

@@ -586,11 +586,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch path {
-	case "/api/health":
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		_, _ = w.Write([]byte(`{"status":"ok","proxy":true,"version":"1.0.0"}`))
-
 	case "/api/proxy":
 		h.proxyHandler.ServeHTTP(w, r)
 
