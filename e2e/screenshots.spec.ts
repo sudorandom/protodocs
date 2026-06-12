@@ -75,6 +75,9 @@ test.describe('Screenshot tests', () => {
     // Navigate with query parameters setting google/protobuf prioritized and descriptor.proto highlighted
     await page.goto('/?descriptors=/googleapis.binpb,/gnostic.binpb,/protovalidate.binpb&prioritizedPaths=google/protobuf&highlightedFiles=google/protobuf/descriptor.proto');
     
+    // Switch to Files tab
+    await page.locator('button', { hasText: 'Files' }).first().click();
+
     // The google/protobuf/ folder and descriptor.proto file with its Core badge should be visible
     await expect(page.locator('span', { hasText: 'google/protobuf/' }).first()).toBeVisible();
     await expect(page.locator('span', { hasText: 'descriptor.proto' }).first()).toBeVisible();
@@ -124,6 +127,9 @@ test.describe('Screenshot tests', () => {
     // Verify hash changed to #/ and Welcome message is visible
     await expect(page).toHaveURL(/#\/$/);
     await expect(page.locator('h1', { hasText: 'Welcome to ProtoDocs' })).toBeVisible();
+
+    // Switch to Files tab
+    await page.locator('button', { hasText: 'Files' }).first().click();
 
     // Navigate to a file manually via sidebar
     const fileLink = page.locator('span', { hasText: 'http.proto' }).first();
