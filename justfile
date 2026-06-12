@@ -14,7 +14,7 @@ run-cli *args:
     go run main.go {{args}}
 
 
-lint:
+lint: build
     pnpm lint
     golangci-lint run
 
