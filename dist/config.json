@@ -1,0 +1,22 @@
+{
+  "title": "protodocs.dev",
+  "logo_text": "protodocs.dev",
+  "descriptor_files": [
+    "/eliza.binpb",
+    "/googleapis.binpb",
+    "/protovalidate.binpb",
+    "/gnostic.binpb",
+    "/wellknowntypes.binpb"
+  ],
+  "front_page_markdown_file": "/home.md",
+  "bottom_of_front_page_markdown_file": "/footer.md",
+  "service_endpoints": {
+    "connectrpc.eliza.v1.ElizaService": "https://demo.connectrpc.com"
+  },
+  "prioritized_paths": [
+    "google/protobuf"
+  ],
+  "highlighted_files": [
+    "google/protobuf/descriptor.proto"
+  ]
+}
