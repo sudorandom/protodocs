@@ -2,6 +2,7 @@ import { fromBinary, createFileRegistry, toBinary, create, toJsonString } from '
 import { FileDescriptorSetSchema } from '@bufbuild/protobuf/wkt';
 import { REFLECTION_BIN_BASE64 } from './reflection/reflection-binary';
 import { attachComments } from './descriptor-loader';
+import { getProxiedUrlAndHeaders } from './proxy';
 
 // Load reflection schema from compiled inlined Base64
 const reflectionBytes = Uint8Array.from(atob(REFLECTION_BIN_BASE64), c => c.charCodeAt(0));
@@ -74,7 +75,7 @@ async function reflectionCall(
   baseUrl: string,
   servicePath: string,
   requestPayload: any,
-  loadingMethod: 'grpc-web' | 'connect'
+  loadingMethod: 'grpc-web' | 'connect' | 'grpc'
 ): Promise<any[]> {
   const normalizedUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
   const url = `${normalizedUrl}/${servicePath}/ServerReflectionInfo`;
@@ -84,17 +85,21 @@ async function reflectionCall(
   const body = encodeStreamMessage(binaryReq);
 
   const headers: Record<string, string> = {};
-  if (loadingMethod === 'grpc-web') {
+  if (loadingMethod === 'grpc-web' || loadingMethod === 'grpc') {
     headers['Content-Type'] = 'application/grpc-web+proto';
     headers['X-Grpc-Web'] = '1';
+    if (loadingMethod === 'grpc') {
+      headers['X-Translate-To-Grpc'] = 'true';
+    }
   } else {
     headers['Content-Type'] = 'application/connect+proto';
     headers['Connect-Protocol-Version'] = '1';
   }
 
-  const res = await fetch(url, {
+  const proxied = getProxiedUrlAndHeaders(url, headers);
+  const res = await fetch(proxied.url, {
     method: 'POST',
-    headers,
+    headers: proxied.headers,
     body,
   });
 
@@ -111,7 +116,7 @@ async function reflectionCall(
  */
 export async function loadSchemaFromReflection(
   baseUrl: string,
-  loadingMethod: 'grpc-web' | 'connect'
+  loadingMethod: 'grpc-web' | 'connect' | 'grpc'
 ): Promise<any> {
   // We try v1alpha first, then fallback to v1 reflection paths if v1alpha fails (common on Connect servers)
   let servicePath = 'grpc.reflection.v1alpha.ServerReflection';

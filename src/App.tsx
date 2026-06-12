@@ -1,25 +1,29 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { createFileRegistry } from '@bufbuild/protobuf';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { loadDescriptorsFromUrls } from './lib/descriptor-loader';
 import { loadSchemaFromReflection } from './lib/reflection-client';
-import Sidebar from './components/Sidebar';
-import Tooltip, { type TooltipState } from './components/Tooltip';
-import ReferencePanel, { type ReferencePanelState } from './components/ReferencePanel';
-import ServiceViewer from './components/ServiceViewer';
-import MessageViewer from './components/MessageViewer';
-import EnumViewer from './components/EnumViewer';
+import { checkProxyAvailable } from './lib/proxy';
+import type { TooltipState } from './components/Tooltip';
+import type { ReferencePanelState } from './components/ReferencePanel';
 import { formatOptionKey, formatOptionValue } from './lib/options-formatter-helpers';
-import ExtensionGroupViewer from './components/ExtensionGroupViewer';
 import OptionLink from './components/OptionLink';
 import { populateTypeIndexWithOptions, normalizeFileDescriptor } from './lib/option-resolver';
 import { reconstructProto, getEditionString } from './lib/proto-reconstructor';
 import KeywordLink from './components/KeywordLink';
-import QuickBrowse from './components/QuickBrowse';
+
+const Sidebar = lazy(() => import('./components/Sidebar'));
+const Tooltip = lazy(() => import('./components/Tooltip'));
+const ReferencePanel = lazy(() => import('./components/ReferencePanel'));
+const ServiceViewer = lazy(() => import('./components/ServiceViewer'));
+const MessageViewer = lazy(() => import('./components/MessageViewer'));
+const EnumViewer = lazy(() => import('./components/EnumViewer'));
+const ExtensionGroupViewer = lazy(() => import('./components/ExtensionGroupViewer'));
+const QuickBrowse = lazy(() => import('./components/QuickBrowse'));
 
 interface AppConfig {
-  loadingMethod: 'http' | 'grpc-web' | 'connect';
+  loadingMethod: 'http' | 'grpc-web' | 'connect' | 'grpc';
   descriptorFiles: string[];
   reflectionUrl: string;
   logoUrl: string;
@@ -38,7 +42,7 @@ interface AppConfig {
 const DEFAULT_CONFIG: AppConfig = {
   loadingMethod: 'http',
   descriptorFiles: ['/gnostic.binpb', '/protovalidate.binpb', '/googleapis.binpb'],
-  reflectionUrl: 'http://127.0.0.1',
+  reflectionUrl: 'https://demo.connectrpc.com',
   logoUrl: '',
   logoText: 'ProtoDocs',
   frontPageMarkdownFile: '/home.md',
@@ -436,105 +440,94 @@ export default function App() {
   useEffect(() => {
     const initializeConfig = async () => {
       try {
+        await checkProxyAvailable();
         let activeConfig = { ...DEFAULT_CONFIG };
 
-        // 1. Try LocalStorage
-        const saved = localStorage.getItem('protodocs_config');
-        if (saved) {
-          try {
-            activeConfig = JSON.parse(saved);
-          } catch (e) {
-            console.error('Failed to parse saved config from localStorage', e);
-          }
-        } else {
-          // 2. Try URL Search Params
-          const params = new URLSearchParams(window.location.search);
-          const method = params.get('method');
-          const url = params.get('url') || params.get('serverUrl') || params.get('reflectionUrl');
-          const descriptors = params.get('descriptors');
-          const logoText = params.get('logoText');
-          const logoUrl = params.get('logoUrl');
-          const logoUrlLight = params.get('logoUrlLight');
-          const logoUrlDark = params.get('logoUrlDark');
-          const logoUrlCyberpunk = params.get('logoUrlCyberpunk');
-          const prioritizedPathsParam = params.get('prioritizedPaths') || params.get('prioritized_paths');
-          const highlightedFilesParam = params.get('highlightedFiles') || params.get('highlighted_files');
-
-          if (method === 'grpc-web' || method === 'connect' || url) {
-            activeConfig.loadingMethod = (method as any) || activeConfig.loadingMethod;
-            activeConfig.reflectionUrl = url || activeConfig.reflectionUrl;
-          } else if (method === 'http' || descriptors) {
-            activeConfig.loadingMethod = 'http';
-            activeConfig.descriptorFiles = descriptors
-              ? descriptors.split(',').map((d) => d.trim())
-              : activeConfig.descriptorFiles;
-          }
-
-          if (logoText) activeConfig.logoText = logoText;
-          if (logoUrl) activeConfig.logoUrl = logoUrl;
-          if (logoUrlLight) activeConfig.logoUrlLight = logoUrlLight;
-          if (logoUrlDark) activeConfig.logoUrlDark = logoUrlDark;
-          if (logoUrlCyberpunk) activeConfig.logoUrlCyberpunk = logoUrlCyberpunk;
-          if (prioritizedPathsParam) {
-            activeConfig.prioritizedPaths = prioritizedPathsParam.split(',').map((p) => p.trim());
-          }
-          if (highlightedFilesParam) {
-            activeConfig.highlightedFiles = highlightedFilesParam.split(',').map((f) => f.trim());
-          }
-
-          // 3. Fallback to config.json
-          if (!method && !descriptors) {
-            try {
-              const res = await fetch('/config.json');
-              if (res.ok) {
-                const fileConfig = await res.json();
-                if (fileConfig.descriptor_files) {
-                  activeConfig.loadingMethod = 'http';
-                  activeConfig.descriptorFiles = fileConfig.descriptor_files;
-                }
-                if (fileConfig.title) {
-                  activeConfig.logoText = fileConfig.title;
-                }
-                if (fileConfig.logo_url) {
-                  activeConfig.logoUrl = fileConfig.logo_url;
-                }
-                if (fileConfig.logo_url_light) {
-                  activeConfig.logoUrlLight = fileConfig.logo_url_light;
-                }
-                if (fileConfig.logo_url_dark) {
-                  activeConfig.logoUrlDark = fileConfig.logo_url_dark;
-                }
-                if (fileConfig.logo_url_cyberpunk) {
-                  activeConfig.logoUrlCyberpunk = fileConfig.logo_url_cyberpunk;
-                }
-                if (fileConfig.default_file) {
-                  activeConfig.defaultFile = fileConfig.default_file;
-                }
-                if (fileConfig.front_page_markdown_file) {
-                  activeConfig.frontPageMarkdownFile = fileConfig.front_page_markdown_file;
-                }
-                if (fileConfig.bottom_of_front_page_markdown_file) {
-                  activeConfig.bottomOfFrontPageMarkdownFile = fileConfig.bottom_of_front_page_markdown_file;
-                }
-                if (fileConfig.server_url) {
-                  activeConfig.reflectionUrl = fileConfig.server_url;
-                } else if (fileConfig.reflection_url) {
-                  activeConfig.reflectionUrl = fileConfig.reflection_url;
-                }
-                if (fileConfig.service_endpoints) {
-                  activeConfig.serviceEndpoints = fileConfig.service_endpoints;
-                }
-                if (fileConfig.prioritized_paths) {
-                  activeConfig.prioritizedPaths = fileConfig.prioritized_paths;
-                }
-                if (fileConfig.highlighted_files) {
-                  activeConfig.highlightedFiles = fileConfig.highlighted_files;
-                }
-              }
-            } catch (e) {
-              console.warn('config.json not found or failed to parse, using defaults.', e);
+        // 1. Fetch config.json first as the base config
+        try {
+          const res = await fetch('/config.json?t=' + new Date().getTime());
+          if (res.ok) {
+            const fileConfig = await res.json();
+            if (fileConfig.descriptor_files) {
+              activeConfig.loadingMethod = 'http';
+              activeConfig.descriptorFiles = fileConfig.descriptor_files;
+            }
+            if (fileConfig.title) {
+              activeConfig.logoText = fileConfig.title;
+            }
+            if (fileConfig.logo_url) {
+              activeConfig.logoUrl = fileConfig.logo_url;
+            }
+            if (fileConfig.logo_url_light) {
+              activeConfig.logoUrlLight = fileConfig.logo_url_light;
+            }
+            if (fileConfig.logo_url_dark) {
+              activeConfig.logoUrlDark = fileConfig.logo_url_dark;
+            }
+            if (fileConfig.logo_url_cyberpunk) {
+              activeConfig.logoUrlCyberpunk = fileConfig.logo_url_cyberpunk;
+            }
+            if (fileConfig.default_file) {
+              activeConfig.defaultFile = fileConfig.default_file;
+            }
+            if (fileConfig.front_page_markdown_file) {
+              activeConfig.frontPageMarkdownFile = fileConfig.front_page_markdown_file;
+            }
+            if (fileConfig.bottom_of_front_page_markdown_file) {
+              activeConfig.bottomOfFrontPageMarkdownFile = fileConfig.bottom_of_front_page_markdown_file;
+            }
+            if (fileConfig.server_url) {
+              activeConfig.reflectionUrl = fileConfig.server_url;
+            } else if (fileConfig.reflection_url) {
+              activeConfig.reflectionUrl = fileConfig.reflection_url;
+            }
+            if (fileConfig.service_endpoints) {
+              activeConfig.serviceEndpoints = fileConfig.service_endpoints;
+            }
+            if (fileConfig.prioritized_paths) {
+              activeConfig.prioritizedPaths = fileConfig.prioritized_paths;
+            }
+            if (fileConfig.highlighted_files) {
+              activeConfig.highlightedFiles = fileConfig.highlighted_files;
             }
           }
+        } catch (e) {
+          console.warn('config.json not found or failed to parse, using defaults.', e);
+        }
+
+        // 2. Override with URL search params
+        const params = new URLSearchParams(window.location.search);
+        const method = params.get('method');
+        const url = params.get('url') || params.get('serverUrl') || params.get('reflectionUrl');
+        const descriptors = params.get('descriptors');
+        const logoText = params.get('logoText');
+        const logoUrl = params.get('logoUrl');
+        const logoUrlLight = params.get('logoUrlLight');
+        const logoUrlDark = params.get('logoUrlDark');
+        const logoUrlCyberpunk = params.get('logoUrlCyberpunk');
+        const prioritizedPathsParam = params.get('prioritizedPaths') || params.get('prioritized_paths');
+        const highlightedFilesParam = params.get('highlightedFiles') || params.get('highlighted_files');
+
+        if (method === 'grpc-web' || method === 'connect' || url) {
+          activeConfig.loadingMethod = (method as any) || activeConfig.loadingMethod;
+          activeConfig.reflectionUrl = url || activeConfig.reflectionUrl;
+        } else if (method === 'http' || descriptors) {
+          activeConfig.loadingMethod = 'http';
+          activeConfig.descriptorFiles = descriptors
+            ? descriptors.split(',').map((d) => d.trim())
+            : activeConfig.descriptorFiles;
+        }
+
+        if (logoText) activeConfig.logoText = logoText;
+        if (logoUrl) activeConfig.logoUrl = logoUrl;
+        if (logoUrlLight) activeConfig.logoUrlLight = logoUrlLight;
+        if (logoUrlDark) activeConfig.logoUrlDark = logoUrlDark;
+        if (logoUrlCyberpunk) activeConfig.logoUrlCyberpunk = logoUrlCyberpunk;
+        if (prioritizedPathsParam) {
+          activeConfig.prioritizedPaths = prioritizedPathsParam.split(',').map((p) => p.trim());
+        }
+        if (highlightedFilesParam) {
+          activeConfig.highlightedFiles = highlightedFilesParam.split(',').map((f) => f.trim());
         }
 
         setConfig(activeConfig);
@@ -883,25 +876,27 @@ export default function App() {
       )}
 
       {/* Sidebar with grouped directories and popup theme selector */}
-      <Sidebar
-        logoUrl={activeLogoUrl}
-        logoText={config.logoText}
-        sidebarView={sidebarView}
-        setSidebarView={setSidebarView}
-        schema={schema}
-        activeFile={activeFile}
-        setActiveFile={setActiveFile}
-        parsedServices={parsedServices}
-        onGoToElement={goToElement}
-        loading={loading}
-        error={error}
-        theme={theme}
-        setTheme={setTheme}
-        isSidebarOpen={isSidebarOpen}
-        onCloseSidebar={() => setIsSidebarOpen(false)}
-        prioritizedPaths={config.prioritizedPaths}
-        highlightedFiles={config.highlightedFiles}
-      />
+      <Suspense fallback={<div className="w-64 h-full bg-app-surface border-r border-app-border animate-pulse" />}>
+        <Sidebar
+          logoUrl={activeLogoUrl}
+          logoText={config.logoText}
+          sidebarView={sidebarView}
+          setSidebarView={setSidebarView}
+          schema={schema}
+          activeFile={activeFile}
+          setActiveFile={setActiveFile}
+          parsedServices={parsedServices}
+          onGoToElement={goToElement}
+          loading={loading}
+          error={error}
+          theme={theme}
+          setTheme={setTheme}
+          isSidebarOpen={isSidebarOpen}
+          onCloseSidebar={() => setIsSidebarOpen(false)}
+          prioritizedPaths={config.prioritizedPaths}
+          highlightedFiles={config.highlightedFiles}
+        />
+      </Suspense>
 
       {/* Main Container - Size is fully constrained and fixed to flex flow */}
       <div className="flex-1 flex flex-col min-w-0 relative h-full">
@@ -1288,58 +1283,60 @@ export default function App() {
                   </div>
 
                   {/* Viewers */}
-                  {currentFileObj.service?.map((svc: any) => (
-                    <ServiceViewer
-                      key={svc.name}
-                      service={svc}
-                      file={currentFileObj}
-                      typeIndex={typeIndex}
-                      onMouseEnter={handleMouseEnter}
-                      onMouseLeave={handleMouseLeave}
-                      onPinClick={handlePinClick}
-                      registry={registry}
-                      config={config}
-                      customHeaders={customHeaders}
-                      setCustomHeaders={setCustomHeaders}
-                    />
-                  ))}
+                  <Suspense fallback={<div className="p-8 text-app-textMuted animate-pulse">Loading viewers...</div>}>
+                    {currentFileObj.service?.map((svc: any) => (
+                      <ServiceViewer
+                        key={svc.name}
+                        service={svc}
+                        file={currentFileObj}
+                        typeIndex={typeIndex}
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
+                        onPinClick={handlePinClick}
+                        registry={registry}
+                        config={config}
+                        customHeaders={customHeaders}
+                        setCustomHeaders={setCustomHeaders}
+                      />
+                    ))}
 
-                  {currentFileObj.messageType?.map((msg: any) => (
-                    <MessageViewer
-                      key={msg.name}
-                      message={msg}
-                      file={currentFileObj}
-                      typeIndex={typeIndex}
-                      onMouseEnter={handleMouseEnter}
-                      onMouseLeave={handleMouseLeave}
-                      onPinClick={handlePinClick}
-                    />
-                  ))}
+                    {currentFileObj.messageType?.map((msg: any) => (
+                      <MessageViewer
+                        key={msg.name}
+                        message={msg}
+                        file={currentFileObj}
+                        typeIndex={typeIndex}
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
+                        onPinClick={handlePinClick}
+                      />
+                    ))}
 
-                  {currentFileObj.enumType?.map((enm: any) => (
-                    <EnumViewer
-                      key={enm.name}
-                      enumObj={enm}
-                      file={currentFileObj}
-                      typeIndex={typeIndex}
-                      onMouseEnter={handleMouseEnter}
-                      onMouseLeave={handleMouseLeave}
-                      onPinClick={handlePinClick}
-                    />
-                  ))}
+                    {currentFileObj.enumType?.map((enm: any) => (
+                      <EnumViewer
+                        key={enm.name}
+                        enumObj={enm}
+                        file={currentFileObj}
+                        typeIndex={typeIndex}
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
+                        onPinClick={handlePinClick}
+                      />
+                    ))}
 
-                  {Object.entries(extensionGroups).map(([extendee, fields]) => (
-                    <ExtensionGroupViewer
-                      key={extendee}
-                      extendee={extendee}
-                      fields={fields}
-                      parentFqn={currentFileObj.package ? `.${currentFileObj.package}` : ''}
-                      typeIndex={typeIndex}
-                      onMouseEnter={handleMouseEnter}
-                      onMouseLeave={handleMouseLeave}
-                      onPinClick={handlePinClick}
-                    />
-                  ))}
+                    {Object.entries(extensionGroups).map(([extendee, fields]) => (
+                      <ExtensionGroupViewer
+                        key={extendee}
+                        extendee={extendee}
+                        fields={fields}
+                        parentFqn={currentFileObj.package ? `.${currentFileObj.package}` : ''}
+                        typeIndex={typeIndex}
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
+                        onPinClick={handlePinClick}
+                      />
+                    ))}
+                  </Suspense>
                 </>
               )
             )}
@@ -1347,33 +1344,39 @@ export default function App() {
         </div>
 
         {/* Reference Panel Drawer */}
-        <ReferencePanel
-          state={referencePanel}
-          onClose={() => setReferencePanel(null)}
-          onReferenceClick={goToElement}
-        />
+        <Suspense fallback={null}>
+          <ReferencePanel
+            state={referencePanel}
+            onClose={() => setReferencePanel(null)}
+            onReferenceClick={goToElement}
+          />
+        </Suspense>
 
       </div>
 
       {/* Rich Tooltip Overlay */}
-      <Tooltip
-        key={activeTooltip ? `${activeTooltip.fqn}-${activeTooltip.x}-${activeTooltip.y}` : 'none'}
-        activeTooltip={activeTooltip}
-        onClose={() => setActiveTooltip(null)}
-        onGoToDefinition={goToDefinition}
-        onFindReferences={findReferences}
-      />
+      <Suspense fallback={null}>
+        <Tooltip
+          key={activeTooltip ? `${activeTooltip.fqn}-${activeTooltip.x}-${activeTooltip.y}` : 'none'}
+          activeTooltip={activeTooltip}
+          onClose={() => setActiveTooltip(null)}
+          onGoToDefinition={goToDefinition}
+          onFindReferences={findReferences}
+        />
+      </Suspense>
 
       {/* QuickBrowse outline outline catalog */}
-      {schema && schema.file && (
-        <QuickBrowse
-          schema={schema}
-          activeFile={activeFile}
-          onNavigate={goToElement}
-          isOpen={isQuickBrowseOpen}
-          setIsOpen={setIsQuickBrowseOpen}
-        />
-      )}
+      <Suspense fallback={null}>
+        {schema && schema.file && (
+          <QuickBrowse
+            schema={schema}
+            activeFile={activeFile}
+            onNavigate={goToElement}
+            isOpen={isQuickBrowseOpen}
+            setIsOpen={setIsQuickBrowseOpen}
+          />
+        )}
+      </Suspense>
 
     </div>
   );

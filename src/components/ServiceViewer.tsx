@@ -5,6 +5,7 @@ import { FormatOptions } from './options-formatter';
 import { formatOptionValue, formatOptionKey } from '../lib/options-formatter-helpers';
 import { generateMockJson } from '../lib/mock-generator';
 import { sendRpcRequest } from '../lib/rpc-sender';
+import { isProxyEnabled } from '../lib/proxy';
 import KeywordLink from './KeywordLink';
 import { cleanComment } from '../lib/proto-reconstructor';
 
@@ -241,7 +242,8 @@ function RpcMethodTester({
   customHeaders,
   setCustomHeaders,
 }: RpcMethodTesterProps) {
-  const isConsoleSupported = !method.clientStreaming;
+  const hasProxy = isProxyEnabled();
+  const isConsoleSupported = hasProxy || !method.clientStreaming;
   const [endpointUrl, setEndpointUrl] = useState(() => {
     if (config.serviceEndpoints) {
       const fullServiceName = packageName ? `${packageName}.${serviceName}` : serviceName;
@@ -258,13 +260,16 @@ function RpcMethodTester({
     }
     return config.reflectionUrl || 'http://localhost:8080';
   });
-  const [protocol, setProtocol] = useState<'connect' | 'grpc-web'>('connect');
+  const [protocol, setProtocol] = useState<'connect' | 'grpc-web' | 'grpc'>('connect');
   const [requestJson, setRequestJson] = useState(() => {
     try {
-      const mockObj = generateMockJson(method.inputType, typeIndex);
+      let mockObj: any = generateMockJson(method.inputType, typeIndex);
+      if (method.clientStreaming) {
+        mockObj = [mockObj];
+      }
       return JSON.stringify(mockObj, null, 2);
     } catch {
-      return '{}';
+      return method.clientStreaming ? '[\n  {}\n]' : '{}';
     }
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -378,6 +383,7 @@ function RpcMethodTester({
     });
 
     const isServerStreaming = !!method.serverStreaming;
+    const isClientStreaming = !!method.clientStreaming;
 
     try {
       const res = await sendRpcRequest({
@@ -392,7 +398,8 @@ function RpcMethodTester({
         registry,
         extraHeaders,
         isServerStreaming,
-        onChunk: isServerStreaming ? (chunk) => {
+        isClientStreaming,
+        onChunk: (isServerStreaming || isClientStreaming) ? (chunk) => {
           if (chunk.body) {
             setStreamMessages((prev) => [
               ...prev,
@@ -471,9 +478,16 @@ function RpcMethodTester({
           <div className="flex flex-wrap items-center gap-4">
             {/* Endpoint Input */}
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-[10px] text-app-textMuted uppercase font-bold mb-1">
-                Endpoint URL
-              </label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-[10px] text-app-textMuted uppercase font-bold">
+                  Endpoint URL
+                </label>
+                {hasProxy && (
+                  <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded px-1.5 py-0.5 font-bold uppercase tracking-wider">
+                    Proxy Active
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 className="w-full bg-app-base border border-app-border rounded px-2 py-1 text-app-textBright outline-none focus:border-app-accent font-mono text-xs"
@@ -488,18 +502,18 @@ function RpcMethodTester({
                 Protocol
               </label>
               <div className="flex gap-2 bg-app-base border border-app-border rounded p-0.5">
-                {(['connect', 'grpc-web'] as const).map((p) => (
+                {(hasProxy ? ['connect', 'grpc-web', 'grpc'] : ['connect', 'grpc-web']).map((p) => (
                   <button
                     key={p}
                     type="button"
-                    onClick={() => setProtocol(p)}
+                    onClick={() => setProtocol(p as 'connect' | 'grpc-web' | 'grpc')}
                     className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase transition-all cursor-pointer select-none ${
                       protocol === p
                         ? 'bg-app-accent text-white shadow'
                         : 'text-app-textMuted hover:text-app-textBright'
                     }`}
                   >
-                    {p}
+                    {p === 'grpc' ? 'gRPC' : p}
                   </button>
                 ))}
               </div>
@@ -588,7 +602,7 @@ function RpcMethodTester({
                 Request Body (JSON)
               </label>
               <textarea
-                className="w-full h-48 bg-app-code border border-app-border rounded p-2 text-syn-string font-mono text-xs outline-none focus:border-app-accent resize-y"
+                className="w-full min-h-[12rem] max-h-72 bg-app-code border border-app-border rounded p-2 text-syn-string font-mono text-xs outline-none focus:border-app-accent resize-y"
                 value={requestJson}
                 onChange={(e) => setRequestJson(e.target.value)}
               />
@@ -599,7 +613,7 @@ function RpcMethodTester({
               <label className="block text-[10px] text-app-textMuted uppercase font-bold mb-1 select-none">
                 Response
               </label>
-              <div className="flex-1 min-h-[12rem] bg-app-code border border-app-border rounded p-3 font-mono text-[11px] overflow-auto max-h-72 relative">
+              <div className="flex-1 min-h-[12rem] max-h-72 bg-app-code border border-app-border rounded p-3 font-mono text-[11px] overflow-auto relative">
                 {/* Global Copy Button */}
                 {(response || streamMessages.length > 0) && (
                   <button

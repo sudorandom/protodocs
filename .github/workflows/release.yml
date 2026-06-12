@@ -26,11 +26,21 @@ jobs:
     - name: Run Package (Builds app and bundles static tar.gz)
       run: pnpm package
 
+    - name: Build CLI Binaries
+      run: just build-cli
+
     - name: Upload Static Package Artifact
       uses: actions/upload-artifact@v4
       with:
         name: protodocs-static-package
         path: protodocs-static.tar.gz
+        if-no-files-found: error
+
+    - name: Upload CLI Binaries Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: protodocs-cli-binaries
+        path: bin/*
         if-no-files-found: error
 
     - name: Set up QEMU
@@ -62,6 +72,8 @@ jobs:
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        files: protodocs-static.tar.gz
+        files: |
+          protodocs-static.tar.gz
+          bin/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -28,3 +28,4 @@ test-results
 # Build artifacts
 protodocs-static.tar.gz
 
+bin
