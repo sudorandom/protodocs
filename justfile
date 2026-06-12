@@ -11,7 +11,7 @@ run:
 # Build frontend and run the Go CLI backend (forwards arguments)
 run-cli *args:
     pnpm build
-    go run main.go {{args}}
+    go run ./cmd/protodocs {{args}}
 
 
 lint: build
@@ -52,8 +52,8 @@ package:
 build-cli:
     pnpm build
     mkdir -p bin
-    GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/protodocs-linux-amd64 .
-    GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o bin/protodocs-linux-arm64 .
-    GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o bin/protodocs-darwin-arm64 .
-    GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o bin/protodocs-windows-amd64.exe .
+    GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/protodocs-linux-amd64 ./cmd/protodocs
+    GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o bin/protodocs-linux-arm64 ./cmd/protodocs
+    GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o bin/protodocs-darwin-arm64 ./cmd/protodocs
+    GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o bin/protodocs-windows-amd64.exe ./cmd/protodocs
 

@@ -1,5 +1,5 @@
 import { fromBinary, toJsonString, fromJsonString, toBinary } from '@bufbuild/protobuf';
-import { getProxiedUrlAndHeaders } from './proxy';
+import { getProxiedUrlAndHeaders, resolveUrl } from './proxy';
 
 export interface RpcResponseResult {
   status: string;
@@ -75,9 +75,9 @@ export async function sendRpcRequest({
 
   // Use WebSocket if it's a streaming call AND we are using the local proxy
   const isStreaming = isServerStreaming || isClientStreaming;
-  if (isStreaming && proxied.url === '/api/proxy') {
+  if (isStreaming && proxied.url === resolveUrl('/api/proxy')) {
     return new Promise((resolve) => {
-      const wsUrl = new URL('/api/proxy/ws', window.location.origin);
+      const wsUrl = new URL(resolveUrl('/api/proxy/ws'), window.location.origin);
       wsUrl.protocol = wsUrl.protocol === 'https:' ? 'wss:' : 'ws:';
       const ws = new WebSocket(wsUrl.toString());
 

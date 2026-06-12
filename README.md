@@ -121,6 +121,75 @@ docker run -d -p 8080:80 protodocs
 ```
 
 
+## Go Library Usage
+
+ProtoDocs can be imported as a Go library to serve your API documentation directly from your Go web server, similar to how swagger-ui libraries work.
+
+A complete runnable example is available in the [examples/simple](file:///Users/kevin/Projects/protodocs/examples/simple) directory.
+
+### Installation
+
+```sh
+go get github.com/sudorandom/protodocs
+```
+
+### Basic Example
+
+You can instantiate a handler using `protodocs.NewHandler` and register it with `http.Handle` or any Go router:
+
+```go
+package main
+
+import (
+	"log"
+	"net/http"
+
+	"github.com/sudorandom/protodocs"
+	"google.golang.org/protobuf/reflect/protoregistry"
+)
+
+func main() {
+	// Initialize the ProtoDocs handler using the global protobuf registry.
+	// This automatically registers all compiled protobuf files in your application.
+	handler, err := protodocs.NewHandler(protodocs.Config{
+		Title:    "My Service Documentation",
+		LogoText: "My Service",
+		Registry: protoregistry.GlobalFiles,
+		// Host ProtoDocs under a prefix path
+		Prefix:   "/docs/",
+	})
+	if err != nil {
+		log.Fatalf("Failed to initialize ProtoDocs: %v", err)
+	}
+
+	// Register the handler
+	http.Handle("/docs/", handler)
+
+	log.Println("Serving docs at http://localhost:8080/docs/")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Fatal(err)
+	}
+}
+```
+
+### Configuration Options
+
+The `protodocs.Config` struct supports the following options:
+
+*   **`Title`**: The title displayed in the browser tab.
+*   **`LogoText`**: The logo text displayed in the header.
+*   **`LogoURL`**: The URL to a custom logo image.
+*   **`LoadingMethod`**: The default schema fetching method (`"http"`, `"grpc-web"`, or `"connect"`).
+*   **`DescriptorFiles`**: URLs or paths to load pre-compiled protobuf descriptor sets.
+*   **`ServerURL`**: Default endpoint URL for reflection and sending RPC requests.
+*   **`ReflectionURL`**: Default endpoint URL for reflection.
+*   **`DefaultFile`**: Path of the default `.proto` file to focus on.
+*   **`Prefix`**: The URL prefix under which the handler is hosted (e.g. `"/docs/"`). The router will automatically strip this prefix before serving assets.
+*   **`Descriptors`**: In-memory `*descriptorpb.FileDescriptorSet`. It is automatically registered and served at `"/descriptors.binpb"` for the UI to load.
+*   **`Registry`**: Optional `*protoregistry.Files` registry. If specified, the handler will dynamically construct the `FileDescriptorSet` from the registry on each request. This allows any runtime updates to the registry to be immediately reflected in the documentation.
+*   **`MarkdownFiles`**: In-memory mapping of virtual path (e.g., `"/home.md"`) to markdown string content.
+*   **`LocalPath`**: Local filesystem path to serve override static assets from (instead of embedded files).
+
 ## Static Website Distribution & Configuration
 
 ProtoDocs runs entirely as a client-side static web application. Once built, you can distribute a pre-compiled package of the `dist/` directory to host your documentation statically (e.g. on Nginx, GitHub Pages, Netlify, or an S3 bucket). 

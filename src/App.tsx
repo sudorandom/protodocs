@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { loadDescriptorsFromUrls } from './lib/descriptor-loader';
 import { loadSchemaFromReflection } from './lib/reflection-client';
-import { checkProxyAvailable } from './lib/proxy';
+import { checkProxyAvailable, resolveUrl } from './lib/proxy';
 import type { TooltipState } from './components/Tooltip';
 import type { ReferencePanelState } from './components/ReferencePanel';
 import { formatOptionKey, formatOptionValue } from './lib/options-formatter-helpers';
@@ -445,7 +445,7 @@ export default function App() {
 
         // 1. Fetch config.json first as the base config
         try {
-          const res = await fetch('/config.json?t=' + new Date().getTime());
+          const res = await fetch(resolveUrl('/config.json?t=' + new Date().getTime()));
           if (res.ok) {
             const fileConfig = await res.json();
             if (fileConfig.descriptor_files) {
@@ -791,7 +791,7 @@ export default function App() {
   // Fetch front page and footer markdown content
   useEffect(() => {
     if (config.frontPageMarkdownFile) {
-      fetch(config.frontPageMarkdownFile)
+      fetch(resolveUrl(config.frontPageMarkdownFile))
         .then((res) => (res.ok ? res.text() : ''))
         .then((text) => setFrontPageMarkdown(text))
         .catch((err) => console.warn('Failed to load front page markdown:', err));
@@ -802,7 +802,7 @@ export default function App() {
 
   useEffect(() => {
     if (config.bottomOfFrontPageMarkdownFile) {
-      fetch(config.bottomOfFrontPageMarkdownFile)
+      fetch(resolveUrl(config.bottomOfFrontPageMarkdownFile))
         .then((res) => (res.ok ? res.text() : ''))
         .then((text) => setFooterMarkdown(text))
         .catch((err) => console.warn('Failed to load footer markdown:', err));

@@ -1,5 +1,6 @@
 import { fromBinary, toJsonString, createFileRegistry } from '@bufbuild/protobuf';
 import { FileDescriptorSetSchema, FileDescriptorProtoSchema } from '@bufbuild/protobuf/wkt';
+import { resolveUrl } from './proxy';
 
 export interface UnifiedSchema {
   file: any[];
@@ -93,7 +94,7 @@ export async function loadDescriptorsFromUrls(urls: string[]): Promise<UnifiedSc
   // Fetch and parse all files
   const fetchPromises = urls.map(async (url) => {
     try {
-      const res = await fetch(url);
+      const res = await fetch(resolveUrl(url));
       if (!res.ok) {
         throw new Error(`Failed to fetch descriptor from ${url}: HTTP ${res.status}`);
       }
