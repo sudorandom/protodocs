@@ -91,8 +91,14 @@ export function attachComments(file: any) {
 export async function loadDescriptorsFromUrls(urls: string[]): Promise<UnifiedSchema> {
   const fileDescriptorsMap = new Map<string, any>();
 
+  const urlsToLoad = [...urls];
+  const hasWkt = urls.some(url => url.includes('wellknowntypes.binpb'));
+  if (!hasWkt) {
+    urlsToLoad.unshift('/wellknowntypes.binpb');
+  }
+
   // Fetch and parse all files
-  const fetchPromises = urls.map(async (url) => {
+  const fetchPromises = urlsToLoad.map(async (url) => {
     try {
       const res = await fetch(resolveUrl(url));
       if (!res.ok) {
@@ -108,7 +114,11 @@ export async function loadDescriptorsFromUrls(urls: string[]): Promise<UnifiedSc
       }
     } catch (err) {
       console.error(`Error loading descriptor file from ${url}:`, err);
-      throw err;
+      if (url.includes('wellknowntypes.binpb')) {
+        console.warn(`Non-fatal warning: Failed to load well-known types from ${url}. Continuing...`);
+      } else {
+        throw err;
+      }
     }
   });
 
