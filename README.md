@@ -14,7 +14,7 @@
 *   Expandable and collapsible sections for easy navigation
 *   Render comments as markdown
 
-## Screenshots
+### Screenshots
 
 | Message Detail | Service Detail (Try-it-now) |
 | :---: | :---: |
@@ -24,118 +24,112 @@
 | :---: | :---: |
 | ![File Source](./e2e/screenshots/03-file-source.png) | ![Search Results](./e2e/screenshots/04-search-results.png) |
 
-## Getting Started
+### Architecture & Run Modes
 
-To get a local copy up and running, follow these simple steps.
+ProtoDocs supports different deployment styles and routing options depending on your environment.
 
-### Prerequisites
+#### Descriptor Loading Strategies
+To build the documentation UI, ProtoDocs needs access to your Protobuf descriptor schemas. It supports three strategies to load descriptors:
 
-*   [Node.js](https://nodejs.org/en/) (v20 or later)
-*   [pnpm](https://pnpm.io/)
+1. **HTTP Files**: Fetches pre-compiled Protobuf FileDescriptorSet files (typically `.binpb` or `.pb`) via HTTP.
+2. **Server Reflection**: Queries schemas dynamically from a live target server using the Connect or gRPC-Web Reflection API.
+3. **In-Memory Registry (Go Library Only)**: Reads descriptors directly from the Go application's schema registry (`protoregistry.GlobalFiles`). *Note: This option is only available when using the [Go Library Handler](./handler.go).*
 
-### Installation
+```mermaid
+graph TD
+    UI["ProtoDocs UI"]
 
-1.  Clone the repo
-    ```sh
-    git clone https://github.com/your_username/protodoc.git
-    ```
-2.  Install NPM packages
-    ```sh
-    pnpm install
-    ```
+    subgraph Strategies["Descriptor Loading Options"]
+        HTTP["HTTP (Load Protobuf FileDescriptorSet files)"]
+        Reflect["Reflection (Query live Connect/gRPC-Web server)"]
+        InMem["In-Memory (Go registry - Go Library Handler Only)"]
+    end
 
-### Usage
-
-To start the development server, run:
-
-```sh
-pnpm dev
+    UI --> HTTP
+    UI --> Reflect
+    UI --> InMem
 ```
 
-This will open a browser window with the application running on `http://localhost:5173`.
+#### API Routing Modes
+When using the interactive "Try it out" console to make API calls, ProtoDocs can route requests in two ways:
 
-If you are running the full stack locally and want the Vite development server to proxy API requests to the Go backend, provide the `PROXY_TARGET` environment variable with the backend's address:
+##### 1. Direct API Routing (Without Proxy)
+The browser communicates directly with the target API server. This is the standard method for static website deployments.
+> [!NOTE]
+> Direct client-to-server requests require CORS to be configured and enabled on the target server.
 
-```sh
-PROXY_TARGET="http://127.0.0.1:8080" pnpm dev
+```mermaid
+graph LR
+    subgraph Browser["Client Browser"]
+        UI["ProtoDocs UI"]
+    end
+    subgraph Target["External API Server"]
+        Service["gRPC-Web / Connect Endpoint"]
+    end
+
+    UI -->|"Direct RPC (Requires CORS)"| Target
 ```
 
-To build the application for production, run:
+##### 2. Proxied API Routing (With WS Proxy)
+Browser requests and streaming calls (using WebSockets) are tunneled through the built-in HTTP/WS proxy (offered by the Go CLI or Go Library Handler), which forwards them to the target server.
+> [!TIP]
+> This mode avoids browser CORS issues completely and handles gRPC-Web/Connect translation under the hood.
 
-```sh
-pnpm build
+```mermaid
+graph LR
+    subgraph Browser["Client Browser"]
+        UI["ProtoDocs UI"]
+    end
+    subgraph GoProxy["Go Proxy (CLI or Go App)"]
+        Proxy["HTTP & WebSocket Proxy"]
+    end
+    subgraph Target["External API Server"]
+        Service["gRPC / Connect / gRPC-Web"]
+    end
+
+    UI -->|"Proxy RPC & Streams (WebSockets)"| Proxy
+    Proxy -->|"Translate & Forward (HTTP/2)"| Target
 ```
 
-This will create a `dist` directory with the production-ready files.
+---
 
-## Running with Docker
+## Usage Instructions
 
-### 1. Running the Pre-built Image from Docker Hub
+ProtoDocs can be deployed and run in several ways. Choose the method that best matches your architecture:
 
-You can pull and run the pre-built image directly from Docker Hub:
+### 1. Running with Go CLI
+You can download the pre-built `protodocs` binary for your platform from the [latest GitHub releases page](https://github.com/sudorandom/protodocs/releases/latest).
 
-```sh
-docker run -d -p 8080:80 sudorandom/protodocs:latest
-```
-
-Now open `http://localhost:8080` in your web browser.
-
-### 2. Mounting Custom Descriptors (`.binpb`) at Runtime
-
-You can mount your own custom serialized protobuf descriptors file (`.binpb` / `.pb`) directly into the container at runtime.
-
-To generate a descriptor set from your `.proto` files using `buf` or `protoc`:
+Alternatively, you can run or install it directly using Go:
 
 ```sh
-# Using buf:
-buf build -o my-descriptors.binpb
+# Run directly without manual installation
+go run github.com/sudorandom/protodocs/cmd/protodocs [options] [descriptor-files...]
 
-# Or using protoc:
-protoc --descriptor_set_out=my-descriptors.binpb --include_imports your_file.proto
+# Or install it to your local environment
+go install github.com/sudorandom/protodocs/cmd/protodocs@latest
 ```
 
-You can then run the Docker container, mounting your descriptor file into the Nginx web root directory:
+Options include:
+* `--addr`: Host/port to serve on (default: `127.0.0.1:8080`).
+* `--reflection-url`: Server Reflection URL for dynamic schema queries.
+* `--loading-method`: Fetch method (`http`, `grpc-web`, `connect`).
+* `--open`: Auto-opens browser window (default: `true`).
 
-```sh
-docker run -d -p 8080:80 \
-  -v $(pwd)/my-descriptors.binpb:/usr/share/nginx/html/custom.binpb \
-  sudorandom/protodocs:latest
-```
+If no options or descriptor files are supplied, the CLI automatically runs with demo settings loading the Eliza sample.
 
-Access your custom documentation in the browser using the query parameter:
-`http://localhost:8080/?descriptors=/custom.binpb`
+### 2. Embedded Go Library Handler
+ProtoDocs can be imported as a library and mounted directly onto any Go HTTP server. 
 
-### 3. Building the Docker Image Locally
+A complete runnable example is available in the [examples/simple](./examples/simple) directory.
 
-If you make modifications or wish to package your custom static assets into a custom Docker image, first build the production bundle locally (using your local `mise` dependencies), then build the Docker image:
-
-```sh
-# Build the application locally
-pnpm build
-
-# Build the Docker image locally
-docker build -t protodocs .
-
-# Run the local image
-docker run -d -p 8080:80 protodocs
-```
-
-
-## Go Library Usage
-
-ProtoDocs can be imported as a Go library to serve your API documentation directly from your Go web server, similar to how swagger-ui libraries work.
-
-A complete runnable example is available in the [examples/simple](file:///Users/kevin/Projects/protodocs/examples/simple) directory.
-
-### Installation
-
+#### Installation
 ```sh
 go get github.com/sudorandom/protodocs
 ```
 
-### Basic Example
-
-You can instantiate a handler using `protodocs.NewHandler` and register it with `http.Handle` or any Go router:
+#### Basic Example
+Use `protodocs.NewHandler` with a `protodocs.Config`:
 
 ```go
 package main
@@ -149,20 +143,16 @@ import (
 )
 
 func main() {
-	// Initialize the ProtoDocs handler using the global protobuf registry.
-	// This automatically registers all compiled protobuf files in your application.
 	handler, err := protodocs.NewHandler(protodocs.Config{
 		Title:    "My Service Documentation",
 		LogoText: "My Service",
 		Registry: protoregistry.GlobalFiles,
-		// Host ProtoDocs under a prefix path
 		Prefix:   "/docs/",
 	})
 	if err != nil {
 		log.Fatalf("Failed to initialize ProtoDocs: %v", err)
 	}
 
-	// Register the handler
 	http.Handle("/docs/", handler)
 
 	log.Println("Serving docs at http://localhost:8080/docs/")
@@ -172,52 +162,31 @@ func main() {
 }
 ```
 
-### Configuration Options
-
+#### Configuration Options
 The `protodocs.Config` struct supports the following options:
+* `Title` / `LogoText` / `LogoURL`: Customize browser tab title and sidebar brand logo.
+* `LoadingMethod`: Default fetching method (`"http"`, `"grpc-web"`, or `"connect"`).
+* `DescriptorFiles`: URLs or paths to load pre-compiled protobuf descriptor sets.
+* `ServerURL` / `ReflectionURL`: Default endpoint URLs for RPC requests and reflection.
+* `Prefix`: The URL path prefix under which the handler is hosted (e.g. `"/docs/"`).
+* `Descriptors`: In-memory `*descriptorpb.FileDescriptorSet` served at `/descriptors.binpb`.
+* `Registry`: Dynamic `*protoregistry.Files` registry.
+* `FrontPageMarkdown` / `BottomOfFrontPageMarkdown`: Optional markdown for welcome body/footer.
+* `BackToText` / `BackToURL`: Header link back to your main portal.
 
-*   **`Title`**: The title displayed in the browser tab.
-*   **`LogoText`**: The logo text displayed in the header.
-*   **`LogoURL`**: The URL to a custom logo image.
-*   **`LoadingMethod`**: The default schema fetching method (`"http"`, `"grpc-web"`, or `"connect"`).
-*   **`DescriptorFiles`**: URLs or paths to load pre-compiled protobuf descriptor sets.
-*   **`ServerURL`**: Default endpoint URL for reflection and sending RPC requests.
-*   **`ReflectionURL`**: Default endpoint URL for reflection.
-*   **`Prefix`**: The URL prefix under which the handler is hosted (e.g. `"/docs/"`). The router will automatically strip this prefix before serving assets.
-*   **`Descriptors`**: In-memory `*descriptorpb.FileDescriptorSet`. It is automatically registered and served at `"/descriptors.binpb"` for the UI to load.
-*   **`Registry`**: Optional `*protoregistry.Files` registry. If specified, the handler will dynamically construct the `FileDescriptorSet` from the registry on each request. This allows any runtime updates to the registry to be immediately reflected in the documentation.
-*   **`BackToText`**: Optional text label for the "back" button displayed at the top of the navigation bar.
-*   **`BackToURL`**: Optional URL the "back" button navigates to (e.g., your developer portal main page).
-*   **`FrontPageMarkdown`**: Optional markdown string content to display on the landing welcome page.
-*   **`BottomOfFrontPageMarkdown`**: Optional markdown string content to display on the page footer.
-*   **`LocalPath`**: Local filesystem path to serve override static assets from (instead of embedded files).
+---
 
-## Static Website Distribution & Configuration
+### 3. Static Website Distribution & Configuration
+ProtoDocs runs entirely as a client-side static web application. You can download the pre-packaged static archive (`protodocs-static.tar.gz`) containing the HTML/JS bundle directly from the [latest GitHub releases page](https://github.com/sudorandom/protodocs/releases/latest).
 
-ProtoDocs runs entirely as a client-side static web application. Once built, you can distribute a pre-compiled package of the `dist/` directory to host your documentation statically (e.g. on Nginx, GitHub Pages, Netlify, or an S3 bucket). 
+Extract this archive on your web host (such as Nginx, Apache, S3, Netlify, or GitHub Pages) to host your documentation.
 
-### Generating a pre-built static archive package
+#### Configuring the Static UI
+To customize the static site without recompiling any source code, modify the following files in the extracted web root:
+1. **[config.yaml](./public/config.yaml)**: Defines all configuration options.
+2. **Protobuf descriptor files**: Upload your compiled `.binpb` or `.pb` files to the web root.
 
-To generate a lightweight, pre-built static website archive (excluding extra testing descriptors and keeping only the code bundle and the example Eliza API config/descriptors):
-
-```sh
-pnpm package # or npm run package
-```
-
-This compiles the application and produces a lightweight `protodocs-static.tar.gz` archive in the root directory. This archive contains:
-- `index.html` & `404.html` (the client router entry points)
-- `assets/` (bundled JS & CSS)
-- `config.yaml` (configured to load the Eliza sample API by default)
-- `eliza.binpb` (the compiled Eliza gRPC-Web/Connect descriptor set)
-
-To customize the documentation for your team, you do not need to recompile the React source code. Instead, you only need to extract this archive onto your web host, and modify the following files in the web root:
-1. `config.yaml` (defines the configurations and file paths to load).
-2. Your compiled protobuf binary descriptor sets (`.binpb` or `.pb` files).
-
-### How `config.yaml` works
-
-At startup, the pre-built ProtoDocs application attempts to fetch `/config.yaml` from the web root. Below is an example schema showing all available configurations:
-
+Example `config.yaml`:
 ```yaml
 title: "My API Docs"
 logo_text: "My API Docs"
@@ -235,15 +204,65 @@ bottom_of_front_page_markdown: |
   This is the footer.
 ```
 
-#### Fields Description:
-* **`title` / `logo_text`**: The title displayed in the browser tab and at the top of the sidebar.
-* **`logo_url`**: Optional URL to a custom logo image file (e.g., SVG/PNG) displayed in the sidebar header.
-* **`loading_method`**: Schema fetching method. Use `"http"` for pre-compiled descriptor files, or `"grpc-web"` / `"connect"` to query schemas dynamically from a live server via Reflection API.
-* **`descriptor_files`**: An array of URLs pointing to the binary protobuf descriptor sets (`.binpb` or `.pb` files) to fetch and index.
-* **`server_url`**: Default endpoint URL to use for both live Server Reflection APIs and the interactive "Try it out" RPC client console.
-* **`default_file`**: Path of the default `.proto` file to display on initial page load (if none is specified in the URL hash).
-* **`front_page_markdown`**: Markdown content to display on the landing welcome page as a multi-line string literal.
-* **`bottom_of_front_page_markdown`**: Markdown content to display on the page footer as a multi-line string literal.
+---
+
+### 4. Running with Docker
+
+#### Running the Pre-built Image
+```sh
+docker run -d -p 8080:80 sudorandom/protodocs:latest
+```
+Open `http://localhost:8080` to view the UI.
+
+#### Mounting Custom Descriptors at Runtime
+First, generate a descriptor set from your `.proto` files using `buf` or `protoc`:
+```sh
+# Using buf:
+buf build -o my-descriptors.binpb
+
+# Or using protoc:
+protoc --descriptor_set_out=my-descriptors.binpb --include_imports your_file.proto
+```
+
+Run the container, mounting your custom descriptors:
+```sh
+docker run -d -p 8080:80 \
+  -v $(pwd)/my-descriptors.binpb:/usr/share/nginx/html/custom.binpb \
+  sudorandom/protodocs:latest
+```
+Access in browser: `http://localhost:8080/?descriptors=/custom.binpb`
+
+#### Building the Docker Image Locally
+```sh
+pnpm build
+docker build -t protodocs .
+docker run -d -p 8080:80 protodocs
+```
+
+---
+
+## Development Information
+
+### Local Dependencies with `mise`
+Local tool and SDK dependencies (such as Go, Node.js, pnpm, and buf) are declared and pinned in [mise.toml](./mise.toml). Using [mise](https://mise.jdx.co/) is the recommended way to keep your environment aligned.
+
+To set up the development environment:
+1. Install [mise](https://mise.jdx.co/).
+2. Run `mise install` in the root of the project.
+3. Verify the tools are loaded (e.g., `go version`, `node --version`, `pnpm --version`).
+
+### Task Runner (`just`)
+We use [just](https://github.com/casey/just) for automating project tasks. Check the tasks defined in [justfile](./justfile):
+
+*   **`just run-cli [args]`**: Builds the frontend files and executes the Go CLI backend.
+*   **`just test`**: Runs all unit tests (frontend via `vitest`). Go backend tests can be run using `go test ./...`.
+*   **`just lint`**: Runs TypeScript compilation checks, ESLint, and `golangci-lint`.
+*   **`just playwright`**: Runs Playwright E2E browser tests and generates screenshots.
+*   **`just descriptors`**: Re-generates standard Protobuf descriptor binaries in the `public/` directory (e.g., googleapis, protovalidate, eliza).
+*   **`just package`**: Generates a clean production bundle and packages it as `protodocs-static.tar.gz`.
+*   **`just build-cli`**: Compiles the Go CLI for multiple targets (`linux-amd64`, `linux-arm64`, `darwin-arm64`, `windows-amd64`).
+
+---
 
 ## Contributing
 
