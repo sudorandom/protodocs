@@ -1140,7 +1140,7 @@ export default function App() {
         </div>
 
         {/* Content Area - Fixed width & overflow-x-hidden ensures no horizontal stretching */}
-        <main ref={contentAreaRef} className="flex-1 overflow-y-auto overflow-x-hidden p-8 xl:pr-20 bg-app-code transition-colors duration-200 relative select-text w-full">
+        <main ref={contentAreaRef} className="flex-1 overflow-y-auto overflow-x-hidden p-8 xl:pr-40 bg-app-code transition-colors duration-200 relative select-text w-full">
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center bg-app-code z-10 text-app-textMuted font-mono">
               <div className="flex flex-col items-center gap-4">

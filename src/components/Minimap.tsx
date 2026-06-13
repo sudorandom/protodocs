@@ -314,7 +314,7 @@ export default function Minimap({ contentRef, activeFile, schema, theme }: Minim
     <div
       id="minimap"
       ref={containerRef}
-      className="hidden xl:block fixed top-14 bottom-0 right-0 w-[60px] z-40 bg-transparent border-l border-app-border/10 opacity-60 hover:opacity-100 hover:bg-app-hoverBg/10 transition-all duration-200 cursor-pointer select-none"
+      className="hidden xl:block fixed top-14 bottom-0 right-4 w-[120px] z-40 bg-transparent border-l border-app-border/10 opacity-60 hover:opacity-100 hover:bg-app-hoverBg/10 transition-all duration-200 cursor-pointer select-none"
       onMouseDown={(e) => {
         setIsDragging(true);
         scrollToMinimapY(e.clientY, false);
