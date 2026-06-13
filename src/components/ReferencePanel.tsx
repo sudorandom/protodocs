@@ -19,7 +19,7 @@ export default function ReferencePanel({ state, onClose, onReferenceClick }: Ref
   if (!state) return null;
 
   return (
-    <div className="absolute top-0 right-0 h-full w-96 bg-app-panel border-l border-app-border shadow-2xl flex flex-col z-20 transition-all duration-300">
+    <div className="absolute top-0 right-0 h-full w-96 bg-app-panel border-l border-app-border shadow-2xl flex flex-col z-50 transition-all duration-300">
       
       {/* Header */}
       <div className="h-14 border-b border-app-border flex items-center justify-between px-5 bg-app-panel/90 backdrop-blur shrink-0">
