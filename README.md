@@ -175,6 +175,7 @@ The `protodocs.Config` struct supports the following options:
 * `Registry`: Dynamic `*protoregistry.Files` registry.
 * `FrontPageMarkdown` / `BottomOfFrontPageMarkdown`: Optional markdown for welcome body/footer.
 * `BackToText` / `BackToURL`: Header link back to your main portal.
+* `DefaultTab`: Default tab to focus in the sidebar (`"files"` or `"services"`).
 
 ---
 
@@ -193,6 +194,7 @@ Example `config.yaml`:
 title: "My API Docs"
 logo_text: "My API Docs"
 logo_url: "/custom-logo.svg"
+default_tab: "files"
 loading_method: "http"
 descriptor_files:
   - "/my-descriptors.binpb"

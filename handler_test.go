@@ -131,6 +131,7 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 		FrontPageMarkdown: markdownContent,
 		BackToText: "Back to Home",
 		BackToURL:  "https://example.com/home",
+		DefaultTab: "files",
 	})
 	if err != nil {
 		t.Fatalf("failed to create handler: %v", err)
@@ -161,6 +162,10 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 
 	if appCfg.BackToURL != "https://example.com/home" {
 		t.Errorf("expected back_to_url 'https://example.com/home', got %q", appCfg.BackToURL)
+	}
+
+	if appCfg.DefaultTab != "files" {
+		t.Errorf("expected default_tab 'files', got %q", appCfg.DefaultTab)
 	}
 
 	foundDescriptor := false

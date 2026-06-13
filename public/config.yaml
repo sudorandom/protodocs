@@ -1,5 +1,6 @@
 title: "protodocs.dev"
 logo_text: "protodocs.dev"
+default_tab: "files"
 descriptor_files:
   - "/eliza.binpb"
   - "/googleapis.binpb"

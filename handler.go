@@ -53,6 +53,7 @@ type AppConfig struct {
 	BackToText                string            `json:"back_to_text,omitempty" yaml:"back_to_text,omitempty"`
 	BackToURL                 string            `json:"back_to_url,omitempty" yaml:"back_to_url,omitempty"`
 	Proxy                     bool              `json:"proxy,omitempty" yaml:"proxy,omitempty"`
+	DefaultTab                string            `json:"default_tab,omitempty" yaml:"default_tab,omitempty"`
 }
 
 // Config defines the configuration for the ProtoDocs handler.
@@ -101,6 +102,8 @@ type Config struct {
 	Registry *protoregistry.Files
 	// Proxy enables proxy features and tells the UI to check/use the proxy.
 	Proxy bool
+	// DefaultTab is the default tab to focus in the sidebar ('files' or 'services').
+	DefaultTab string
 }
 
 type layeredFileSystem struct {
@@ -510,7 +513,8 @@ func NewHandler(cfg Config) (http.Handler, error) {
 		cfg.Descriptors != nil ||
 		cfg.Registry != nil ||
 		cfg.BackToText != "" ||
-		cfg.BackToURL != ""
+		cfg.BackToURL != "" ||
+		cfg.DefaultTab != ""
 
 	if hasConfig {
 		appCfg := AppConfig{
@@ -529,6 +533,7 @@ func NewHandler(cfg Config) (http.Handler, error) {
 			BackToText:                cfg.BackToText,
 			BackToURL:                 cfg.BackToURL,
 			Proxy:                     cfg.Proxy,
+			DefaultTab:                cfg.DefaultTab,
 		}
 
 		// Register in-memory FileDescriptorSet under the default path

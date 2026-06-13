@@ -40,6 +40,7 @@ interface AppConfig {
   backToText?: string;
   backToUrl?: string;
   proxy?: boolean;
+  defaultTab?: 'files' | 'services';
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -50,6 +51,7 @@ const DEFAULT_CONFIG: AppConfig = {
   logoText: 'ProtoDocs',
   frontPageMarkdown: '',
   bottomOfFrontPageMarkdown: '',
+  defaultTab: 'services',
 };
 
 interface ParsedHash {
@@ -409,7 +411,7 @@ export default function App() {
       
       setSchema(loadedSchema);
       
-      // Focus services tab if there is a > 0 count of services
+      // Focus tab based on config (or default to services if > 0 count of services)
       let totalServices = 0;
       if (loadedSchema.file) {
         loadedSchema.file.forEach((f: any) => {
@@ -418,7 +420,12 @@ export default function App() {
           }
         });
       }
-      setSidebarView(totalServices > 0 ? 'services' : 'files');
+      const preferredTab = targetConfig.defaultTab || 'services';
+      if (preferredTab === 'services' && totalServices > 0) {
+        setSidebarView('services');
+      } else {
+        setSidebarView('files');
+      }
 
       if (loadedSchema.file && loadedSchema.file.length > 0) {
         // Apply routing from initial hash if available
@@ -505,6 +512,11 @@ export default function App() {
             if (fileConfig.back_to_url) {
               activeConfig.backToUrl = fileConfig.back_to_url;
             }
+            if (fileConfig.default_tab) {
+              activeConfig.defaultTab = fileConfig.default_tab;
+            } else if (fileConfig.defaultTab) {
+              activeConfig.defaultTab = fileConfig.defaultTab;
+            }
             if (fileConfig.proxy !== undefined) {
               activeConfig.proxy = fileConfig.proxy;
               if (fileConfig.proxy) {
@@ -530,6 +542,7 @@ export default function App() {
         const highlightedFilesParam = params.get('highlightedFiles') || params.get('highlighted_files');
         const backToText = params.get('backToText') || params.get('back_to_text');
         const backToUrl = params.get('backToUrl') || params.get('back_to_url');
+        const defaultTabParam = params.get('defaultTab') || params.get('default_tab');
 
         if (method === 'grpc-web' || method === 'connect' || url) {
           activeConfig.loadingMethod = (method as any) || activeConfig.loadingMethod;
@@ -554,6 +567,9 @@ export default function App() {
         }
         if (backToText) activeConfig.backToText = backToText;
         if (backToUrl) activeConfig.backToUrl = backToUrl;
+        if (defaultTabParam === 'files' || defaultTabParam === 'services') {
+          activeConfig.defaultTab = defaultTabParam;
+        }
 
         setConfig(activeConfig);
         await loadSchema(activeConfig);

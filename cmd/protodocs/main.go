@@ -40,6 +40,7 @@ func main() {
 	pflag.String("static-dir", "", "Local path to static assets (overrides embedded files)")
 	pflag.String("reflection-url", "", "Default gRPC/Connect Server Reflection URL")
 	pflag.String("loading-method", "", "Default loading method ('http', 'grpc-web', 'connect')")
+	pflag.String("default-tab", "", "Default tab to focus in the sidebar ('files' or 'services')")
 	pflag.Bool("open", true, "Automatically open ProtoDocs in the browser")
 	pflag.Parse()
 
@@ -51,6 +52,7 @@ func main() {
 	staticDir := viper.GetString("static-dir")
 	reflectionURL := viper.GetString("reflection-url")
 	loadingMethod := viper.GetString("loading-method")
+	defaultTab := viper.GetString("default-tab")
 	autoOpen := viper.GetBool("open")
 
 	descriptorFiles := pflag.Args()
@@ -62,6 +64,7 @@ func main() {
 		LoadingMethod: loadingMethod,
 		LocalPath:     staticDir,
 		Proxy:         true,
+		DefaultTab:    defaultTab,
 	}
 
 	if reflectionURL != "" {
