@@ -1151,7 +1151,7 @@ export default function App() {
 
           <div className="max-w-4xl mx-auto w-full">
             {!activeFile || activeFile === '' ? (
-              <div className="py-8 select-text w-full max-w-4xl mx-auto">
+              <div className="pb-8 select-text w-full max-w-4xl mx-auto">
                 {frontPageMarkdown ? (
                   <div className="prose dark:prose-invert max-w-none text-app-textMain">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>

@@ -300,3 +300,8 @@
 .prose-tooltip ol {
   margin-bottom: 0.5em;
 }
+
+/* Ensure the first element of any markdown content starts at the top without extra spacing */
+.prose > *:first-child {
+  margin-top: 0 !important;
+}

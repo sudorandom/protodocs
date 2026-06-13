@@ -16,23 +16,22 @@ highlighted_files:
 front_page_markdown: |
   # Welcome to ProtoDocs 🚀
 
-  **ProtoDocs** is a premium, client-side interactive documentation explorer for Protocol Buffer (Protobuf) schemas. It translates compiled binary descriptors or live server reflection maps into human-readable, cross-linked, and syntax-highlighted specifications. The project is open-source and hosted on [GitHub](https://github.com/sudorandom/protodocs).
+  **ProtoDocs** is a premium, client-side interactive documentation explorer for Protocol Buffer (Protobuf) schemas. Instead of relying on static HTML generation steps or IDE-bound codebases, ProtoDocs translates compiled binary descriptors or live server reflection maps into human-readable, cross-linked, and syntax-highlighted specifications. The project is open-source and hosted on [GitHub](https://github.com/sudorandom/protodocs).
+
+  ProtoDocs provides a rich interactive interface to:
+  - **Browse Files & Packages**: Clean directory hierarchy merging common path prefixes.
+  - **Analyze Services & RPCs**: Renders service signatures (streaming, unary) alongside custom method options.
+  - **Inspect Messages, Enums & Custom Options**: Renders structured types with interactive type links, oneof declarations, and nested custom options with full comment support.
+  - **Go to Definition & Find References**: Pin tooltips to jump directly to type declarations and find all usages across loaded files.
+  - **Interactive Syntax Help**: Every Protobuf keyword has interactive tooltips describing what it does, with direct links to the official Protobuf documentation.
+  - **Interactive 'Try it out!' Client**: Send live gRPC-Web and Connect RPC requests to target services directly from the browser, with full support for streaming calls.
+  - **Dynamic CLI Command Snippets**: Generates ready-to-use Connect and gRPC `curl` or `buf curl` command line snippets based on your active input parameters.
+  - **Customizable Themes**: Toggle between Light, Dark, and Cyberpunk color schemes that synchronize with system preferences.
 
   ---
 
   ### Core Schema Definitions
   Explore the core definitions of Protocol Buffers by visiting the [google/protobuf/descriptor.proto](/#/files/google/protobuf/descriptor.proto) file, where all custom options, messages, enums, and compiler settings are defined.
-
-  ---
-
-  ## What is ProtoDocs?
-
-  ProtoDocs solves the challenge of sharing and exploring complex Protobuf structures, services, and extensions. Instead of relying on static HTML generation steps or IDE-bound codebases, ProtoDocs provides an interactive interface to:
-
-  - **Browse Files & Packages**: Clean directory hierarchy merging common path prefixes.
-  - **Analyze Services & RPCs**: Renders service signatures (streaming, unary) alongside custom method options.
-  - **Inspect Messages & Enums**: Renders structured types with interactive type links, full comment support, and `oneof` declarations.
-  - **Explore Extensions & Custom Options**: Handles file-level, message-level, and nested custom options (using option key/value resolution).
 
   ---
 
@@ -56,17 +55,6 @@ front_page_markdown: |
   - **Type Hover Tooltips**: Hover over custom types to view their descriptions and package scopes.
   - **Go to Definition**: Jump directly to a message or enum definition by clicking its type name.
   - **Find References**: Search across all loaded packages to see where a specific message is used as a field type or an RPC request/response type.
-
-  ---
-
-  ## Interactive Features
-
-  ProtoDocs is engineered to deliver a developer experience geared towards API discovery and exploration:
-
-  - 🔍 **Interactive Symbol Inspection**: Click on any custom type reference to open the IntelliSense tooltip. Pin the tooltip to quickly **Go to Definition** or **Find References** across all loaded files.
-  - 💻 **Interactive CLI Code Snippets**: Generates ready-to-use Connect and gRPC `curl` or `buf curl` command line snippets dynamically based on active input parameters, with built-in copy controls for fast terminal execution.
-  - 📥 **On-the-Fly Source Reconstructor**: Reconstructs complete, valid `.proto` source code dynamically from JSON descriptors, allowing you to download clean schema files in a single click.
-  - 🎨 **Unified Theme Architecture**: Supports Light, Dark, and Cyberpunk color schemes that synchronize automatically with system preferences or persist based on user selection.
 
   ---
 
