@@ -49,7 +49,7 @@ export default function EnumViewer({
     : `.${enumObj.name}`;
 
   return (
-    <div id={fqn} className={`${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}>
+    <div id={fqn} data-indent={indent} className={`proto-block ${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}>
       {enumObj.description && (
         <div className="text-syn-comment mb-1 whitespace-pre-wrap font-mono">
           {cleanComment(enumObj.description).split('\n').map((line: string) => `${'  '.repeat(indent)}// ${line}`).join('\n')}
@@ -59,7 +59,8 @@ export default function EnumViewer({
         {'  '.repeat(indent)}
         <KeywordLink keyword="enum" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
         <span
-          className="text-syn-type font-bold border-b border-dotted border-syn-type/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-text"
+          data-indent={indent}
+          className="proto-heading text-syn-type font-bold border-b border-dotted border-syn-type/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-text"
           onMouseEnter={(e) => onMouseEnter(e, fqn, { text: cleanComment(enumObj.description || 'No documentation provided.') }, 'custom', enumObj.name)}
           onMouseLeave={onMouseLeave}
           onClick={(e) => onPinClick(e, fqn, { text: cleanComment(enumObj.description || 'No documentation provided.') }, 'custom', enumObj.name)}
@@ -80,7 +81,7 @@ export default function EnumViewer({
 
           const sortedEntries = [...standardEntries, ...customEntries];
           return sortedEntries.map(([k, v]) => (
-            <div key={k} className="text-app-textMuted px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">
+            <div key={k} data-indent={indent + 1} className="proto-text text-app-textMuted px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">
               {'  '.repeat(indent + 1)}
               <KeywordLink keyword="option" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
               <OptionLink
@@ -103,7 +104,7 @@ export default function EnumViewer({
                   {cleanComment(v.description).split('\n').map((line: string) => `${'  '.repeat(indent + 1)}// ${line}`).join('\n')}
                 </div>
               )}
-              <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap text-app-textMuted">
+              <div data-indent={indent + 1} className="proto-text hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap text-app-textMuted">
                 {'  '.repeat(indent + 1)}
                 <span className="text-app-textMain">{v.name}</span>
                 {' '}

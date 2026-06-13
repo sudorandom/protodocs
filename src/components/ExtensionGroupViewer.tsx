@@ -39,10 +39,10 @@ export default function ExtensionGroupViewer({
   const displayExtendee = extendee.startsWith('.') ? extendee.substring(1) : extendee;
 
   return (
-    <div className="mb-8 font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text">
+    <div data-indent={0} className="proto-block mb-8 font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text">
       <div className="font-mono whitespace-pre-wrap">
         <KeywordLink keyword="extend" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
-        <span className="text-syn-type font-bold">{displayExtendee}</span> {'{'}
+        <span data-indent={0} className="proto-heading text-syn-type font-bold">{displayExtendee}</span> {'{'}
       </div>
       
       <div className="my-1">
@@ -55,7 +55,7 @@ export default function ExtensionGroupViewer({
                   {cleanComment(f.description).split('\n').map((line: string) => `  // ${line}`).join('\n')}
                 </div>
               )}
-              <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap text-app-textMuted">
+              <div data-indent={1} className="proto-text hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap text-app-textMuted">
                 {'  '}
                 {f.label === 3 && <><KeywordLink keyword="repeated" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>repeated</KeywordLink>{' '}</>}
                 {f.label === 1 && <><KeywordLink keyword="optional" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick}>optional</KeywordLink>{' '}</>}

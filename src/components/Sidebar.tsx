@@ -150,7 +150,7 @@ export default function Sidebar({
 
   return (
     <div
-      className={`w-72 border-r border-app-border bg-app-panel flex flex-col transition-all duration-300 shrink-0 select-none fixed inset-y-0 left-0 z-40 md:relative md:translate-x-0 md:flex ${
+      className={`w-72 border-r border-app-border bg-app-panel flex flex-col transition-all duration-300 shrink-0 select-none fixed top-14 md:top-0 bottom-0 left-0 z-40 md:relative md:translate-x-0 md:flex ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}
     >

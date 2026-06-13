@@ -44,6 +44,16 @@ export function getEditionString(edition: any): string | null {
  */
 export function reconstructProto(file: any, typeIndex?: Record<string, any>): string {
   let out = '';
+
+  const formatComments = (desc?: string, indent: string = ''): string => {
+    if (!desc) return '';
+    const cleaned = cleanComment(desc);
+    return cleaned.split('\n').map(line => `${indent}// ${line}`).join('\n') + '\n';
+  };
+
+  if (file.description) {
+    out += formatComments(file.description);
+  }
   
   const editionStr = getEditionString(file.edition);
   if (editionStr) {
@@ -107,11 +117,7 @@ export function reconstructProto(file: any, typeIndex?: Record<string, any>): st
     }
   }
 
-  const formatComments = (desc?: string, indent: string = ''): string => {
-    if (!desc) return '';
-    const cleaned = cleanComment(desc);
-    return cleaned.split('\n').map(line => `${indent}// ${line}`).join('\n') + '\n';
-  };
+
 
   const formatField = (field: any, indent: string, mapEntries: Record<string, any>, inOneof = false): string => {
     let fieldLine = indent;

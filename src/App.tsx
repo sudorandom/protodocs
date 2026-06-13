@@ -11,7 +11,7 @@ import type { ReferencePanelState } from './components/ReferencePanel';
 import { formatOptionKey, formatOptionValue } from './lib/options-formatter-helpers';
 import OptionLink from './components/OptionLink';
 import { populateTypeIndexWithOptions, normalizeFileDescriptor } from './lib/option-resolver';
-import { reconstructProto, getEditionString } from './lib/proto-reconstructor';
+import { reconstructProto, getEditionString, cleanComment } from './lib/proto-reconstructor';
 import KeywordLink from './components/KeywordLink';
 
 const Sidebar = lazy(() => import('./components/Sidebar'));
@@ -22,6 +22,7 @@ const MessageViewer = lazy(() => import('./components/MessageViewer'));
 const EnumViewer = lazy(() => import('./components/EnumViewer'));
 const ExtensionGroupViewer = lazy(() => import('./components/ExtensionGroupViewer'));
 const QuickBrowse = lazy(() => import('./components/QuickBrowse'));
+const Minimap = lazy(() => import('./components/Minimap'));
 
 interface AppConfig {
   loadingMethod: 'http' | 'grpc-web' | 'connect' | 'grpc';
@@ -897,7 +898,7 @@ export default function App() {
       {/* Sidebar backdrop on mobile */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-35 md:hidden transition-opacity duration-200"
+          className="fixed top-14 inset-x-0 bottom-0 bg-black/40 z-35 md:hidden transition-opacity duration-200"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -1139,7 +1140,7 @@ export default function App() {
         </div>
 
         {/* Content Area - Fixed width & overflow-x-hidden ensures no horizontal stretching */}
-        <main ref={contentAreaRef} className="flex-1 overflow-y-auto overflow-x-hidden p-8 bg-app-code transition-colors duration-200 relative select-text w-full">
+        <main ref={contentAreaRef} className="flex-1 overflow-y-auto overflow-x-hidden p-8 xl:pr-20 bg-app-code transition-colors duration-200 relative select-text w-full">
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center bg-app-code z-10 text-app-textMuted font-mono">
               <div className="flex flex-col items-center gap-4">
@@ -1176,8 +1177,14 @@ export default function App() {
             ) : (
               currentFileObj && (
                 <>
+                  {currentFileObj.description && (
+                    <div className="text-syn-comment mb-6 whitespace-pre-wrap font-mono text-sm leading-relaxed select-text w-full">
+                      {cleanComment(currentFileObj.description).split('\n').map((line: string) => `// ${line}`).join('\n')}
+                    </div>
+                  )}
+
                   {/* File Header metadata */}
-                  <div className="mb-8 border-b border-app-border pb-4 font-mono text-xs text-app-textMuted space-y-1.5 select-text w-full overflow-x-auto hide-scrollbar">
+                  <div className="proto-block mb-8 border-b border-app-border pb-4 font-mono text-xs text-app-textMuted space-y-1.5 select-text w-full overflow-x-auto hide-scrollbar">
                     {getEditionString(currentFileObj.edition) ? (() => {
                       const edStr = getEditionString(currentFileObj.edition)!;
                       const edDesc = {
@@ -1185,7 +1192,7 @@ export default function App() {
                         url: 'https://protobuf.dev/editions/overview/',
                       };
                       return (
-                        <div>
+                        <div className="proto-text">
                           <KeywordLink
                             keyword="edition"
                             onMouseEnter={handleMouseEnter}
@@ -1201,7 +1208,7 @@ export default function App() {
                         </div>
                       );
                     })() : (() => {
-                      const syn = currentFileObj.syntax || 'proto3';
+                      const syn = currentFileObj.syntax || 'proto2';
                       const docsUrl = syn === 'proto2'
                         ? 'https://protobuf.dev/programming-guides/proto2/'
                         : 'https://protobuf.dev/programming-guides/proto3/';
@@ -1212,7 +1219,7 @@ export default function App() {
                         url: docsUrl,
                       };
                       return (
-                        <div>
+                        <div className="proto-text">
                           <KeywordLink
                             keyword="syntax"
                             onMouseEnter={handleMouseEnter}
@@ -1229,7 +1236,7 @@ export default function App() {
                       );
                     })()}
                     {currentFileObj.package && (
-                      <div>
+                      <div className="proto-text">
                         <KeywordLink
                           keyword="package"
                           onMouseEnter={handleMouseEnter}
@@ -1254,7 +1261,7 @@ export default function App() {
                       return depsWithMetadata.map((dep: any) => (
                         <div
                           key={dep.name}
-                          className="cursor-pointer hover:text-app-textBright group transition-colors whitespace-pre-wrap"
+                          className="proto-text cursor-pointer hover:text-app-textBright group transition-colors whitespace-pre-wrap"
                           onClick={() => {
                             if (schema.file.some((f) => f.name === dep.name)) {
                               setActiveFile(dep.name);
@@ -1301,7 +1308,7 @@ export default function App() {
 
                       const sortedEntries = [...standardEntries, ...customEntries];
                       return sortedEntries.map(([k, v]) => (
-                        <div key={k}>
+                        <div key={k} className="proto-text">
                           <KeywordLink
                             keyword="option"
                             onMouseEnter={handleMouseEnter}
@@ -1382,6 +1389,16 @@ export default function App() {
             )}
           </div>
         </main>
+
+        {/* Minimap Viewport Navigation */}
+        <Suspense fallback={null}>
+          <Minimap
+            contentRef={contentAreaRef}
+            activeFile={activeFile}
+            schema={schema}
+            theme={theme}
+          />
+        </Suspense>
 
         {/* Reference Panel Drawer */}
         <Suspense fallback={null}>

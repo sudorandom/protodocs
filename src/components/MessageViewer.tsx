@@ -139,7 +139,7 @@ export default function MessageViewer({
 
 
   return (
-    <div id={fqn} className={`${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors group p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}>
+    <div id={fqn} data-indent={indent} className={`proto-block ${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors group p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}>
       {message.description && (
         <div className="text-syn-comment mb-1 whitespace-pre-wrap font-mono">
           {cleanComment(message.description).split('\n').map((line: string) => `${'  '.repeat(indent)}// ${line}`).join('\n')}
@@ -149,7 +149,8 @@ export default function MessageViewer({
         {'  '.repeat(indent)}
         <KeywordLink keyword="message" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
         <span
-          className="text-syn-type font-bold border-b border-dotted border-syn-type/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-text"
+          data-indent={indent}
+          className="proto-heading text-syn-type font-bold border-b border-dotted border-syn-type/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 select-text"
           onMouseEnter={(e) => onMouseEnter(e, fqn, { text: cleanComment(message.description || 'No documentation provided.') }, 'custom', message.name)}
           onMouseLeave={onMouseLeave}
           onClick={(e) => onPinClick(e, fqn, { text: cleanComment(message.description || 'No documentation provided.') }, 'custom', message.name)}
@@ -170,7 +171,7 @@ export default function MessageViewer({
 
           const sortedEntries = [...standardEntries, ...customEntries];
           return sortedEntries.map(([k, v]) => (
-            <div key={k} className="text-app-textMuted px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">
+            <div key={k} data-indent={indent + 1} className="proto-text text-app-textMuted px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">
               {'  '.repeat(indent + 1)}
               <KeywordLink keyword="option" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
               <OptionLink
@@ -194,7 +195,7 @@ export default function MessageViewer({
                     {cleanComment(item.description).split('\n').map((line: string) => `${'  '.repeat(indent + 1)}// ${line}`).join('\n')}
                   </div>
                 )}
-                <div className="font-mono whitespace-pre-wrap text-app-textMain">
+                <div data-indent={indent + 1} className="proto-text font-mono whitespace-pre-wrap text-app-textMain">
                   {'  '.repeat(indent + 1)}
                   <KeywordLink keyword="oneof" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onPinClick={onPinClick} />{' '}
                   <span className="text-app-textBright font-semibold">{item.name}</span> {'{'}
@@ -209,7 +210,7 @@ export default function MessageViewer({
                             {cleanComment(f.description).split('\n').map((line: string) => `${'  '.repeat(indent + 2)}// ${line}`).join('\n')}
                           </div>
                         )}
-                        <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap text-app-textMuted">
+                        <div data-indent={indent + 2} className="proto-text hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap text-app-textMuted">
                           {'  '.repeat(indent + 2)}
                           <TypeLink
                             typeName={f.typeName}
@@ -259,7 +260,7 @@ export default function MessageViewer({
                     {cleanComment(f.description).split('\n').map((line: string) => `${'  '.repeat(indent + 1)}// ${line}`).join('\n')}
                   </div>
                 )}
-                <div className="hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap text-app-textMuted">
+                <div data-indent={indent + 1} className="proto-text hover:bg-app-hoverBg px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap text-app-textMuted">
                   {'  '.repeat(indent + 1)}
                   {isMap ? (
                     <>

@@ -50,7 +50,7 @@ export default function ServiceViewer({
   const [expandedMethod, setExpandedMethod] = useState<string | null>(null);
 
   return (
-    <div id={fqn} className="mb-8 font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text">
+    <div id={fqn} data-indent={0} className="proto-block mb-8 font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text">
       {service.description && (
         <div className="text-syn-comment mb-1 whitespace-pre-wrap font-mono">
           {cleanComment(service.description).split('\n').map((line: string) => `// ${line}`).join('\n')}
@@ -63,7 +63,7 @@ export default function ServiceViewer({
           onMouseLeave={onMouseLeave}
           onPinClick={onPinClick}
         />{' '}
-        <span className="text-app-textBright font-bold">{service.name}</span> {'{'}
+        <span data-indent={0} className="proto-heading text-app-textBright font-bold">{service.name}</span> {'{'}
       </div>
 
       <div className="my-1">
@@ -77,7 +77,7 @@ export default function ServiceViewer({
 
           const sortedEntries = [...standardEntries, ...customEntries];
           return sortedEntries.map(([k, v]) => (
-            <div key={k} className="text-app-textMuted px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">
+            <div key={k} data-indent={1} className="proto-text text-app-textMuted px-2 py-0.5 rounded -ml-2 font-mono whitespace-pre-wrap">
               {'  '}
               <KeywordLink
                 keyword="option"
@@ -111,7 +111,8 @@ export default function ServiceViewer({
                   if (selection && selection.toString()) return;
                   setExpandedMethod(expandedMethod === m.name ? null : m.name);
                 }}
-                className="hover:bg-app-hoverBg px-2 py-1 rounded -ml-2 cursor-pointer group whitespace-pre-wrap font-mono relative pr-20 text-app-textMuted"
+                data-indent={1}
+                className="proto-text hover:bg-app-hoverBg px-2 py-1 rounded -ml-2 cursor-pointer group whitespace-pre-wrap font-mono relative pr-20 text-app-textMuted"
               >
                 {'  '}
                 <span className="inline-flex items-center text-app-textMuted group-hover:text-app-textBright select-none mr-1.5">

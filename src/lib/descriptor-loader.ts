@@ -15,7 +15,7 @@ export function attachComments(file: any) {
   const locations = new Map<string, any>();
   if (file.sourceCodeInfo && file.sourceCodeInfo.location) {
     for (const loc of file.sourceCodeInfo.location) {
-      if (loc.path && loc.path.length > 0) {
+      if (loc.path) {
         locations.set(loc.path.join(','), loc);
       }
     }
@@ -24,13 +24,29 @@ export function attachComments(file: any) {
   const getCommentText = (path: number[]): string => {
     const loc = locations.get(path.join(','));
     if (!loc) return '';
-    return (loc.leadingComments || loc.trailingComments || '').trim();
+    const parts: string[] = [];
+    const detached = loc.leadingDetachedComments || loc.leading_detached_comments;
+    if (detached && detached.length > 0) {
+      parts.push(...detached);
+    }
+    if (loc.leadingComments) {
+      parts.push(loc.leadingComments);
+    }
+    if (loc.trailingComments) {
+      parts.push(loc.trailingComments);
+    }
+    return parts.join('\n\n').trim();
   };
 
-  // Package description
-  if (file.package) {
-    file.description = getCommentText([2]);
+  // File description (header comments)
+  let fileComment = getCommentText([]);
+  if (!fileComment) {
+    fileComment = getCommentText([12]); // syntax
   }
+  if (!fileComment && file.package) {
+    fileComment = getCommentText([2]); // package
+  }
+  file.description = fileComment;
 
   // Message descriptions
   file.messageType?.forEach((msg: any, msgIdx: number) => {
