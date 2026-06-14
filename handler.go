@@ -557,14 +557,26 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	contentType := ""
+	for k, v := range initMsg.Headers {
+		if strings.EqualFold(k, "content-type") {
+			contentType = v
+			break
+		}
+	}
+
 	translateToGrpc := false
+	isGrpcWeb := strings.HasPrefix(contentType, "application/grpc-web")
+	if isGrpcWeb {
+		for k, v := range initMsg.Headers {
+			if strings.EqualFold(k, "x-translate-to-grpc") && v == "true" {
+				translateToGrpc = true
+				break
+			}
+		}
+	}
+
 	for k, v := range initMsg.Headers {
 		kLower := strings.ToLower(k)
-		if kLower == "content-type" {
-			contentType = v
-			isGrpcWeb := strings.HasPrefix(contentType, "application/grpc-web")
-			translateToGrpc = isGrpcWeb && (initMsg.Headers["X-Translate-To-Grpc"] == "true" || initMsg.Headers["x-translate-to-grpc"] == "true")
-		}
 		if kLower == "x-target-url" || kLower == "host" || kLower == "connection" ||
 			kLower == "keep-alive" || kLower == "proxy-authenticate" || kLower == "proxy-authorization" ||
 			kLower == "te" || kLower == "trailers" || kLower == "transfer-encoding" || kLower == "upgrade" {
@@ -580,7 +592,7 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var httpClient *http.Client
-	if translateToGrpc && targetURL.Scheme == "http" {
+	if targetURL.Scheme == "http" {
 		httpClient = p.h2cClient
 	} else {
 		httpClient = p.client
