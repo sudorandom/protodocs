@@ -247,42 +247,61 @@ function RpcMethodTester({
   const isConsoleSupported = hasProxy || !method.clientStreaming;
   const options = useMemo(() => {
     const list: string[] = [];
+    const normalizeLocalUrl = (urlStr: string) => {
+      try {
+        const u = new URL(urlStr);
+        if (typeof window !== 'undefined' && (u.hostname === '127.0.0.1' || u.hostname === 'localhost' || u.hostname === '0.0.0.0')) {
+          u.hostname = window.location.hostname;
+          return u.toString().replace(/\/$/, '');
+        }
+      } catch {
+        // Ignore invalid URLs
+      }
+      return urlStr;
+    };
+    const addUrl = (urlStr: string) => {
+      const normalized = normalizeLocalUrl(urlStr);
+      if (!list.includes(normalized)) {
+        list.push(normalized);
+      }
+    };
+
     if (config.serviceEndpoints) {
       const fullServiceName = packageName ? `${packageName}.${serviceName}` : serviceName;
       const fqn = packageName ? `.${packageName}.${serviceName}` : `.${serviceName}`;
       const rawVal = config.serviceEndpoints[fullServiceName] || config.serviceEndpoints[fqn] || config.serviceEndpoints[serviceName];
       if (rawVal) {
         if (Array.isArray(rawVal)) {
-          list.push(...rawVal);
+          rawVal.forEach(addUrl);
         } else {
-          list.push(rawVal);
+          addUrl(rawVal);
         }
       }
     }
     if (list.length === 0) {
-      if (config.serverUrl) list.push(config.serverUrl);
+      if (config.serverUrl) addUrl(config.serverUrl);
       if (config.reflectionUrl) {
         // Only fall back to reflectionUrl in HTTP mode if it was explicitly configured (i.e. not the default Eliza server)
         const isDefaultEliza = config.reflectionUrl.replace(/\/$/, '') === 'https://demo.connectrpc.com';
         if (config.loadingMethod !== 'http' || !isDefaultEliza) {
-          list.push(config.reflectionUrl);
+          addUrl(config.reflectionUrl);
         }
       }
     }
     if (list.length === 0) {
-      const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8080';
-      list.push(currentOrigin);
+      const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080';
+      addUrl(currentOrigin);
     }
     return list;
   }, [config, packageName, serviceName]);
 
   const showCustomLocal = useMemo(() => {
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8080';
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080';
     return options.length === 1 && options[0] === currentOrigin;
   }, [options]);
 
   const [endpointUrl, setEndpointUrl] = useState(() => {
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8080';
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080';
     return options[0] || currentOrigin;
   });
   const [isCustomLocal, setIsCustomLocal] = useState(false);
@@ -299,7 +318,9 @@ function RpcMethodTester({
   const isLocalUrl = (urlStr: string) => {
     try {
       const parsed = new URL(urlStr);
-      return parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost';
+      return parsed.hostname === '127.0.0.1' || 
+             parsed.hostname === 'localhost' || 
+             (typeof window !== 'undefined' && parsed.hostname === window.location.hostname);
     } catch {
       return false;
     }
@@ -551,6 +572,12 @@ function RpcMethodTester({
                       const val = e.target.value;
                       if (val === "custom-local") {
                         setIsCustomLocal(true);
+                        const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080';
+                        if (isLocalUrl(currentOrigin)) {
+                          setEndpointUrl(currentOrigin);
+                        } else {
+                          setEndpointUrl("http://localhost:8080");
+                        }
                       } else {
                         setIsCustomLocal(false);
                         setEndpointUrl(val);
@@ -570,7 +597,7 @@ function RpcMethodTester({
                   {(isCustomLocal && showCustomLocal) && (
                     <input
                       type="text"
-                      placeholder="http://127.0.0.1:8080"
+                      placeholder="http://localhost:8080"
                       className="bg-app-base border border-app-border rounded px-2 py-1 text-app-textBright outline-none focus:border-app-accent font-mono text-xs w-48"
                       value={endpointUrl}
                       onChange={(e) => setEndpointUrl(e.target.value)}
