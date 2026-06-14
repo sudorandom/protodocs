@@ -272,13 +272,22 @@ func (p *ProxyHandler) isMethodInSchema(serviceName string, methodName string) b
 }
 
 
-func (p *ProxyHandler) isTargetAllowed(targetURL *url.URL) bool {
+func (p *ProxyHandler) isTargetAllowed(targetURL *url.URL, requestHost string) bool {
 	// Always allow 127.0.0.1 and localhost
 	host := targetURL.Host
 	if h, _, err := net.SplitHostPort(targetURL.Host); err == nil {
 		host = h
 	}
 	if host == "127.0.0.1" || strings.EqualFold(host, "localhost") {
+		return true
+	}
+
+	// Always allow target host matching request host (same server origin)
+	reqHost := requestHost
+	if h, _, err := net.SplitHostPort(requestHost); err == nil {
+		reqHost = h
+	}
+	if reqHost != "" && strings.EqualFold(host, reqHost) {
 		return true
 	}
 
@@ -367,7 +376,7 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !p.isTargetAllowed(targetURL) {
+	if !p.isTargetAllowed(targetURL, r.Host) {
 		http.Error(w, fmt.Sprintf("Target URL %q is not allowed by proxy policy", targetURLStr), http.StatusForbidden)
 		return
 	}
@@ -534,7 +543,7 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !p.isTargetAllowed(targetURL) {
+	if !p.isTargetAllowed(targetURL, r.Host) {
 		_ = c.WriteJSON(map[string]interface{}{"status": 403, "error": fmt.Sprintf("Target URL %q is not allowed by proxy policy", initMsg.URL)})
 		return
 	}

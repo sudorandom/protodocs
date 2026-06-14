@@ -270,26 +270,29 @@ function RpcMethodTester({
       }
     }
     if (list.length === 0) {
-      list.push('http://127.0.0.1:8080');
+      const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8080';
+      list.push(currentOrigin);
     }
     return list;
   }, [config, packageName, serviceName]);
 
   const showCustomLocal = useMemo(() => {
-    return options.length === 1 && options[0] === 'http://127.0.0.1:8080';
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8080';
+    return options.length === 1 && options[0] === currentOrigin;
   }, [options]);
 
   const [endpointUrl, setEndpointUrl] = useState(() => {
-    return options[0] || 'http://127.0.0.1:8080';
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8080';
+    return options[0] || currentOrigin;
   });
   const [isCustomLocal, setIsCustomLocal] = useState(false);
 
   useEffect(() => {
     if (isCustomLocal && !showCustomLocal) {
       setIsCustomLocal(false);
-      setEndpointUrl(options[0] || 'http://127.0.0.1:8080');
+      setEndpointUrl(options[0]);
     } else if (!isCustomLocal && !options.includes(endpointUrl)) {
-      setEndpointUrl(options[0] || 'http://127.0.0.1:8080');
+      setEndpointUrl(options[0]);
     }
   }, [options, endpointUrl, isCustomLocal, showCustomLocal]);
 
