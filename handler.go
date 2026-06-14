@@ -38,22 +38,22 @@ var embeddedFiles embed.FS
 
 // AppConfig matches the structure of config.yaml in frontend
 type AppConfig struct {
-	Title                     string            `json:"title,omitempty" yaml:"title,omitempty"`
-	LogoText                  string            `json:"logo_text,omitempty" yaml:"logo_text,omitempty"`
-	LogoURL                   string            `json:"logo_url,omitempty" yaml:"logo_url,omitempty"`
-	LoadingMethod             string            `json:"loading_method,omitempty" yaml:"loading_method,omitempty"`
-	DescriptorFiles           []string          `json:"descriptor_files,omitempty" yaml:"descriptor_files,omitempty"`
-	ServerURL                 string            `json:"server_url,omitempty" yaml:"server_url,omitempty"`
-	ReflectionURL             string            `json:"reflection_url,omitempty" yaml:"reflection_url,omitempty"`
-	FrontPageMarkdown         string            `json:"front_page_markdown,omitempty" yaml:"front_page_markdown,omitempty"`
-	BottomOfFrontPageMarkdown string            `json:"bottom_of_front_page_markdown,omitempty" yaml:"bottom_of_front_page_markdown,omitempty"`
+	Title                     string                   `json:"title,omitempty" yaml:"title,omitempty"`
+	LogoText                  string                   `json:"logo_text,omitempty" yaml:"logo_text,omitempty"`
+	LogoURL                   string                   `json:"logo_url,omitempty" yaml:"logo_url,omitempty"`
+	LoadingMethod             string                   `json:"loading_method,omitempty" yaml:"loading_method,omitempty"`
+	DescriptorFiles           []string                 `json:"descriptor_files,omitempty" yaml:"descriptor_files,omitempty"`
+	ServerURL                 string                   `json:"server_url,omitempty" yaml:"server_url,omitempty"`
+	ReflectionURL             string                   `json:"reflection_url,omitempty" yaml:"reflection_url,omitempty"`
+	FrontPageMarkdown         string                   `json:"front_page_markdown,omitempty" yaml:"front_page_markdown,omitempty"`
+	BottomOfFrontPageMarkdown string                   `json:"bottom_of_front_page_markdown,omitempty" yaml:"bottom_of_front_page_markdown,omitempty"`
 	ServiceEndpoints          map[string]EndpointsList `json:"service_endpoints,omitempty" yaml:"service_endpoints,omitempty"`
-	PrioritizedPaths          []string          `json:"prioritized_paths,omitempty" yaml:"prioritized_paths,omitempty"`
-	HighlightedFiles          []string          `json:"highlighted_files,omitempty" yaml:"highlighted_files,omitempty"`
-	BackToText                string            `json:"back_to_text,omitempty" yaml:"back_to_text,omitempty"`
-	BackToURL                 string            `json:"back_to_url,omitempty" yaml:"back_to_url,omitempty"`
-	Proxy                     bool              `json:"proxy,omitempty" yaml:"proxy,omitempty"`
-	DefaultTab                string            `json:"default_tab,omitempty" yaml:"default_tab,omitempty"`
+	PrioritizedPaths          []string                 `json:"prioritized_paths,omitempty" yaml:"prioritized_paths,omitempty"`
+	HighlightedFiles          []string                 `json:"highlighted_files,omitempty" yaml:"highlighted_files,omitempty"`
+	BackToText                string                   `json:"back_to_text,omitempty" yaml:"back_to_text,omitempty"`
+	BackToURL                 string                   `json:"back_to_url,omitempty" yaml:"back_to_url,omitempty"`
+	Proxy                     bool                     `json:"proxy,omitempty" yaml:"proxy,omitempty"`
+	DefaultTab                string                   `json:"default_tab,omitempty" yaml:"default_tab,omitempty"`
 }
 
 // EndpointsList represents a list of service endpoint URLs, which can be unmarshaled from either a single string or an array of strings in YAML.
@@ -270,7 +270,6 @@ func (p *ProxyHandler) isMethodInSchema(serviceName string, methodName string) b
 	methodDesc := serviceDesc.Methods().ByName(protoreflect.Name(methodName))
 	return methodDesc != nil
 }
-
 
 func (p *ProxyHandler) isTargetAllowed(targetURL *url.URL, requestHost string) bool {
 	// Always allow 127.0.0.1 and localhost
@@ -556,6 +555,11 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	proxyReq.Proto = "HTTP/2.0"
+	proxyReq.ProtoMajor = 2
+	proxyReq.ProtoMinor = 0
+	proxyReq.ContentLength = -1
+
 	contentType := ""
 	for k, v := range initMsg.Headers {
 		if strings.EqualFold(k, "content-type") {
@@ -606,7 +610,7 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 				_ = pw.Close()
 				break
 			}
-			if mt == websocket.TextMessage && string(message) == `{"eos":true}` {
+			if mt == websocket.TextMessage && strings.TrimSpace(string(message)) == `{"eos":true}` {
 				_ = pw.Close() // Signal EOF to the server
 			} else if mt == websocket.BinaryMessage || mt == websocket.TextMessage {
 				_, _ = pw.Write(message)
@@ -885,8 +889,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-
-
 
 		// Serve static file
 		r2 := new(http.Request)

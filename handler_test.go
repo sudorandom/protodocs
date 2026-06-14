@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -384,5 +385,102 @@ func TestProxySecurityPolicies(t *testing.T) {
 	status, body = sendProxyReq("http://eliza-dev.com/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo")
 	if status == http.StatusForbidden {
 		t.Errorf("expected reflection request to be allowed, got 403 with body: %s", body)
+	}
+}
+
+func TestServeWs_Bidi(t *testing.T) {
+	// 1. Create a mock target server that expects HTTP/2 (h2c) and verifies ProtoMajor >= 2
+	mockTargetHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ProtoMajor < 2 {
+			w.WriteHeader(http.StatusHTTPVersionNotSupported)
+			_, _ = w.Write([]byte("HTTP Version Not Supported"))
+			return
+		}
+		// Echo request headers and body back in chunks
+		w.Header().Set("Content-Type", "application/grpc-web+proto")
+		w.WriteHeader(http.StatusOK)
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+		}
+		
+		buf := make([]byte, 1024)
+		for {
+			n, err := r.Body.Read(buf)
+			if n > 0 {
+				_, _ = w.Write(buf[:n])
+			}
+			if err != nil {
+				break
+			}
+		}
+	})
+
+	mockTarget := httptest.NewUnstartedServer(mockTargetHandler)
+	var protocols http.Protocols
+	protocols.SetUnencryptedHTTP2(true)
+	protocols.SetHTTP1(true)
+	mockTarget.Config.Protocols = &protocols
+	mockTarget.Start()
+	defer mockTarget.Close()
+
+	// 2. Setup the proxy handler allowing loopback
+	handler, err := NewHandler(Config{
+		Registry: &protoregistry.Files{},
+	})
+	if err != nil {
+		t.Fatalf("failed to create handler: %v", err)
+	}
+
+	proxyServer := httptest.NewServer(handler)
+	defer proxyServer.Close()
+
+	// 3. Connect to /api/proxy/ws via WebSocket
+	wsURL := "ws" + strings.TrimPrefix(proxyServer.URL, "http") + "/api/proxy/ws"
+	wsConn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("failed to connect to websocket: %v", err)
+	}
+	defer func() { _ = wsConn.Close() }()
+
+	// 4. Send initial message
+	initMsg := map[string]interface{}{
+		"url": mockTarget.URL + "/connectrpc.eliza.v1.ElizaService/Say",
+		"headers": map[string]string{
+			"Content-Type": "application/grpc-web+proto",
+		},
+	}
+	if err := wsConn.WriteJSON(initMsg); err != nil {
+		t.Fatalf("failed to write init msg: %v", err)
+	}
+
+	// 5. Send a stream of messages
+	payload := []byte("hello stream")
+	if err := wsConn.WriteMessage(websocket.BinaryMessage, payload); err != nil {
+		t.Fatalf("failed to send payload: %v", err)
+	}
+
+	eosMsg := map[string]bool{"eos": true}
+	if err := wsConn.WriteJSON(eosMsg); err != nil {
+		t.Fatalf("failed to send eos: %v", err)
+	}
+
+	// 6. Read response headers/status
+	var statusMsg map[string]interface{}
+	if err := wsConn.ReadJSON(&statusMsg); err != nil {
+		t.Fatalf("failed to read response status: %v", err)
+	}
+
+	if statusMsg["status"] != float64(http.StatusOK) {
+		t.Fatalf("expected status 200, got %v: %v", statusMsg["status"], statusMsg["error"])
+	}
+
+	// 7. Read response body chunk
+	_, respBody, err := wsConn.ReadMessage()
+	if err != nil {
+		t.Fatalf("failed to read response body: %v", err)
+	}
+
+	if string(respBody) != "hello stream" {
+		t.Errorf("expected 'hello stream', got %q", string(respBody))
 	}
 }

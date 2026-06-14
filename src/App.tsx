@@ -409,9 +409,9 @@ export default function App() {
       } else {
         loadedSchema = await loadSchemaFromReflection(targetConfig.reflectionUrl, targetConfig.loadingMethod);
       }
-      
+
       setSchema(loadedSchema);
-      
+
       // Focus tab based on config (or default to services if > 0 count of services)
       let totalServices = 0;
       if (loadedSchema.file) {
@@ -718,7 +718,7 @@ export default function App() {
     if (!searchQuery) return [];
     const q = searchQuery.toLowerCase();
     const results: any[] = [];
-    
+
     Object.entries(typeIndex).forEach(([fqn, info]) => {
       if (fqn.toLowerCase().includes(q)) {
         results.push({
@@ -894,7 +894,7 @@ export default function App() {
 
   return (
     <div className={`flex h-screen w-screen bg-app-base text-app-textMain font-sans overflow-hidden transition-colors duration-200 ${themeClass}`}>
-      
+
       {/* Sidebar backdrop on mobile */}
       {isSidebarOpen && (
         <div
@@ -928,7 +928,7 @@ export default function App() {
 
       {/* Main Container - Size is fully constrained and fixed to flex flow */}
       <div className="flex-1 flex flex-col min-w-0 relative h-full">
-        
+
         {/* Top Navbar */}
         <div className="h-14 border-b border-app-border flex items-center px-6 justify-between bg-app-base z-10 transition-colors duration-200 shrink-0">
           <div className="min-w-0 flex-1 flex items-center gap-3 mr-4 text-xs text-app-textMuted truncate font-mono select-text">

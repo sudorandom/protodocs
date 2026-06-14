@@ -120,7 +120,7 @@ export default function ServiceViewer({
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
                   </svg>
                 </span>
-                
+
                 <KeywordLink
                   keyword="rpc"
                   onMouseEnter={onMouseEnter}
@@ -128,7 +128,7 @@ export default function ServiceViewer({
                   onPinClick={onPinClick}
                 />{' '}
                 <span className="text-app-textBright font-semibold group-hover:underline">{m.name}</span>
-                
+
                 <span className="text-app-textMuted">(</span>
                 {m.clientStreaming && (
                   <KeywordLink
@@ -147,7 +147,7 @@ export default function ServiceViewer({
                   onPinClick={onPinClick}
                 />
                 <span className="text-app-textMuted">)</span>
-                
+
                 {' '}
                 <KeywordLink
                   keyword="returns"
@@ -214,7 +214,7 @@ export default function ServiceViewer({
           );
         })}
       </div>
-      
+
       <div className="font-mono whitespace-pre-wrap">{'}'}</div>
     </div>
   );
@@ -318,8 +318,8 @@ function RpcMethodTester({
   const isLocalUrl = (urlStr: string) => {
     try {
       const parsed = new URL(urlStr);
-      return parsed.hostname === '127.0.0.1' || 
-             parsed.hostname === 'localhost' || 
+      return parsed.hostname === '127.0.0.1' ||
+             parsed.hostname === 'localhost' ||
              (typeof window !== 'undefined' && parsed.hostname === window.location.hostname);
     } catch {
       return false;
@@ -662,7 +662,7 @@ function RpcMethodTester({
                 + Add Header
               </button>
             </div>
-            
+
             {customHeaders.length === 0 ? (
               <div className="text-[10px] text-app-textMuted/60 italic pb-0.5">No custom headers configured.</div>
             ) : (
@@ -757,7 +757,7 @@ function RpcMethodTester({
                 )}
 
                 {error && <div className="text-red-400">Error: {error}</div>}
-                
+
                 {response && (
                   <div className="space-y-3">
                     <div className="text-app-accent font-bold">{response.status}</div>
@@ -766,7 +766,7 @@ function RpcMethodTester({
                         {response.headers}
                       </div>
                     )}
-                    
+
                     {!method.serverStreaming && response.body && (
                       <pre className="text-syn-type whitespace-pre-wrap select-text pr-12">{response.body}</pre>
                     )}
