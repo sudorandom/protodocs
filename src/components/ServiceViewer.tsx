@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import TypeLink from './TypeLink';
 import OptionLink from './OptionLink';
 import { FormatOptions } from './options-formatter';
@@ -245,22 +245,72 @@ function RpcMethodTester({
 }: RpcMethodTesterProps) {
   const hasProxy = isProxyEnabled();
   const isConsoleSupported = hasProxy || !method.clientStreaming;
-  const [endpointUrl, setEndpointUrl] = useState(() => {
+  const options = useMemo(() => {
+    const list: string[] = [];
     if (config.serviceEndpoints) {
       const fullServiceName = packageName ? `${packageName}.${serviceName}` : serviceName;
       const fqn = packageName ? `.${packageName}.${serviceName}` : `.${serviceName}`;
-      if (config.serviceEndpoints[fullServiceName]) {
-        return config.serviceEndpoints[fullServiceName];
-      }
-      if (config.serviceEndpoints[fqn]) {
-        return config.serviceEndpoints[fqn];
-      }
-      if (config.serviceEndpoints[serviceName]) {
-        return config.serviceEndpoints[serviceName];
+      const rawVal = config.serviceEndpoints[fullServiceName] || config.serviceEndpoints[fqn] || config.serviceEndpoints[serviceName];
+      if (rawVal) {
+        if (Array.isArray(rawVal)) {
+          list.push(...rawVal);
+        } else {
+          list.push(rawVal);
+        }
       }
     }
-    return config.reflectionUrl || 'http://localhost:8080';
+    if (list.length === 0) {
+      if (config.serverUrl) list.push(config.serverUrl);
+      if (config.reflectionUrl) {
+        // Only fall back to reflectionUrl in HTTP mode if it was explicitly configured (i.e. not the default Eliza server)
+        const isDefaultEliza = config.reflectionUrl.replace(/\/$/, '') === 'https://demo.connectrpc.com';
+        if (config.loadingMethod !== 'http' || !isDefaultEliza) {
+          list.push(config.reflectionUrl);
+        }
+      }
+    }
+    if (list.length === 0) {
+      list.push('http://127.0.0.1:8080');
+    }
+    return list;
+  }, [config, packageName, serviceName]);
+
+  const showCustomLocal = useMemo(() => {
+    return options.length === 1 && options[0] === 'http://127.0.0.1:8080';
+  }, [options]);
+
+  const [endpointUrl, setEndpointUrl] = useState(() => {
+    return options[0] || 'http://127.0.0.1:8080';
   });
+  const [isCustomLocal, setIsCustomLocal] = useState(false);
+
+  useEffect(() => {
+    if (isCustomLocal && !showCustomLocal) {
+      setIsCustomLocal(false);
+      setEndpointUrl(options[0] || 'http://127.0.0.1:8080');
+    } else if (!isCustomLocal && !options.includes(endpointUrl)) {
+      setEndpointUrl(options[0] || 'http://127.0.0.1:8080');
+    }
+  }, [options, endpointUrl, isCustomLocal, showCustomLocal]);
+
+  const isLocalUrl = (urlStr: string) => {
+    try {
+      const parsed = new URL(urlStr);
+      return parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost';
+    } catch {
+      return false;
+    }
+  };
+
+  const isValidEndpoint = useMemo(() => {
+    if (isCustomLocal && showCustomLocal) {
+      return isLocalUrl(endpointUrl);
+    }
+    if (options.includes(endpointUrl)) {
+      return true;
+    }
+    return isLocalUrl(endpointUrl);
+  }, [endpointUrl, options, isCustomLocal, showCustomLocal]);
   const [protocol, setProtocol] = useState<'connect' | 'grpc-web' | 'grpc'>('connect');
   const [requestJson, setRequestJson] = useState(() => {
     try {
@@ -489,12 +539,47 @@ function RpcMethodTester({
                   </span>
                 )}
               </div>
-              <input
-                type="text"
-                className="w-full bg-app-base border border-app-border rounded px-2 py-1 text-app-textBright outline-none focus:border-app-accent font-mono text-xs"
-                value={endpointUrl}
-                onChange={(e) => setEndpointUrl(e.target.value)}
-              />
+              <div className="flex flex-col gap-1.5">
+                <div className="flex gap-2">
+                  <select
+                    className="bg-app-base border border-app-border rounded px-2 py-1 text-app-textBright outline-none focus:border-app-accent font-sans text-xs flex-1"
+                    value={isCustomLocal && showCustomLocal ? "custom-local" : (options.includes(endpointUrl) ? endpointUrl : options[0])}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "custom-local") {
+                        setIsCustomLocal(true);
+                      } else {
+                        setIsCustomLocal(false);
+                        setEndpointUrl(val);
+                      }
+                    }}
+                  >
+                    {options.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                    {showCustomLocal && (
+                      <option value="custom-local">Custom Local (127.0.0.1 / localhost)...</option>
+                    )}
+                  </select>
+
+                  {(isCustomLocal && showCustomLocal) && (
+                    <input
+                      type="text"
+                      placeholder="http://127.0.0.1:8080"
+                      className="bg-app-base border border-app-border rounded px-2 py-1 text-app-textBright outline-none focus:border-app-accent font-mono text-xs w-48"
+                      value={endpointUrl}
+                      onChange={(e) => setEndpointUrl(e.target.value)}
+                    />
+                  )}
+                </div>
+                {!isValidEndpoint && (
+                  <div className="text-[10px] text-red-400 font-semibold select-none leading-normal">
+                    Error: Only configured endpoints or local (127.0.0.1 / localhost) URLs are allowed.
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Protocol Selector */}
@@ -524,7 +609,7 @@ function RpcMethodTester({
             <div className="self-end">
               <button
                 type="button"
-                disabled={isLoading}
+                disabled={isLoading || !isValidEndpoint}
                 onClick={handleSend}
                 className="bg-app-accent hover:bg-app-accent/80 text-white font-bold px-4 py-1.5 rounded transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed uppercase text-[10px] tracking-wide"
               >

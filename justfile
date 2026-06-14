@@ -20,6 +20,7 @@ lint: build
 
 test:
     pnpm test
+    go test -v ./...
 
 build:
     pnpm run build

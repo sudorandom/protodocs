@@ -101,8 +101,8 @@ func main() {
 	if len(descriptorFiles) == 0 && reflectionURL == "" {
 		cfg.DescriptorFiles = []string{"/eliza.binpb"}
 		cfg.FrontPageMarkdown = "# Welcome to ProtoDocs 🚀\n\nSelect a file or service in the sidebar to start browsing the schema documentation."
-		cfg.ServiceEndpoints = map[string]string{
-			"connectrpc.eliza.v1.ElizaService": "https://demo.connectrpc.com",
+		cfg.ServiceEndpoints = map[string][]string{
+			"connectrpc.eliza.v1.ElizaService": {"https://demo.connectrpc.com"},
 		}
 	}
 

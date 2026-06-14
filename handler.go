@@ -47,13 +47,31 @@ type AppConfig struct {
 	ReflectionURL             string            `json:"reflection_url,omitempty" yaml:"reflection_url,omitempty"`
 	FrontPageMarkdown         string            `json:"front_page_markdown,omitempty" yaml:"front_page_markdown,omitempty"`
 	BottomOfFrontPageMarkdown string            `json:"bottom_of_front_page_markdown,omitempty" yaml:"bottom_of_front_page_markdown,omitempty"`
-	ServiceEndpoints          map[string]string `json:"service_endpoints,omitempty" yaml:"service_endpoints,omitempty"`
+	ServiceEndpoints          map[string]EndpointsList `json:"service_endpoints,omitempty" yaml:"service_endpoints,omitempty"`
 	PrioritizedPaths          []string          `json:"prioritized_paths,omitempty" yaml:"prioritized_paths,omitempty"`
 	HighlightedFiles          []string          `json:"highlighted_files,omitempty" yaml:"highlighted_files,omitempty"`
 	BackToText                string            `json:"back_to_text,omitempty" yaml:"back_to_text,omitempty"`
 	BackToURL                 string            `json:"back_to_url,omitempty" yaml:"back_to_url,omitempty"`
 	Proxy                     bool              `json:"proxy,omitempty" yaml:"proxy,omitempty"`
 	DefaultTab                string            `json:"default_tab,omitempty" yaml:"default_tab,omitempty"`
+}
+
+// EndpointsList represents a list of service endpoint URLs, which can be unmarshaled from either a single string or an array of strings in YAML.
+type EndpointsList []string
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (e *EndpointsList) UnmarshalYAML(value *yaml.Node) error {
+	var str string
+	if err := value.Decode(&str); err == nil {
+		*e = []string{str}
+		return nil
+	}
+	var slice []string
+	if err := value.Decode(&slice); err == nil {
+		*e = slice
+		return nil
+	}
+	return fmt.Errorf("failed to unmarshal string or string slice on line %d", value.Line)
 }
 
 // Config defines the configuration for the ProtoDocs handler.
@@ -76,8 +94,8 @@ type Config struct {
 	FrontPageMarkdown string
 	// BottomOfFrontPageMarkdown is the markdown string content for the footer.
 	BottomOfFrontPageMarkdown string
-	// ServiceEndpoints maps service names to default server URLs.
-	ServiceEndpoints map[string]string
+	// ServiceEndpoints maps service names to default server URLs (can be a single string or slice of strings).
+	ServiceEndpoints map[string][]string
 	// PrioritizedPaths is a list of paths to prioritize in the UI.
 	PrioritizedPaths []string
 	// HighlightedFiles is a list of files to highlight in the UI.
@@ -147,11 +165,16 @@ func (s spaFileSystem) Open(name string) (http.File, error) {
 }
 
 type ProxyHandler struct {
-	client    *http.Client
-	h2cClient *http.Client
+	client            *http.Client
+	h2cClient         *http.Client
+	allowedProxyHosts []string
+	registry          *protoregistry.Files
+	serverURL         string
+	reflectionURL     string
+	serviceEndpoints  map[string][]string
 }
 
-func NewProxyHandler() *ProxyHandler {
+func NewProxyHandler(allowedHosts []string, registry *protoregistry.Files, descriptors *descriptorpb.FileDescriptorSet, serverURL string, reflectionURL string, serviceEndpoints map[string][]string) *ProxyHandler {
 	client := &http.Client{
 		Transport: http.DefaultTransport,
 	}
@@ -167,10 +190,158 @@ func NewProxyHandler() *ProxyHandler {
 		Transport: h2cTransport,
 	}
 
-	return &ProxyHandler{
-		client:    client,
-		h2cClient: h2cClient,
+	reg := registry
+	if reg == nil && descriptors != nil {
+		var err error
+		reg, err = protodesc.NewFiles(descriptors)
+		if err != nil {
+			log.Printf("ProxyHandler: failed to build registry from descriptors: %v", err)
+		}
 	}
+
+	return &ProxyHandler{
+		client:            client,
+		h2cClient:         h2cClient,
+		allowedProxyHosts: allowedHosts,
+		registry:          reg,
+		serverURL:         serverURL,
+		reflectionURL:     reflectionURL,
+		serviceEndpoints:  serviceEndpoints,
+	}
+}
+
+func (p *ProxyHandler) isHostAllowed(targetHost string) bool {
+	if len(p.allowedProxyHosts) == 0 {
+		return true
+	}
+	hostname := targetHost
+	if h, _, err := net.SplitHostPort(targetHost); err == nil {
+		hostname = h
+	}
+	for _, allowed := range p.allowedProxyHosts {
+		allowedHost := allowed
+		if ah, _, err := net.SplitHostPort(allowed); err == nil {
+			allowedHost = ah
+		}
+		if strings.EqualFold(hostname, allowedHost) {
+			return true
+		}
+	}
+	return false
+}
+
+func parseServiceAndMethod(path string) (string, string, bool) {
+	trimmed := strings.Trim(path, "/")
+	parts := strings.Split(trimmed, "/")
+	if len(parts) < 2 {
+		return "", "", false
+	}
+	methodName := parts[len(parts)-1]
+	serviceName := strings.Join(parts[:len(parts)-1], "/")
+	serviceName = strings.ReplaceAll(serviceName, "/", ".")
+	return serviceName, methodName, true
+}
+
+func (p *ProxyHandler) isMethodInSchema(serviceName string, methodName string) bool {
+	// Always allow standard gRPC reflection services
+	if serviceName == "grpc.reflection.v1alpha.ServerReflection" || serviceName == "grpc.reflection.v1.ServerReflection" {
+		if methodName == "ServerReflectionInfo" {
+			return true
+		}
+	}
+	// Always allow standard gRPC health check
+	if serviceName == "grpc.health.v1.Health" {
+		if methodName == "Check" || methodName == "Watch" {
+			return true
+		}
+	}
+
+	if p.registry == nil {
+		return true
+	}
+	desc, err := p.registry.FindDescriptorByName(protoreflect.FullName(serviceName))
+	if err != nil {
+		return false
+	}
+	serviceDesc, ok := desc.(protoreflect.ServiceDescriptor)
+	if !ok {
+		return false
+	}
+	methodDesc := serviceDesc.Methods().ByName(protoreflect.Name(methodName))
+	return methodDesc != nil
+}
+
+
+func (p *ProxyHandler) isTargetAllowed(targetURL *url.URL) bool {
+	// Always allow 127.0.0.1 and localhost
+	host := targetURL.Host
+	if h, _, err := net.SplitHostPort(targetURL.Host); err == nil {
+		host = h
+	}
+	if host == "127.0.0.1" || strings.EqualFold(host, "localhost") {
+		return true
+	}
+
+	// Parse service and method from the path
+	serviceName, methodName, ok := parseServiceAndMethod(targetURL.Path)
+	if !ok || !p.isMethodInSchema(serviceName, methodName) {
+		return false
+	}
+
+	// Always allow reflection and health checks on any allowed host
+	if serviceName == "grpc.reflection.v1alpha.ServerReflection" ||
+		serviceName == "grpc.reflection.v1.ServerReflection" ||
+		serviceName == "grpc.health.v1.Health" {
+		return p.isHostAllowed(targetURL.Host)
+	}
+
+	// Determine the expected endpoint URLs for this service
+	var expectedEndpoints []string
+	if p.serviceEndpoints != nil {
+		if eps, found := p.serviceEndpoints[serviceName]; found && len(eps) > 0 {
+			expectedEndpoints = eps
+		}
+	}
+	if len(expectedEndpoints) == 0 {
+		if p.serverURL != "" {
+			expectedEndpoints = append(expectedEndpoints, p.serverURL)
+		}
+		if p.reflectionURL != "" {
+			expectedEndpoints = append(expectedEndpoints, p.reflectionURL)
+		}
+	}
+
+	if len(expectedEndpoints) == 0 {
+		if len(p.allowedProxyHosts) > 0 {
+			return p.isHostAllowed(targetURL.Host)
+		}
+		return true
+	}
+
+	for _, expectedEndpointStr := range expectedEndpoints {
+		expectedURL, err := url.Parse(expectedEndpointStr)
+		if err != nil {
+			continue
+		}
+
+		if !strings.EqualFold(targetURL.Scheme, expectedURL.Scheme) {
+			continue
+		}
+
+		if !strings.EqualFold(targetURL.Host, expectedURL.Host) {
+			continue
+		}
+
+		expectedPath := strings.TrimSuffix(expectedURL.Path, "/")
+		expectedFullSuffix := "/" + serviceName + "/" + methodName
+		expectedFullPath := expectedPath + expectedFullSuffix
+
+		if targetURL.Path == expectedFullPath {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -193,6 +364,11 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	targetURL, err := url.Parse(targetURLStr)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Invalid X-Target-Url: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	if !p.isTargetAllowed(targetURL) {
+		http.Error(w, fmt.Sprintf("Target URL %q is not allowed by proxy policy", targetURLStr), http.StatusForbidden)
 		return
 	}
 
@@ -358,6 +534,11 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !p.isTargetAllowed(targetURL) {
+		_ = c.WriteJSON(map[string]interface{}{"status": 403, "error": fmt.Sprintf("Target URL %q is not allowed by proxy policy", initMsg.URL)})
+		return
+	}
+
 	pr, pw := io.Pipe()
 
 	proxyReq, err := http.NewRequestWithContext(r.Context(), http.MethodPost, initMsg.URL, pr)
@@ -517,6 +698,14 @@ func NewHandler(cfg Config) (http.Handler, error) {
 		cfg.DefaultTab != ""
 
 	if hasConfig {
+		var serviceEndpoints map[string]EndpointsList
+		if cfg.ServiceEndpoints != nil {
+			serviceEndpoints = make(map[string]EndpointsList)
+			for k, v := range cfg.ServiceEndpoints {
+				serviceEndpoints[k] = EndpointsList(v)
+			}
+		}
+
 		appCfg := AppConfig{
 			Title:                     cfg.Title,
 			LogoText:                  cfg.LogoText,
@@ -527,7 +716,7 @@ func NewHandler(cfg Config) (http.Handler, error) {
 			ReflectionURL:             cfg.ReflectionURL,
 			FrontPageMarkdown:         cfg.FrontPageMarkdown,
 			BottomOfFrontPageMarkdown: cfg.BottomOfFrontPageMarkdown,
-			ServiceEndpoints:          cfg.ServiceEndpoints,
+			ServiceEndpoints:          serviceEndpoints,
 			PrioritizedPaths:          cfg.PrioritizedPaths,
 			HighlightedFiles:          cfg.HighlightedFiles,
 			BackToText:                cfg.BackToText,
@@ -571,11 +760,37 @@ func NewHandler(cfg Config) (http.Handler, error) {
 		}
 	}
 
+	// Build allowed hosts list from configured URLs
+	var allowedHosts []string
+	addHostFromURL := func(urlStr string) {
+		if urlStr == "" {
+			return
+		}
+		u, err := url.Parse(urlStr)
+		if err == nil && u.Host != "" {
+			hostname := u.Host
+			if h, _, err := net.SplitHostPort(u.Host); err == nil {
+				hostname = h
+			}
+			if !slices.Contains(allowedHosts, hostname) {
+				allowedHosts = append(allowedHosts, hostname)
+			}
+		}
+	}
+
+	addHostFromURL(cfg.ServerURL)
+	addHostFromURL(cfg.ReflectionURL)
+	for _, endpoints := range cfg.ServiceEndpoints {
+		for _, endpoint := range endpoints {
+			addHostFromURL(endpoint)
+		}
+	}
+
 	h := &Handler{
 		config:          cfg,
 		prefix:          prefix,
 		staticFS:        staticFS,
-		proxyHandler:    NewProxyHandler(),
+		proxyHandler:    NewProxyHandler(allowedHosts, cfg.Registry, cfg.Descriptors, cfg.ServerURL, cfg.ReflectionURL, cfg.ServiceEndpoints),
 		fileServer:      http.FileServer(staticFS),
 		dynamicConfig:   dynamicConfig,
 		descriptorBytes: descriptorBytes,

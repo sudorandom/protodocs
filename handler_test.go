@@ -266,3 +266,123 @@ func TestNewHandler_Registry(t *testing.T) {
 		t.Errorf("expected 2 files in FileDescriptorSet, got %d", len(fds2.File))
 	}
 }
+
+func TestProxySecurityPolicies(t *testing.T) {
+	reg := &protoregistry.Files{}
+	name := "eliza.proto"
+
+	fd, err := protodesc.NewFile(&descriptorpb.FileDescriptorProto{
+		Name:    &name,
+		Package: proto.String("connectrpc.eliza.v1"),
+		Syntax:  proto.String("proto3"),
+		MessageType: []*descriptorpb.DescriptorProto{
+			{
+				Name: proto.String("SayRequest"),
+			},
+			{
+				Name: proto.String("SayResponse"),
+			},
+		},
+		Service: []*descriptorpb.ServiceDescriptorProto{
+			{
+				Name: proto.String("ElizaService"),
+				Method: []*descriptorpb.MethodDescriptorProto{
+					{
+						Name:       proto.String("Say"),
+						InputType:  proto.String(".connectrpc.eliza.v1.SayRequest"),
+						OutputType: proto.String(".connectrpc.eliza.v1.SayResponse"),
+					},
+				},
+			},
+		},
+	}, nil)
+	if err != nil {
+		t.Fatalf("failed to create protoreflect.FileDescriptor: %v", err)
+	}
+	if err := reg.RegisterFile(fd); err != nil {
+		t.Fatalf("failed to register file: %v", err)
+	}
+
+	handler, err := NewHandler(Config{
+		ServerURL:         "http://default-endpoint.com",
+		ServiceEndpoints: map[string][]string{
+			"connectrpc.eliza.v1.ElizaService": {
+				"http://eliza-dev.com",
+				"http://eliza-stage.com",
+			},
+		},
+		Registry:          reg,
+	})
+	if err != nil {
+		t.Fatalf("failed to create handler: %v", err)
+	}
+
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	client := &http.Client{}
+
+	sendProxyReq := func(targetURL string) (int, string) {
+		req, err := http.NewRequest("POST", ts.URL+"/api/proxy", nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.Header.Set("X-Target-Url", targetURL)
+		req.Header.Set("Content-Type", "application/json")
+		res, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("failed to send request: %v", err)
+		}
+		defer func() { _ = res.Body.Close() }()
+		body, _ := io.ReadAll(res.Body)
+		return res.StatusCode, string(body)
+	}
+
+	// 1. Dev endpoint -> ALLOWED
+	status, body := sendProxyReq("http://eliza-dev.com/connectrpc.eliza.v1.ElizaService/Say")
+	if status == http.StatusForbidden {
+		t.Errorf("expected eliza-dev request to be allowed, got 403 with body: %s", body)
+	}
+
+	// 2. Stage endpoint -> ALLOWED
+	status, body = sendProxyReq("http://eliza-stage.com/connectrpc.eliza.v1.ElizaService/Say")
+	if status == http.StatusForbidden {
+		t.Errorf("expected eliza-stage request to be allowed, got 403 with body: %s", body)
+	}
+
+	// 3. demo.connectrpc.com -> BLOCKED (even though allowed host because specific endpoints are configured)
+	status, _ = sendProxyReq("http://demo.connectrpc.com/connectrpc.eliza.v1.ElizaService/Say")
+	if status != http.StatusForbidden {
+		t.Errorf("expected demo.connectrpc.com request to be blocked, got status %d", status)
+	}
+
+	// 4. Loopback/localhost custom port -> ALLOWED
+	status, body = sendProxyReq("http://127.0.0.1:8080/connectrpc.eliza.v1.ElizaService/Say")
+	if status == http.StatusForbidden {
+		t.Errorf("expected 127.0.0.1 request to be allowed, got 403 with body: %s", body)
+	}
+
+	// 5. Default endpoint -> BLOCKED (since specific endpoints are configured for ElizaService)
+	status, _ = sendProxyReq("http://default-endpoint.com/connectrpc.eliza.v1.ElizaService/Say")
+	if status != http.StatusForbidden {
+		t.Errorf("expected default-endpoint request to be blocked since specific endpoints are configured, got status %d", status)
+	}
+
+	// 6. Malicious endpoint -> BLOCKED
+	status, _ = sendProxyReq("http://malicious.com/connectrpc.eliza.v1.ElizaService/Say")
+	if status != http.StatusForbidden {
+		t.Errorf("expected malicious request to be 403, got %d", status)
+	}
+
+	// 7. Unknown method on stage endpoint -> BLOCKED
+	status, _ = sendProxyReq("http://eliza-stage.com/connectrpc.eliza.v1.ElizaService/Unknown")
+	if status != http.StatusForbidden {
+		t.Errorf("expected request to disallowed method to be 403, got %d", status)
+	}
+
+	// 8. Reflection request on allowed proxy host -> ALLOWED
+	status, body = sendProxyReq("http://eliza-dev.com/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo")
+	if status == http.StatusForbidden {
+		t.Errorf("expected reflection request to be allowed, got 403 with body: %s", body)
+	}
+}

@@ -35,7 +35,7 @@ interface AppConfig {
   logoText: string;
   frontPageMarkdown?: string;
   bottomOfFrontPageMarkdown?: string;
-  serviceEndpoints?: Record<string, string>;
+  serviceEndpoints?: Record<string, string | string[]>;
   prioritizedPaths?: string[];
   highlightedFiles?: string[];
   backToText?: string;
