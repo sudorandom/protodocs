@@ -115,12 +115,6 @@ export default function ServiceViewer({
                 className="proto-text hover:bg-app-hoverBg px-2 py-1 rounded -ml-2 cursor-pointer group whitespace-pre-wrap font-mono relative pr-20 text-app-textMuted"
               >
                 {'  '}
-                <span className="inline-flex items-center text-app-textMuted group-hover:text-app-textBright select-none mr-1.5">
-                  <svg className="w-3.5 h-3.5 text-app-textMuted group-hover:text-app-accent transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
-                  </svg>
-                </span>
-
                 <KeywordLink
                   keyword="rpc"
                   onMouseEnter={onMouseEnter}
@@ -193,7 +187,7 @@ export default function ServiceViewer({
                   <span className="text-app-textMain">;</span>
                 )}
 
-                <div className="absolute right-2 top-1 opacity-0 group-hover:opacity-100 text-[10px] font-bold bg-app-accent/20 text-app-accent px-1.5 py-0.5 rounded transition-all select-none">
+                <div className="absolute right-2 top-1 text-[10px] font-bold bg-app-accent/20 text-app-accent px-1.5 py-0.5 rounded transition-all select-none">
                   {expandedMethod === m.name ? 'Collapse' : 'Try it out'}
                 </div>
               </div>
