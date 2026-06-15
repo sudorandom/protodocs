@@ -489,11 +489,16 @@ function RpcMethodTester({
           }
         } : undefined,
       });
-      setResponse((prev) => ({
-        status: res.status,
-        headers: prev?.headers || res.headers,
-        body: res.body,
-      }));
+      setResponse((prev) => {
+        const combinedHeaders = prev?.headers && res.headers
+          ? `${res.headers}\n\n${prev.headers}`
+          : (prev?.headers || res.headers);
+        return {
+          status: res.status,
+          headers: combinedHeaders,
+          body: res.body,
+        };
+      });
     } catch (err: any) {
       setError(err?.message || 'An error occurred during call execution');
     } finally {
