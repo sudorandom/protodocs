@@ -41,12 +41,23 @@ describe('options-formatter-helpers', () => {
         expect(formatOptionValue({})).toBe('{}');
       });
 
-      it('should format short/flat arrays inline', () => {
-        expect(formatOptionValue([1, 'two', false])).toBe('[1, "two", false]');
+      it('should format arrays with multiple items on separate lines', () => {
+        expect(formatOptionValue([1, 'two', false])).toBe(
+          '[\n' +
+          '  1,\n' +
+          '  "two",\n' +
+          '  false\n' +
+          ']'
+        );
       });
 
-      it('should format short/flat objects inline', () => {
-        expect(formatOptionValue({ a: 1, b: 'two' })).toBe('{ a: 1, b: "two" }');
+      it('should format objects with multiple items on separate lines', () => {
+        expect(formatOptionValue({ a: 1, b: 'two' })).toBe(
+          '{\n' +
+          '  a: 1,\n' +
+          '  b: "two"\n' +
+          '}'
+        );
       });
     });
 
@@ -59,8 +70,14 @@ describe('options-formatter-helpers', () => {
         const formatted = formatOptionValue(val);
         expect(formatted).toBe(
           '[\n' +
-          '  { name: "rule_1", expression: "this.length() > 0" },\n' +
-          '  { name: "rule_2", expression: "this.startsWith("prefix")" }\n' +
+          '  {\n' +
+          '    name: "rule_1",\n' +
+          '    expression: "this.length() > 0"\n' +
+          '  },\n' +
+          '  {\n' +
+          '    name: "rule_2",\n' +
+          '    expression: "this.startsWith("prefix")"\n' +
+          '  }\n' +
           ']'
         );
       });
@@ -132,7 +149,12 @@ describe('options-formatter-helpers', () => {
             'FieldOptions',
             mockTypeIndex
           )
-        ).toBe('[OPTIONAL, REQUIRED]');
+        ).toBe(
+          '[\n' +
+          '  OPTIONAL,\n' +
+          '  REQUIRED\n' +
+          ']'
+        );
       });
     });
   });

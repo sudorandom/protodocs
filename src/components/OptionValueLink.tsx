@@ -31,17 +31,16 @@ const isValueComplex = (v: any): boolean => {
   }
   if (Array.isArray(v)) {
     if (v.length > 1) {
-      if (v.some(item => typeof item === 'object' && item !== null)) return true;
-      const totalLen = v.reduce((acc, item) => acc + String(item).length, 0);
-      if (totalLen > 50) return true;
+      return true;
+    }
+    if (v.length === 1 && typeof v[0] === 'object' && v[0] !== null) {
+      return true;
     }
     return false;
   }
   const entries = Object.entries(v);
   if (entries.length > 1) {
-    if (entries.some(([, val]) => typeof val === 'object' && val !== null)) return true;
-    const totalLen = entries.reduce((acc, [k, val]) => acc + k.length + String(val).length, 0);
-    if (totalLen > 50) return true;
+    return true;
   }
   if (entries.length === 1 && typeof entries[0][1] === 'object' && entries[0][1] !== null) {
     return true;

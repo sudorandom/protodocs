@@ -118,6 +118,7 @@ export default function EnumViewer({
                   onMouseEnter={onMouseEnter}
                   onMouseLeave={onMouseLeave}
                   onPinClick={onPinClick}
+                  indent={indent + 1}
                 />
                 <span className="text-app-textMain">;</span>
               </div>

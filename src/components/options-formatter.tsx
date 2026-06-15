@@ -22,6 +22,7 @@ interface FormatOptionsProps {
     category: 'primitive' | 'wkt' | 'custom' | 'option' | 'enum_value',
     shortName: string
   ) => void;
+  indent?: number;
 }
 
 export function FormatOptions({
@@ -31,6 +32,7 @@ export function FormatOptions({
   onMouseEnter,
   onMouseLeave,
   onPinClick,
+  indent = 0,
 }: FormatOptionsProps) {
   if (!options || Object.keys(options).length === 0) return null;
 
@@ -48,12 +50,14 @@ export function FormatOptions({
 
   // Multi-line formatting if there are multiple options
   if (sortedEntries.length > 1) {
+    const parentIndent = '  '.repeat(indent);
+    const optionIndent = '  '.repeat(indent + 1);
     return (
       <span className="text-syn-comment ml-2 select-text font-mono whitespace-pre-wrap">
         {`[\n`}
         {sortedEntries.map(([k, v], idx) => (
           <span key={k}>
-            {'  '}
+            {optionIndent}
             <OptionLink
               optionKey={k}
               parentOptionsMessage={parentOptionsMessage}
@@ -71,12 +75,12 @@ export function FormatOptions({
               onMouseEnter={onMouseEnter}
               onMouseLeave={onMouseLeave}
               onPinClick={onPinClick}
-              indent={1}
+              indent={indent + 1}
             />
             {idx < sortedEntries.length - 1 ? `,\n` : `\n`}
           </span>
         ))}
-        ]
+        {parentIndent}]
       </span>
     );
   }
@@ -104,7 +108,7 @@ export function FormatOptions({
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
             onPinClick={onPinClick}
-            indent={0}
+            indent={indent}
           />
         </React.Fragment>
       ))}

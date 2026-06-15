@@ -80,6 +80,7 @@ export default function ExtensionGroupViewer({
                   onMouseEnter={onMouseEnter}
                   onMouseLeave={onMouseLeave}
                   onPinClick={onPinClick}
+                  indent={1}
                 />
                 <span className="text-app-textMain">;</span>
               </div>

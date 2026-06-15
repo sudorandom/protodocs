@@ -233,6 +233,7 @@ export default function MessageViewer({
                             onMouseEnter={onMouseEnter}
                             onMouseLeave={onMouseLeave}
                             onPinClick={onPinClick}
+                            indent={indent + 2}
                           />
                           <span className="text-app-textMain">;</span>
                         </div>
@@ -317,6 +318,7 @@ export default function MessageViewer({
                     onMouseEnter={onMouseEnter}
                     onMouseLeave={onMouseLeave}
                     onPinClick={onPinClick}
+                    indent={indent + 1}
                   />
                   <span className="text-app-textMain">;</span>
                 </div>

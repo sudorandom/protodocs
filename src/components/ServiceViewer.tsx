@@ -185,6 +185,7 @@ export default function ServiceViewer({
                       onMouseEnter={onMouseEnter}
                       onMouseLeave={onMouseLeave}
                       onPinClick={onPinClick}
+                      indent={1}
                     />
                     {'}'}
                   </>
