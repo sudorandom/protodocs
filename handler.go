@@ -1,8 +1,6 @@
 package protodocs
 
 import (
-	"context"
-	"crypto/tls"
 	"embed"
 	"encoding/binary"
 	"fmt"
@@ -18,7 +16,6 @@ import (
 	"strings"
 
 	"github.com/gorilla/websocket"
-	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -179,13 +176,9 @@ func NewProxyHandler(allowedHosts []string, registry *protoregistry.Files, descr
 		Transport: http.DefaultTransport,
 	}
 
-	h2cTransport := &http2.Transport{
-		AllowHTTP: true,
-		DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-			var d net.Dialer
-			return d.DialContext(ctx, network, addr)
-		},
-	}
+	h2cTransport := &http.Transport{}
+	h2cTransport.Protocols = new(http.Protocols)
+	h2cTransport.Protocols.SetUnencryptedHTTP2(true)
 	h2cClient := &http.Client{
 		Transport: h2cTransport,
 	}
@@ -414,7 +407,7 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Determine client
 	var httpClient *http.Client
-	if translateToGrpc && targetURL.Scheme == "http" {
+	if targetURL.Scheme == "http" {
 		httpClient = p.h2cClient
 	} else {
 		httpClient = p.client

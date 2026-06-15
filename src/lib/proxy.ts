@@ -62,11 +62,6 @@ export function getProxiedUrlAndHeaders(
   headers: Record<string, string>
 ): { url: string; headers: Record<string, string> } {
   if (isProxyEnabled() && (url.startsWith('http://') || url.startsWith('https://'))) {
-    const localOrigin = typeof window !== 'undefined' ? window.location.origin : '';
-    if (localOrigin && url.startsWith(localOrigin)) {
-      return { url, headers };
-    }
-    
     const nextHeaders = { ...headers };
     nextHeaders['X-Target-Url'] = url;
     return {
