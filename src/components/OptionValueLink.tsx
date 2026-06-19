@@ -23,6 +23,7 @@ interface OptionValueLinkProps {
     shortName: string
   ) => void;
   indent?: number;
+  parentMessageFqn?: string;
 }
 
 const isValueComplex = (v: any): boolean => {
@@ -57,9 +58,20 @@ export default function OptionValueLink({
   onMouseLeave,
   onPinClick,
   indent = 0,
+  parentMessageFqn,
 }: OptionValueLinkProps): React.JSX.Element {
   const currentIndent = '  '.repeat(indent);
   const nextIndent = '  '.repeat(indent + 1);
+
+  // Resolve active message FQN for nested fields lookup
+  let activeMessageFqn = parentMessageFqn;
+  if (!activeMessageFqn) {
+    const fqn = getOptionFqn(parentOptionsMessage, optionKey);
+    const optionInfo = typeIndex[fqn];
+    if (optionInfo && optionInfo.obj.typeName) {
+      activeMessageFqn = optionInfo.obj.typeName;
+    }
+  }
 
   // Try resolving as an Enum value
   const fqn = getOptionFqn(parentOptionsMessage, optionKey);
@@ -141,6 +153,7 @@ export default function OptionValueLink({
                 onMouseLeave={onMouseLeave}
                 onPinClick={onPinClick}
                 indent={indent + 1}
+                parentMessageFqn={parentMessageFqn}
               />
               {idx < val.length - 1 ? ",\n" : "\n"}
             </React.Fragment>
@@ -163,6 +176,7 @@ export default function OptionValueLink({
                 onMouseLeave={onMouseLeave}
                 onPinClick={onPinClick}
                 indent={indent}
+                parentMessageFqn={parentMessageFqn}
               />
               {idx < val.length - 1 && <span className="text-app-textMuted">, </span>}
             </React.Fragment>
@@ -183,24 +197,42 @@ export default function OptionValueLink({
       return (
         <span className="text-syn-string">
           {"{\n"}
-          {entries.map(([k, v], idx) => (
-            <React.Fragment key={k}>
-              {nextIndent}
-              <span className="text-app-textMain">{k}</span>
-              <span className="text-app-textMuted">: </span>
-              <OptionValueLink
-                val={v}
-                optionKey={`${optionKey}.${k}`} // nested key representation
-                parentOptionsMessage={parentOptionsMessage}
-                typeIndex={typeIndex}
-                onMouseEnter={onMouseEnter}
-                onMouseLeave={onMouseLeave}
-                onPinClick={onPinClick}
-                indent={indent + 1}
-              />
-              {idx < entries.length - 1 ? ",\n" : "\n"}
-            </React.Fragment>
-          ))}
+          {entries.map(([k, v], idx) => {
+            const fieldFqn = activeMessageFqn ? `${activeMessageFqn}.${k}` : '';
+            const fieldInfo = fieldFqn ? typeIndex[fieldFqn] : undefined;
+            const fieldDesc = { text: fieldInfo?.obj.description || 'No documentation provided.' };
+
+            return (
+              <React.Fragment key={k}>
+                {nextIndent}
+                {fieldInfo ? (
+                  <span
+                    className="text-syn-option border-b border-dotted border-syn-option/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 font-mono select-text"
+                    onMouseEnter={(e) => onMouseEnter(e, fieldFqn, fieldDesc, 'option', k)}
+                    onMouseLeave={onMouseLeave}
+                    onClick={(e) => onPinClick(e, fieldFqn, fieldDesc, 'option', k)}
+                  >
+                    {k}
+                  </span>
+                ) : (
+                  <span className="text-app-textMain">{k}</span>
+                )}
+                <span className="text-app-textMuted">: </span>
+                <OptionValueLink
+                  val={v}
+                  optionKey={`${optionKey}.${k}`} // nested key representation
+                  parentOptionsMessage={parentOptionsMessage}
+                  typeIndex={typeIndex}
+                  onMouseEnter={onMouseEnter}
+                  onMouseLeave={onMouseLeave}
+                  onPinClick={onPinClick}
+                  indent={indent + 1}
+                  parentMessageFqn={fieldInfo?.obj.typeName}
+                />
+                {idx < entries.length - 1 ? ",\n" : "\n"}
+              </React.Fragment>
+            );
+          })}
           {currentIndent + "}"}
         </span>
       );
@@ -208,23 +240,41 @@ export default function OptionValueLink({
       return (
         <span className="text-syn-string">
           {"{ "}
-          {entries.map(([k, v], idx) => (
-            <React.Fragment key={k}>
-              <span className="text-app-textMain">{k}</span>
-              <span className="text-app-textMuted">: </span>
-              <OptionValueLink
-                val={v}
-                optionKey={`${optionKey}.${k}`} // nested key representation
-                parentOptionsMessage={parentOptionsMessage}
-                typeIndex={typeIndex}
-                onMouseEnter={onMouseEnter}
-                onMouseLeave={onMouseLeave}
-                onPinClick={onPinClick}
-                indent={indent}
-              />
-              {idx < entries.length - 1 && <span className="text-app-textMuted">, </span>}
-            </React.Fragment>
-          ))}
+          {entries.map(([k, v], idx) => {
+            const fieldFqn = activeMessageFqn ? `${activeMessageFqn}.${k}` : '';
+            const fieldInfo = fieldFqn ? typeIndex[fieldFqn] : undefined;
+            const fieldDesc = { text: fieldInfo?.obj.description || 'No documentation provided.' };
+
+            return (
+              <React.Fragment key={k}>
+                {fieldInfo ? (
+                  <span
+                    className="text-syn-option border-b border-dotted border-syn-option/60 cursor-pointer hover:bg-app-hoverBg rounded px-0.5 font-mono select-text"
+                    onMouseEnter={(e) => onMouseEnter(e, fieldFqn, fieldDesc, 'option', k)}
+                    onMouseLeave={onMouseLeave}
+                    onClick={(e) => onPinClick(e, fieldFqn, fieldDesc, 'option', k)}
+                  >
+                    {k}
+                  </span>
+                ) : (
+                  <span className="text-app-textMain">{k}</span>
+                )}
+                <span className="text-app-textMuted">: </span>
+                <OptionValueLink
+                  val={v}
+                  optionKey={`${optionKey}.${k}`} // nested key representation
+                  parentOptionsMessage={parentOptionsMessage}
+                  typeIndex={typeIndex}
+                  onMouseEnter={onMouseEnter}
+                  onMouseLeave={onMouseLeave}
+                  onPinClick={onPinClick}
+                  indent={indent}
+                  parentMessageFqn={fieldInfo?.obj.typeName}
+                />
+                {idx < entries.length - 1 && <span className="text-app-textMuted">, </span>}
+              </React.Fragment>
+            );
+          })}
           {" }"}
         </span>
       );

@@ -153,6 +153,11 @@ export default function App() {
         const fqn = `${parentFqn}${m.name}`;
         index[fqn] = { kind: 'message', obj: m, file: f.name };
 
+        m.field?.forEach((fld: any) => {
+          const fieldFqn = `${fqn}.${fld.name}`;
+          index[fieldFqn] = { kind: 'option', obj: fld, file: f.name };
+        });
+
         m.nestedType?.forEach((nested: any) => {
           addMessage(nested, `${fqn}.`);
         });
