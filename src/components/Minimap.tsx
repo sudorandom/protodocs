@@ -242,7 +242,12 @@ export default function Minimap({ contentRef, activeFile, schema, theme }: Minim
       observer = new ResizeObserver(() => {
         updateElementsCache();
       });
-      observer.observe(content);
+      // Observe the inner wrapper child so we detect height changes when items expand/collapse
+      if (content.firstElementChild) {
+        observer.observe(content.firstElementChild);
+      } else {
+        observer.observe(content);
+      }
     }
 
     const handleScroll = () => {
