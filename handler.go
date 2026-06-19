@@ -15,13 +15,15 @@ import (
 	"slices"
 	"strings"
 
+	"buf.build/go/protovalidate"
+	"buf.build/go/protoyaml"
 	"github.com/gorilla/websocket"
+	pb "github.com/sudorandom/protodocs/gen/proto/protodocs/v1"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
-	"gopkg.in/yaml.v3"
 )
 
 var upgrader = websocket.Upgrader{
@@ -33,44 +35,6 @@ var upgrader = websocket.Upgrader{
 //go:embed dist/*
 var embeddedFiles embed.FS
 
-// AppConfig matches the structure of config.yaml in frontend
-type AppConfig struct {
-	Title                     string                   `json:"title,omitempty" yaml:"title,omitempty"`
-	LogoText                  string                   `json:"logo_text,omitempty" yaml:"logo_text,omitempty"`
-	LogoURL                   string                   `json:"logo_url,omitempty" yaml:"logo_url,omitempty"`
-	LoadingMethod             string                   `json:"loading_method,omitempty" yaml:"loading_method,omitempty"`
-	DescriptorFiles           []string                 `json:"descriptor_files,omitempty" yaml:"descriptor_files,omitempty"`
-	ServerURL                 string                   `json:"server_url,omitempty" yaml:"server_url,omitempty"`
-	ReflectionURL             string                   `json:"reflection_url,omitempty" yaml:"reflection_url,omitempty"`
-	FrontPageMarkdown         string                   `json:"front_page_markdown,omitempty" yaml:"front_page_markdown,omitempty"`
-	BottomOfFrontPageMarkdown string                   `json:"bottom_of_front_page_markdown,omitempty" yaml:"bottom_of_front_page_markdown,omitempty"`
-	ServiceEndpoints          map[string]EndpointsList `json:"service_endpoints,omitempty" yaml:"service_endpoints,omitempty"`
-	PrioritizedPaths          []string                 `json:"prioritized_paths,omitempty" yaml:"prioritized_paths,omitempty"`
-	HighlightedFiles          []string                 `json:"highlighted_files,omitempty" yaml:"highlighted_files,omitempty"`
-	BackToText                string                   `json:"back_to_text,omitempty" yaml:"back_to_text,omitempty"`
-	BackToURL                 string                   `json:"back_to_url,omitempty" yaml:"back_to_url,omitempty"`
-	Proxy                     bool                     `json:"proxy,omitempty" yaml:"proxy,omitempty"`
-	DefaultTab                string                   `json:"default_tab,omitempty" yaml:"default_tab,omitempty"`
-}
-
-// EndpointsList represents a list of service endpoint URLs, which can be unmarshaled from either a single string or an array of strings in YAML.
-type EndpointsList []string
-
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (e *EndpointsList) UnmarshalYAML(value *yaml.Node) error {
-	var str string
-	if err := value.Decode(&str); err == nil {
-		*e = []string{str}
-		return nil
-	}
-	var slice []string
-	if err := value.Decode(&slice); err == nil {
-		*e = slice
-		return nil
-	}
-	return fmt.Errorf("failed to unmarshal string or string slice on line %d", value.Line)
-}
-
 // Config defines the configuration for the ProtoDocs handler.
 type Config struct {
 	// Title of the documentation.
@@ -79,6 +43,12 @@ type Config struct {
 	LogoText string
 	// LogoURL is the URL of the logo image.
 	LogoURL string
+	// LogoURLLight is the URL of the logo image for light theme.
+	LogoURLLight string
+	// LogoURLDark is the URL of the logo image for dark theme.
+	LogoURLDark string
+	// LogoURLCyberpunk is the URL of the logo image for cyberpunk theme.
+	LogoURLCyberpunk string
 	// LoadingMethod is the loading method to use by default ('http', 'grpc-web', 'connect').
 	LoadingMethod string
 	// DescriptorFiles is a list of URLs or paths to binary protobuf descriptor files to load.
@@ -119,6 +89,8 @@ type Config struct {
 	Proxy bool
 	// DefaultTab is the default tab to focus in the sidebar ('files' or 'services').
 	DefaultTab string
+	// Protocols lists the protocols supported by the UI (e.g. 'connect', 'grpc', 'grpc-web')
+	Protocols []string
 }
 
 type layeredFileSystem struct {
@@ -700,6 +672,9 @@ func NewHandler(cfg Config) (http.Handler, error) {
 	hasConfig := cfg.Title != "" ||
 		cfg.LogoText != "" ||
 		cfg.LogoURL != "" ||
+		cfg.LogoURLLight != "" ||
+		cfg.LogoURLDark != "" ||
+		cfg.LogoURLCyberpunk != "" ||
 		cfg.LoadingMethod != "" ||
 		len(cfg.DescriptorFiles) > 0 ||
 		cfg.ServerURL != "" ||
@@ -713,34 +688,40 @@ func NewHandler(cfg Config) (http.Handler, error) {
 		cfg.Registry != nil ||
 		cfg.BackToText != "" ||
 		cfg.BackToURL != "" ||
-		cfg.DefaultTab != ""
+		cfg.DefaultTab != "" ||
+		len(cfg.Protocols) > 0
 
 	if hasConfig {
-		var serviceEndpoints map[string]EndpointsList
+		serviceEndpoints := make(map[string]*pb.Endpoints)
 		if cfg.ServiceEndpoints != nil {
-			serviceEndpoints = make(map[string]EndpointsList)
 			for k, v := range cfg.ServiceEndpoints {
-				serviceEndpoints[k] = EndpointsList(v)
+				serviceEndpoints[k] = &pb.Endpoints{
+					Endpoints: v,
+				}
 			}
 		}
 
-		appCfg := AppConfig{
+		appCfg := &pb.Config{
 			Title:                     cfg.Title,
 			LogoText:                  cfg.LogoText,
-			LogoURL:                   cfg.LogoURL,
+			LogoUrl:                   cfg.LogoURL,
+			LogoUrlLight:              cfg.LogoURLLight,
+			LogoUrlDark:               cfg.LogoURLDark,
+			LogoUrlCyberpunk:          cfg.LogoURLCyberpunk,
 			LoadingMethod:             cfg.LoadingMethod,
 			DescriptorFiles:           cfg.DescriptorFiles,
-			ServerURL:                 cfg.ServerURL,
-			ReflectionURL:             cfg.ReflectionURL,
+			ServerUrl:                 cfg.ServerURL,
+			ReflectionUrl:             cfg.ReflectionURL,
 			FrontPageMarkdown:         cfg.FrontPageMarkdown,
 			BottomOfFrontPageMarkdown: cfg.BottomOfFrontPageMarkdown,
 			ServiceEndpoints:          serviceEndpoints,
 			PrioritizedPaths:          cfg.PrioritizedPaths,
 			HighlightedFiles:          cfg.HighlightedFiles,
 			BackToText:                cfg.BackToText,
-			BackToURL:                 cfg.BackToURL,
+			BackToUrl:                 cfg.BackToURL,
 			Proxy:                     cfg.Proxy,
 			DefaultTab:                cfg.DefaultTab,
+			Protocols:                 cfg.Protocols,
 		}
 
 		// Register in-memory FileDescriptorSet under the default path
@@ -752,7 +733,18 @@ func NewHandler(cfg Config) (http.Handler, error) {
 			}
 		}
 
-		dynamicConfig, err = yaml.Marshal(appCfg)
+		// Validate configuration at runtime using protovalidate rules
+		v, err := protovalidate.New()
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize configuration validator: %w", err)
+		}
+		if err := v.Validate(appCfg); err != nil {
+			return nil, fmt.Errorf("invalid configuration: %w", err)
+		}
+
+		dynamicConfig, err = protoyaml.MarshalOptions{
+			UseProtoNames: true,
+		}.Marshal(appCfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate dynamic configuration: %w", err)
 		}

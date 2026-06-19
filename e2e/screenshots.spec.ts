@@ -10,7 +10,7 @@ test.describe('Screenshot tests', () => {
 
   test('message detail page', async ({ page }) => {
     // Navigate to a specific message symbol within a file
-    await page.goto('/?descriptors=/googleapis.binpb,/gnostic.binpb,/protovalidate.binpb#/files/google/api/http.proto?symbol=.google.api.HttpRule');
+    await page.goto('/?descriptors=/googleapis.binpb,/protovalidate.binpb#/files/google/api/http.proto?symbol=.google.api.HttpRule');
     await expect(page.locator('[id=".google.api.HttpRule"]')).toBeVisible();
     await page.waitForTimeout(500);
 
@@ -24,7 +24,7 @@ test.describe('Screenshot tests', () => {
 
   test('service detail page', async ({ page }) => {
     // Navigate to a specific service symbol
-    await page.goto('/?descriptors=/googleapis.binpb,/gnostic.binpb,/protovalidate.binpb#/files/google/bytestream/bytestream.proto?symbol=.google.bytestream.ByteStream');
+    await page.goto('/?descriptors=/googleapis.binpb,/protovalidate.binpb#/files/google/bytestream/bytestream.proto?symbol=.google.bytestream.ByteStream');
     await expect(page.locator('[id=".google.bytestream.ByteStream"]')).toBeVisible();
     await page.waitForTimeout(500);
 
@@ -39,7 +39,7 @@ test.describe('Screenshot tests', () => {
 
   test('file source page', async ({ page }) => {
     // View a general protobuf file layout
-    await page.goto('/?descriptors=/googleapis.binpb,/gnostic.binpb,/protovalidate.binpb#/files/google/api/resource.proto');
+    await page.goto('/?descriptors=/googleapis.binpb,/protovalidate.binpb#/files/google/api/resource.proto');
     await expect(page.locator('span', { hasText: 'resource.proto' }).first()).toBeVisible();
     await page.waitForTimeout(500);
 
@@ -58,7 +58,7 @@ test.describe('Screenshot tests', () => {
 
   test('search results page', async ({ page }) => {
     // Use resource.proto instead of the home screen to avoid home screen text dependency
-    await page.goto('/?descriptors=/googleapis.binpb,/gnostic.binpb,/protovalidate.binpb#/files/google/api/resource.proto');
+    await page.goto('/?descriptors=/googleapis.binpb,/protovalidate.binpb#/files/google/api/resource.proto');
     await expect(page.locator('span', { hasText: 'resource.proto' }).first()).toBeVisible();
 
     const searchInput = page.getByPlaceholder('Search types or files...');
@@ -73,7 +73,7 @@ test.describe('Screenshot tests', () => {
 
   test('prioritized paths and file highlights', async ({ page }) => {
     // Navigate with query parameters setting google/protobuf prioritized and descriptor.proto highlighted
-    await page.goto('/?descriptors=/googleapis.binpb,/gnostic.binpb,/protovalidate.binpb&prioritizedPaths=google/protobuf&highlightedFiles=google/protobuf/descriptor.proto');
+    await page.goto('/?descriptors=/googleapis.binpb,/protovalidate.binpb&prioritizedPaths=google/protobuf&highlightedFiles=google/protobuf/descriptor.proto');
     
     // Switch to Files tab
     await page.locator('button', { hasText: 'Files' }).first().click();
@@ -116,7 +116,7 @@ test.describe('Screenshot tests', () => {
 
   test('home page hash navigation and logo clicks', async ({ page }) => {
     // Start at a file page
-    await page.goto('/?descriptors=/googleapis.binpb,/gnostic.binpb,/protovalidate.binpb#/files/google/api/http.proto');
+    await page.goto('/?descriptors=/googleapis.binpb,/protovalidate.binpb#/files/google/api/http.proto');
     await expect(page.locator('[id=".google.api.HttpRule"]')).toBeVisible();
 
     // Click the home logo link in the sidebar

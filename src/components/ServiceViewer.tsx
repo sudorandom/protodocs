@@ -239,7 +239,11 @@ function RpcMethodTester({
   setCustomHeaders,
 }: RpcMethodTesterProps) {
   const hasProxy = isProxyEnabled();
-  const isConsoleSupported = hasProxy || !method.clientStreaming;
+  const isBidiOrClientStreaming = !!method.clientStreaming;
+
+  const protocolsToShow = (config.protocols && config.protocols.length > 0)
+    ? (config.protocols as string[]).filter((p: string) => p === 'connect' || p === 'grpc-web' || (p === 'grpc' && hasProxy)) as ('connect' | 'grpc-web' | 'grpc')[]
+    : (hasProxy ? ['connect', 'grpc-web', 'grpc'] : ['connect', 'grpc-web']) as ('connect' | 'grpc-web' | 'grpc')[];
   const options = useMemo(() => {
     const list: string[] = [];
     const normalizeLocalUrl = (urlStr: string) => {
@@ -330,7 +334,10 @@ function RpcMethodTester({
     }
     return isLocalUrl(endpointUrl);
   }, [endpointUrl, options, isCustomLocal, showCustomLocal]);
-  const [protocol, setProtocol] = useState<'connect' | 'grpc-web' | 'grpc'>('connect');
+  const [protocol, setProtocol] = useState<'connect' | 'grpc-web' | 'grpc'>(() => {
+    if (protocolsToShow.includes('connect')) return 'connect';
+    return protocolsToShow[0] || 'connect';
+  });
   const [requestJson, setRequestJson] = useState(() => {
     try {
       let mockObj: any = generateMockJson(method.inputType, typeIndex);
@@ -432,7 +439,12 @@ function RpcMethodTester({
     setTimeout(() => setCopiedMessageId(null), 2000);
   };
 
-  const [testerView, setTesterView] = useState<'try' | 'curl'>(isConsoleSupported ? 'try' : 'curl');
+  const [testerView, setTesterView] = useState<'try' | 'curl'>(() => {
+    if (hasProxy) {
+      return 'try';
+    }
+    return 'curl';
+  });
 
   const handleSend = async () => {
     if (!registry) {
@@ -510,28 +522,22 @@ function RpcMethodTester({
     <div className="mt-3 p-4 bg-app-panel border border-app-border rounded-lg font-sans text-xs space-y-4">
       {/* View Mode Tabs Header */}
       <div className="flex items-center justify-between border-b border-app-border/40 pb-2.5 mb-2 flex-wrap gap-2">
-        {isConsoleSupported ? (
-          <div className="flex gap-1.5 bg-app-base border border-app-border rounded p-0.5 select-none">
-            {(['try', 'curl'] as const).map((view) => (
-              <button
-                key={view}
-                type="button"
-                onClick={() => setTesterView(view)}
-                className={`px-3 py-1 rounded text-[10px] font-bold uppercase transition-all select-none cursor-pointer ${
-                  testerView === view
-                    ? 'bg-app-accent text-white shadow'
-                    : 'text-app-textMuted hover:text-app-textBright'
-                }`}
-              >
-                {view === 'try' ? 'Try it out' : 'CLI'}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="text-[10px] text-app-textMuted uppercase font-bold select-none px-1 py-1">
-            Client/Bidi Streaming Call (CLI Preview Only)
-          </div>
-        )}
+        <div className="flex gap-1.5 bg-app-base border border-app-border rounded p-0.5 select-none">
+          {(['try', 'curl'] as const).map((view) => (
+            <button
+              key={view}
+              type="button"
+              onClick={() => setTesterView(view)}
+              className={`px-3 py-1 rounded text-[10px] font-bold uppercase transition-all select-none cursor-pointer ${
+                testerView === view
+                  ? 'bg-app-accent text-white shadow'
+                  : 'text-app-textMuted hover:text-app-textBright'
+              }`}
+            >
+              {view === 'try' ? 'Try it out' : 'CLI'}
+            </button>
+          ))}
+        </div>
 
         <div className="flex items-center gap-2">
 
@@ -550,7 +556,13 @@ function RpcMethodTester({
 
       {testerView === 'try' && (
         <>
-          <div className="flex flex-wrap items-center gap-4">
+          {!hasProxy && isBidiOrClientStreaming ? (
+            <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-400 font-sans text-xs">
+              Client and bidirectional streaming RPCs require the local proxy to be running and enabled.
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-4">
             {/* Endpoint Input */}
             <div className="flex-1 min-w-[200px]">
               <div className="flex justify-between items-center mb-1">
@@ -618,11 +630,11 @@ function RpcMethodTester({
                 Protocol
               </label>
               <div className="flex gap-2 bg-app-base border border-app-border rounded p-0.5">
-                {(hasProxy ? ['connect', 'grpc-web', 'grpc'] : ['connect', 'grpc-web']).map((p) => (
+                {protocolsToShow.map((p) => (
                   <button
                     key={p}
                     type="button"
-                    onClick={() => setProtocol(p as 'connect' | 'grpc-web' | 'grpc')}
+                    onClick={() => setProtocol(p)}
                     className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase transition-all cursor-pointer select-none ${
                       protocol === p
                         ? 'bg-app-accent text-white shadow'
@@ -817,6 +829,8 @@ function RpcMethodTester({
               </div>
             </div>
           </div>
+            </>
+          )}
         </>
       )}
 
@@ -880,23 +894,25 @@ function RpcMethodTester({
           </div>
 
           {/* Connect Protocol (curl) */}
-          <div className="relative">
-            <div className="flex items-center justify-between mb-1.5 select-none">
-              <label className="block text-[10px] text-app-textMuted uppercase font-bold">
-                curl (connect protocol)
-              </label>
-              <button
-                type="button"
-                onClick={() => handleCopySingleCmd(getCurlCommand(), 'curl-connect')}
-                className="text-app-accent hover:text-app-accent/80 font-bold uppercase text-[9px] cursor-pointer select-none"
-              >
-                {copiedProtocol === 'curl-connect' ? 'Copied!' : 'Copy'}
-              </button>
+          {!isBidiOrClientStreaming && (
+            <div className="relative">
+              <div className="flex items-center justify-between mb-1.5 select-none">
+                <label className="block text-[10px] text-app-textMuted uppercase font-bold">
+                  curl (connect protocol)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => handleCopySingleCmd(getCurlCommand(), 'curl-connect')}
+                  className="text-app-accent hover:text-app-accent/80 font-bold uppercase text-[9px] cursor-pointer select-none"
+                >
+                  {copiedProtocol === 'curl-connect' ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+              <pre className="bg-app-code border border-app-border rounded-lg p-4 overflow-x-auto font-mono text-[11px] text-syn-string whitespace-pre select-text leading-relaxed">
+                {getCurlCommand()}
+              </pre>
             </div>
-            <pre className="bg-app-code border border-app-border rounded-lg p-4 overflow-x-auto font-mono text-[11px] text-syn-string whitespace-pre select-text leading-relaxed">
-              {getCurlCommand()}
-            </pre>
-          </div>
+          )}
         </div>
       )}
     </div>

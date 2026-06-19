@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
-import { createFileRegistry } from '@bufbuild/protobuf';
+import { createFileRegistry, fromJson } from '@bufbuild/protobuf';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import YAML from 'yaml';
@@ -13,6 +13,7 @@ import OptionLink from './components/OptionLink';
 import { populateTypeIndexWithOptions, normalizeFileDescriptor } from './lib/option-resolver';
 import { reconstructProto, getEditionString, cleanComment } from './lib/proto-reconstructor';
 import KeywordLink from './components/KeywordLink';
+import { ConfigSchema } from './gen/protodocs/v1/config_pb';
 
 const Sidebar = lazy(() => import('./components/Sidebar'));
 const Tooltip = lazy(() => import('./components/Tooltip'));
@@ -42,11 +43,12 @@ interface AppConfig {
   backToUrl?: string;
   proxy?: boolean;
   defaultTab?: 'files' | 'services';
+  protocols?: string[];
 }
 
 const DEFAULT_CONFIG: AppConfig = {
   loadingMethod: 'http',
-  descriptorFiles: ['/gnostic.binpb', '/protovalidate.binpb', '/googleapis.binpb'],
+  descriptorFiles: ['/protovalidate.binpb', '/googleapis.binpb'],
   reflectionUrl: 'https://demo.connectrpc.com',
   logoUrl: '',
   logoText: 'ProtoDocs',
@@ -70,6 +72,30 @@ function parseHash(hash: string): ParsedHash {
   const params = new URLSearchParams(queryPart || '');
   const symbol = params.get('symbol') || '';
   return { filepath: filePathPart, symbol };
+}
+
+function normalizeYamlConfigForProto(yamlObj: any): any {
+  if (!yamlObj || typeof yamlObj !== 'object') return yamlObj;
+  
+  const normalized = { ...yamlObj };
+  
+  // Normalize service_endpoints
+  if (normalized.service_endpoints && typeof normalized.service_endpoints === 'object') {
+    const originalEndpoints = normalized.service_endpoints;
+    const normalizedEndpoints: Record<string, any> = {};
+    for (const [key, val] of Object.entries(originalEndpoints)) {
+      if (typeof val === 'string') {
+        normalizedEndpoints[key] = { endpoints: [val] };
+      } else if (Array.isArray(val)) {
+        normalizedEndpoints[key] = { endpoints: val };
+      } else if (val && typeof val === 'object' && 'endpoints' in val) {
+        normalizedEndpoints[key] = val;
+      }
+    }
+    normalized.service_endpoints = normalizedEndpoints;
+  }
+  
+  return normalized;
 }
 
 export default function App() {
@@ -467,62 +493,75 @@ export default function App() {
           const res = await fetch(resolveUrl('/config.yaml?t=' + new Date().getTime()));
           if (res.ok) {
             const yamlText = await res.text();
-            const fileConfig = YAML.parse(yamlText);
-            if (fileConfig.descriptor_files) {
+            const yamlObj = YAML.parse(yamlText);
+            const normalizedObj = normalizeYamlConfigForProto(yamlObj);
+            const pbConfig = fromJson(ConfigSchema, normalizedObj, { ignoreUnknownFields: true });
+            
+            if (pbConfig.descriptorFiles && pbConfig.descriptorFiles.length > 0) {
               activeConfig.loadingMethod = 'http';
-              activeConfig.descriptorFiles = fileConfig.descriptor_files;
+              activeConfig.descriptorFiles = pbConfig.descriptorFiles;
             }
-            if (fileConfig.title) {
-              activeConfig.logoText = fileConfig.title;
+            if (pbConfig.title) {
+              activeConfig.logoText = pbConfig.title;
             }
-            if (fileConfig.logo_url) {
-              activeConfig.logoUrl = fileConfig.logo_url;
+            if (pbConfig.logoText) {
+              activeConfig.logoText = pbConfig.logoText;
             }
-            if (fileConfig.logo_url_light) {
-              activeConfig.logoUrlLight = fileConfig.logo_url_light;
+            if (pbConfig.logoUrl) {
+              activeConfig.logoUrl = pbConfig.logoUrl;
             }
-            if (fileConfig.logo_url_dark) {
-              activeConfig.logoUrlDark = fileConfig.logo_url_dark;
+            if (pbConfig.logoUrlLight) {
+              activeConfig.logoUrlLight = pbConfig.logoUrlLight;
             }
-            if (fileConfig.logo_url_cyberpunk) {
-              activeConfig.logoUrlCyberpunk = fileConfig.logo_url_cyberpunk;
+            if (pbConfig.logoUrlDark) {
+              activeConfig.logoUrlDark = pbConfig.logoUrlDark;
             }
-            if (fileConfig.front_page_markdown) {
-              activeConfig.frontPageMarkdown = fileConfig.front_page_markdown;
+            if (pbConfig.logoUrlCyberpunk) {
+              activeConfig.logoUrlCyberpunk = pbConfig.logoUrlCyberpunk;
             }
-            if (fileConfig.bottom_of_front_page_markdown) {
-              activeConfig.bottomOfFrontPageMarkdown = fileConfig.bottom_of_front_page_markdown;
+            if (pbConfig.frontPageMarkdown) {
+              activeConfig.frontPageMarkdown = pbConfig.frontPageMarkdown;
             }
-            if (fileConfig.server_url) {
-              activeConfig.reflectionUrl = fileConfig.server_url;
-            } else if (fileConfig.reflection_url) {
-              activeConfig.reflectionUrl = fileConfig.reflection_url;
+            if (pbConfig.bottomOfFrontPageMarkdown) {
+              activeConfig.bottomOfFrontPageMarkdown = pbConfig.bottomOfFrontPageMarkdown;
             }
-            if (fileConfig.service_endpoints) {
-              activeConfig.serviceEndpoints = fileConfig.service_endpoints;
+            if (pbConfig.serverUrl) {
+              activeConfig.reflectionUrl = pbConfig.serverUrl;
+            } else if (pbConfig.reflectionUrl) {
+              activeConfig.reflectionUrl = pbConfig.reflectionUrl;
             }
-            if (fileConfig.prioritized_paths) {
-              activeConfig.prioritizedPaths = fileConfig.prioritized_paths;
+            if (pbConfig.serviceEndpoints && Object.keys(pbConfig.serviceEndpoints).length > 0) {
+              const converted: Record<string, string[]> = {};
+              for (const [key, val] of Object.entries(pbConfig.serviceEndpoints)) {
+                if (val && val.endpoints) {
+                  converted[key] = val.endpoints;
+                }
+              }
+              activeConfig.serviceEndpoints = converted;
             }
-            if (fileConfig.highlighted_files) {
-              activeConfig.highlightedFiles = fileConfig.highlighted_files;
+            if (pbConfig.prioritizedPaths && pbConfig.prioritizedPaths.length > 0) {
+              activeConfig.prioritizedPaths = pbConfig.prioritizedPaths;
             }
-            if (fileConfig.back_to_text) {
-              activeConfig.backToText = fileConfig.back_to_text;
+            if (pbConfig.highlightedFiles && pbConfig.highlightedFiles.length > 0) {
+              activeConfig.highlightedFiles = pbConfig.highlightedFiles;
             }
-            if (fileConfig.back_to_url) {
-              activeConfig.backToUrl = fileConfig.back_to_url;
+            if (pbConfig.backToText) {
+              activeConfig.backToText = pbConfig.backToText;
             }
-            if (fileConfig.default_tab) {
-              activeConfig.defaultTab = fileConfig.default_tab;
-            } else if (fileConfig.defaultTab) {
-              activeConfig.defaultTab = fileConfig.defaultTab;
+            if (pbConfig.backToUrl) {
+              activeConfig.backToUrl = pbConfig.backToUrl;
             }
-            if (fileConfig.proxy !== undefined) {
-              activeConfig.proxy = fileConfig.proxy;
-              if (fileConfig.proxy) {
+            if (pbConfig.defaultTab) {
+              activeConfig.defaultTab = pbConfig.defaultTab as any;
+            }
+            if (pbConfig.proxy !== undefined) {
+              activeConfig.proxy = pbConfig.proxy;
+              if (pbConfig.proxy) {
                 await checkProxyAvailable();
               }
+            }
+            if (pbConfig.protocols && pbConfig.protocols.length > 0) {
+              activeConfig.protocols = pbConfig.protocols;
             }
           }
         } catch (e) {

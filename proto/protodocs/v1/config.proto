@@ -1,0 +1,98 @@
+// Package protodocs.v1 defines the configuration schema for ProtoDocs.
+//
+// This schema describes all configurations used to customize the behavior
+// of the ProtoDocs UI, query parameters, and the Go CLI. It manages logo URLs,
+// custom theme preferences, service mapping endpoints, and file viewing presets.
+
+syntax = "proto3";
+
+package protodocs.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/sudorandom/protodocs/gen/proto/protodocs/v1;protodocs";
+
+// Endpoints contains a list of server URL strings.
+message Endpoints {
+  // A list of server URLs associated with a specific service.
+  repeated string endpoints = 1;
+}
+
+// Config represents the complete configuration structure for ProtoDocs.
+// It matches the options parsed from config.yaml in the frontend and Go CLI.
+message Config {
+  // The HTML title page header of the documentation workspace.
+  string title = 1;
+
+  // The text label shown in the sidebar header next to the logo.
+  string logo_text = 2;
+
+  // The fallback or default logo URL.
+  string logo_url = 3;
+
+  // The logo URL used when the light theme is active.
+  string logo_url_light = 4;
+
+  // The logo URL used when the dark theme is active.
+  string logo_url_dark = 5;
+
+  // The logo URL used when the cyberpunk theme is active.
+  string logo_url_cyberpunk = 6;
+
+  // The default method used to load schemas. Options are:
+  // - "http": Loads precompiled schema descriptor files.
+  // - "connect": Queries server schemas dynamically via Connect reflection.
+  // - "grpc-web": Queries server schemas dynamically via gRPC-Web reflection.
+  string loading_method = 7 [(buf.validate.field).string = {in: ["", "http", "connect", "grpc-web"]}];
+
+  // A list of HTTP URLs or local paths to binary protobuf descriptor files
+  // (.binpb or .pb files) to load in HTTP mode.
+  repeated string descriptor_files = 8;
+
+  // The fallback target server URL used when sending live RPC requests.
+  string server_url = 9;
+
+  // The fallback target server URL used for live reflection queries.
+  string reflection_url = 10;
+
+  // Markdown content rendered on the main landing/welcome page.
+  string front_page_markdown = 11;
+
+  // Markdown content rendered at the bottom of the landing page (e.g. footer/copyright).
+  string bottom_of_front_page_markdown = 12;
+
+  // A map linking service names (e.g., "connectrpc.eliza.v1.ElizaService")
+  // to their specific target server endpoints.
+  map<string, Endpoints> service_endpoints = 13;
+
+  // A list of protobuf package path prefixes (e.g. "google/protobuf")
+  // to group and prioritize at the top of the sidebar.
+  repeated string prioritized_paths = 14;
+
+  // A list of file paths to highlight or pin prominently in the sidebar.
+  repeated string highlighted_files = 15;
+
+  // The text shown on the navbar 'back' navigation button.
+  string back_to_text = 16;
+
+  // The URL destination the 'back' navigation button redirects to.
+  string back_to_url = 17;
+
+  // If true, enables proxying of RPC requests and reflection calls
+  // through the Go CLI proxy server to avoid CORS issues.
+  bool proxy = 18;
+
+  // The default tab focused in the sidebar when ProtoDocs loads.
+  // Must be either "files" or "services".
+  string default_tab = 19 [(buf.validate.field).string = {in: ["", "files", "services"]}];
+
+  // A list of enabled RPC protocols. Options are: "connect", "grpc", and "grpc-web".
+  repeated string protocols = 20 [(buf.validate.field).repeated = {
+    unique: true,
+    items: {
+      string: {
+        in: ["connect", "grpc", "grpc-web"]
+      }
+    }
+  }];
+}

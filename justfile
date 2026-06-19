@@ -18,6 +18,11 @@ lint: build
     pnpm lint
     golangci-lint run
 
+# Format TS and Go source code
+fmt:
+    go fmt ./...
+    pnpm exec eslint . --fix
+
 test:
     pnpm test
     go test -v ./...
@@ -36,13 +41,11 @@ descriptors:
         --exclude-path google/api/expr/v1alpha1 \
         --exclude-path google/api/expr/v1beta1 \
         --exclude-path google/rpc/context
-    buf build buf.build/gnostic/gnostic \
-        -o public/gnostic.binpb \
-        --path gnostic/openapi/v3
     buf build buf.build/connectrpc/eliza \
         -o public/eliza.binpb
     buf build buf.build/protocolbuffers/wellknowntypes \
         -o public/wellknowntypes.binpb
+    buf build proto -o public/config.binpb
     pnpm exec buf generate buf.build/grpc/grpc --path grpc/reflection/v1alpha/reflection.proto --template buf.gen.yaml
 
 # Build and package static website distribution

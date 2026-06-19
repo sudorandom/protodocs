@@ -7,12 +7,13 @@ import (
 	"strings"
 	"testing"
 
+	"buf.build/go/protoyaml"
 	"github.com/gorilla/websocket"
+	pb "github.com/sudorandom/protodocs/gen/proto/protodocs/v1"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
-	"gopkg.in/yaml.v3"
 )
 
 func TestNewHandler_Default(t *testing.T) {
@@ -35,8 +36,12 @@ func TestNewHandler_Default(t *testing.T) {
 		t.Errorf("expected status 200, got %d", res.StatusCode)
 	}
 
-	var appCfg AppConfig
-	if err := yaml.NewDecoder(res.Body).Decode(&appCfg); err != nil {
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatalf("failed to read config.yaml body: %v", err)
+	}
+	var appCfg pb.Config
+	if err := protoyaml.Unmarshal(bodyBytes, &appCfg); err != nil {
 		t.Fatalf("failed to decode config.yaml: %v", err)
 	}
 
@@ -126,13 +131,13 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 	markdownContent := "# Welcome to my docs"
 
 	handler, err := NewHandler(Config{
-		Title:    "Custom API Portal",
-		LogoText: "MyLogo",
-		Descriptors: descriptorSet,
+		Title:             "Custom API Portal",
+		LogoText:          "MyLogo",
+		Descriptors:       descriptorSet,
 		FrontPageMarkdown: markdownContent,
-		BackToText: "Back to Home",
-		BackToURL:  "https://example.com/home",
-		DefaultTab: "files",
+		BackToText:        "Back to Home",
+		BackToURL:         "https://example.com/home",
+		DefaultTab:        "files",
 	})
 	if err != nil {
 		t.Fatalf("failed to create handler: %v", err)
@@ -148,8 +153,12 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 	}
 	defer func() { _ = res.Body.Close() }()
 
-	var appCfg AppConfig
-	if err := yaml.NewDecoder(res.Body).Decode(&appCfg); err != nil {
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatalf("failed to read config.yaml body: %v", err)
+	}
+	var appCfg pb.Config
+	if err := protoyaml.Unmarshal(bodyBytes, &appCfg); err != nil {
 		t.Fatalf("failed to decode config.yaml: %v", err)
 	}
 
@@ -161,8 +170,8 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 		t.Errorf("expected back_to_text 'Back to Home', got %q", appCfg.BackToText)
 	}
 
-	if appCfg.BackToURL != "https://example.com/home" {
-		t.Errorf("expected back_to_url 'https://example.com/home', got %q", appCfg.BackToURL)
+	if appCfg.BackToUrl != "https://example.com/home" {
+		t.Errorf("expected back_to_url 'https://example.com/home', got %q", appCfg.BackToUrl)
 	}
 
 	if appCfg.DefaultTab != "files" {
@@ -202,8 +211,8 @@ func TestNewHandler_Registry(t *testing.T) {
 
 	name1 := "first.proto"
 	fd1, err := protodesc.NewFile(&descriptorpb.FileDescriptorProto{
-		Name:    &name1,
-		Syntax:  proto.String("proto3"),
+		Name:   &name1,
+		Syntax: proto.String("proto3"),
 	}, nil)
 	if err != nil {
 		t.Fatalf("failed to create protoreflect.FileDescriptor: %v", err)
@@ -241,8 +250,8 @@ func TestNewHandler_Registry(t *testing.T) {
 	// 2. Add a new file to the registry dynamically
 	name2 := "second.proto"
 	fd2, err := protodesc.NewFile(&descriptorpb.FileDescriptorProto{
-		Name:    &name2,
-		Syntax:  proto.String("proto3"),
+		Name:   &name2,
+		Syntax: proto.String("proto3"),
 	}, nil)
 	if err != nil {
 		t.Fatalf("failed to create second protoreflect.FileDescriptor: %v", err)
@@ -305,14 +314,14 @@ func TestProxySecurityPolicies(t *testing.T) {
 	}
 
 	handler, err := NewHandler(Config{
-		ServerURL:         "http://default-endpoint.com",
+		ServerURL: "http://default-endpoint.com",
 		ServiceEndpoints: map[string][]string{
 			"connectrpc.eliza.v1.ElizaService": {
 				"http://eliza-dev.com",
 				"http://eliza-stage.com",
 			},
 		},
-		Registry:          reg,
+		Registry: reg,
 	})
 	if err != nil {
 		t.Fatalf("failed to create handler: %v", err)
@@ -402,7 +411,7 @@ func TestServeWs_Bidi(t *testing.T) {
 		if flusher, ok := w.(http.Flusher); ok {
 			flusher.Flush()
 		}
-		
+
 		buf := make([]byte, 1024)
 		for {
 			n, err := r.Body.Read(buf)
@@ -482,5 +491,58 @@ func TestServeWs_Bidi(t *testing.T) {
 
 	if string(respBody) != "hello stream" {
 		t.Errorf("expected 'hello stream', got %q", string(respBody))
+	}
+}
+
+func TestNewHandler_InvalidConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  Config
+		wantErr string
+	}{
+		{
+			name: "invalid loading_method",
+			config: Config{
+				Title:         "Portal",
+				LoadingMethod: "ftp",
+			},
+			wantErr: "loading_method",
+		},
+		{
+			name: "invalid default_tab",
+			config: Config{
+				Title:      "Portal",
+				DefaultTab: "invalid_tab",
+			},
+			wantErr: "default_tab",
+		},
+		{
+			name: "invalid protocols",
+			config: Config{
+				Title:     "Portal",
+				Protocols: []string{"connect", "invalid_proto"},
+			},
+			wantErr: "protocols",
+		},
+		{
+			name: "duplicate protocols",
+			config: Config{
+				Title:     "Portal",
+				Protocols: []string{"connect", "connect"},
+			},
+			wantErr: "protocols",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewHandler(tt.config)
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", tt.wantErr)
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("expected error containing %q, got %v", tt.wantErr, err)
+			}
+		})
 	}
 }

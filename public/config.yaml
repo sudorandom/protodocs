@@ -5,13 +5,21 @@ descriptor_files:
   - "/eliza.binpb"
   - "/googleapis.binpb"
   - "/protovalidate.binpb"
-  - "/gnostic.binpb"
   - "/wellknowntypes.binpb"
+  - "/config.binpb"
 service_endpoints:
-  connectrpc.eliza.v1.ElizaService: "https://demo.connectrpc.com"
+  connectrpc.eliza.v1.ElizaService:
+    endpoints:
+      - "https://demo.connectrpc.com"
+protocols:
+  - connect
+  - grpc
+  - grpc-web
 prioritized_paths:
+  - "protodocs/v1"
   - "google/protobuf"
 highlighted_files:
+  - "protodocs/v1/config.proto"
   - "google/protobuf/descriptor.proto"
 front_page_markdown: |
   # Welcome to ProtoDocs 🚀
