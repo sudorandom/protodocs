@@ -74,30 +74,6 @@ function parseHash(hash: string): ParsedHash {
   return { filepath: filePathPart, symbol };
 }
 
-function normalizeYamlConfigForProto(yamlObj: any): any {
-  if (!yamlObj || typeof yamlObj !== 'object') return yamlObj;
-  
-  const normalized = { ...yamlObj };
-  
-  // Normalize service_endpoints
-  if (normalized.service_endpoints && typeof normalized.service_endpoints === 'object') {
-    const originalEndpoints = normalized.service_endpoints;
-    const normalizedEndpoints: Record<string, any> = {};
-    for (const [key, val] of Object.entries(originalEndpoints)) {
-      if (typeof val === 'string') {
-        normalizedEndpoints[key] = { endpoints: [val] };
-      } else if (Array.isArray(val)) {
-        normalizedEndpoints[key] = { endpoints: val };
-      } else if (val && typeof val === 'object' && 'endpoints' in val) {
-        normalizedEndpoints[key] = val;
-      }
-    }
-    normalized.service_endpoints = normalizedEndpoints;
-  }
-  
-  return normalized;
-}
-
 export default function App() {
   const [theme, setThemeState] = useState<'dark' | 'light' | 'cyberpunk'>(() => {
     const saved = localStorage.getItem('protodocs_theme');
@@ -494,8 +470,7 @@ export default function App() {
           if (res.ok) {
             const yamlText = await res.text();
             const yamlObj = YAML.parse(yamlText);
-            const normalizedObj = normalizeYamlConfigForProto(yamlObj);
-            const pbConfig = fromJson(ConfigSchema, normalizedObj, { ignoreUnknownFields: true });
+            const pbConfig = fromJson(ConfigSchema, yamlObj, { ignoreUnknownFields: true });
             
             if (pbConfig.descriptorFiles && pbConfig.descriptorFiles.length > 0) {
               activeConfig.loadingMethod = 'http';
