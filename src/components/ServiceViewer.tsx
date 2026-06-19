@@ -439,12 +439,7 @@ function RpcMethodTester({
     setTimeout(() => setCopiedMessageId(null), 2000);
   };
 
-  const [testerView, setTesterView] = useState<'try' | 'curl'>(() => {
-    if (hasProxy) {
-      return 'try';
-    }
-    return 'curl';
-  });
+  const [testerView, setTesterView] = useState<'try' | 'curl'>('try');
 
   const handleSend = async () => {
     if (!registry) {
@@ -556,13 +551,7 @@ function RpcMethodTester({
 
       {testerView === 'try' && (
         <>
-          {!hasProxy && isBidiOrClientStreaming ? (
-            <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-400 font-sans text-xs">
-              Client and bidirectional streaming RPCs require the local proxy to be running and enabled.
-            </div>
-          ) : (
-            <>
-              <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             {/* Endpoint Input */}
             <div className="flex-1 min-w-[200px]">
               <div className="flex justify-between items-center mb-1">
@@ -829,8 +818,6 @@ function RpcMethodTester({
               </div>
             </div>
           </div>
-            </>
-          )}
         </>
       )}
 
