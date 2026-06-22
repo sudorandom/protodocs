@@ -7,6 +7,7 @@ import { formatOptionValue, formatOptionKey } from '../lib/options-formatter-hel
 import EnumViewer from './EnumViewer';
 import KeywordLink from './KeywordLink';
 import { cleanComment } from '../lib/proto-reconstructor';
+import PayloadDecoder from './PayloadDecoder';
 
 interface MessageViewerProps {
   message: any;
@@ -32,6 +33,10 @@ interface MessageViewerProps {
   /** When true, renders with reduced bottom margin (for nesting inside a parent message). */
   nested?: boolean;
   indent?: number;
+  onOpenDecoderModal?: (fqn: string | null) => void;
+  registry?: any;
+  allowedProtocols?: string[];
+  expandedDecoderFqn?: string | null;
 }
 
 export default function MessageViewer({
@@ -44,6 +49,10 @@ export default function MessageViewer({
   onMouseEnter,
   onMouseLeave,
   onPinClick,
+  onOpenDecoderModal,
+  registry,
+  allowedProtocols,
+  expandedDecoderFqn,
 }: MessageViewerProps) {
   const fqn = parentFqn
     ? `${parentFqn}.${message.name}`
@@ -139,7 +148,11 @@ export default function MessageViewer({
 
 
   return (
-    <div id={fqn} data-indent={indent} className={`proto-block ${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors group p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}>
+    <div
+      id={fqn}
+      data-indent={indent}
+      className={`proto-block relative ${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors group p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}
+    >
       {message.description && (
         <div className="text-syn-comment mb-1 whitespace-pre-wrap font-mono">
           {cleanComment(message.description).split('\n').map((line: string) => `${'  '.repeat(indent)}// ${line}`).join('\n')}
@@ -156,9 +169,24 @@ export default function MessageViewer({
           onClick={(e) => onPinClick(e, fqn, { text: cleanComment(message.description || 'No documentation provided.') }, 'custom', message.name)}
         >
           {message.name}
-        </span>{' '}
+        </span>
+        {' '}
         {'{'}
       </div>
+
+      {expandedDecoderFqn === fqn && (
+        <div id={`${fqn}-decoder-panel`} className="mt-3 mb-5 select-text">
+          <PayloadDecoder
+            typeIndex={typeIndex}
+            registry={registry}
+            preselectedFqn={fqn}
+            onClose={() => onOpenDecoderModal?.(null)}
+            allowedProtocols={allowedProtocols}
+          />
+        </div>
+      )}
+
+
 
       <div className="my-1">
         {message.options && (() => {
@@ -372,6 +400,10 @@ export default function MessageViewer({
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
             onPinClick={onPinClick}
+            onOpenDecoderModal={onOpenDecoderModal}
+            registry={registry}
+            allowedProtocols={allowedProtocols}
+            expandedDecoderFqn={expandedDecoderFqn}
           />
         </div>
       ))}

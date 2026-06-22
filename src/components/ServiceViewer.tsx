@@ -32,6 +32,7 @@ interface ServiceViewerProps {
   config: any;
   customHeaders: { key: string; value: string }[];
   setCustomHeaders: (headers: { key: string; value: string }[]) => void;
+  onOpenDecoderModal?: (fqn: string) => void;
 }
 
 export default function ServiceViewer({
@@ -45,6 +46,7 @@ export default function ServiceViewer({
   config,
   customHeaders,
   setCustomHeaders,
+  onOpenDecoderModal,
 }: ServiceViewerProps) {
   const fqn = file.package ? `.${file.package}.${service.name}` : `.${service.name}`;
   const [expandedMethod, setExpandedMethod] = useState<string | null>(null);
@@ -203,6 +205,7 @@ export default function ServiceViewer({
                 onClose={() => setExpandedMethod(null)}
                 customHeaders={customHeaders}
                 setCustomHeaders={setCustomHeaders}
+                onOpenDecoderModal={onOpenDecoderModal}
               />
             )}
           </div>
@@ -225,6 +228,7 @@ interface RpcMethodTesterProps {
   onClose: () => void;
   customHeaders: { key: string; value: string }[];
   setCustomHeaders: (headers: { key: string; value: string }[]) => void;
+  onOpenDecoderModal?: (fqn: string) => void;
 }
 
 function RpcMethodTester({
@@ -237,6 +241,7 @@ function RpcMethodTester({
   onClose,
   customHeaders,
   setCustomHeaders,
+  onOpenDecoderModal,
 }: RpcMethodTesterProps) {
   const hasProxy = isProxyEnabled();
   const isBidiOrClientStreaming = !!method.clientStreaming;
@@ -514,16 +519,16 @@ function RpcMethodTester({
   };
 
   return (
-    <div className="mt-3 p-4 bg-app-panel border border-app-border rounded-lg font-sans text-xs space-y-4">
+    <div className="mt-3 bg-app-panel border border-app-border rounded-lg font-sans text-xs flex flex-col overflow-hidden">
       {/* View Mode Tabs Header */}
-      <div className="flex items-center justify-between border-b border-app-border/40 pb-2.5 mb-2 flex-wrap gap-2">
-        <div className="flex gap-1.5 bg-app-base border border-app-border rounded p-0.5 select-none">
+      <div className="px-4 py-3 bg-app-base border-b border-app-border flex items-center justify-between select-none">
+        <div className="flex gap-1.5 bg-app-panel border border-app-border rounded-lg p-0.5 select-none">
           {(['try', 'curl'] as const).map((view) => (
             <button
               key={view}
               type="button"
               onClick={() => setTesterView(view)}
-              className={`px-3 py-1 rounded text-[10px] font-bold uppercase transition-all select-none cursor-pointer ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all select-none cursor-pointer ${
                 testerView === view
                   ? 'bg-app-accent text-white shadow'
                   : 'text-app-textMuted hover:text-app-textBright'
@@ -549,7 +554,8 @@ function RpcMethodTester({
         </div>
       </div>
 
-      {testerView === 'try' && (
+      <div className="p-4 space-y-4">
+        {testerView === 'try' && (
         <>
           <div className="flex flex-wrap items-center gap-4">
             {/* Endpoint Input */}
@@ -618,21 +624,24 @@ function RpcMethodTester({
               <label className="block text-[10px] text-app-textMuted uppercase font-bold mb-1">
                 Protocol
               </label>
-              <div className="flex gap-2 bg-app-base border border-app-border rounded p-0.5">
-                {protocolsToShow.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setProtocol(p)}
-                    className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase transition-all cursor-pointer select-none ${
-                      protocol === p
-                        ? 'bg-app-accent text-white shadow'
-                        : 'text-app-textMuted hover:text-app-textBright'
-                    }`}
-                  >
-                    {p === 'grpc' ? 'gRPC' : p}
-                  </button>
-                ))}
+              <div className="flex gap-1.5 bg-app-panel border border-app-border rounded-lg p-0.5 select-none">
+                {protocolsToShow.map((p) => {
+                  const displayName = p === 'grpc' ? 'gRPC' : p === 'grpc-web' ? 'gRPC-Web' : p === 'connect' ? 'Connect' : p;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setProtocol(p)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer select-none ${
+                        protocol === p
+                          ? 'bg-app-accent text-white shadow'
+                          : 'text-app-textMuted hover:text-app-textBright'
+                      }`}
+                    >
+                      {displayName}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -715,9 +724,21 @@ function RpcMethodTester({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Request JSON Editor */}
             <div>
-              <label className="block text-[10px] text-app-textMuted uppercase font-bold mb-1">
-                Request Body (JSON)
-              </label>
+              <div className="flex justify-between items-center mb-1 select-none">
+                <label className="block text-[10px] text-app-textMuted uppercase font-bold">
+                  Request Body (JSON)
+                </label>
+                {onOpenDecoderModal && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenDecoderModal(method.inputType)}
+                    className="text-[9px] text-syn-primitive hover:text-syn-primitive/85 font-bold uppercase tracking-wider cursor-pointer"
+                    title="Open request message schema in Playground"
+                  >
+                    Open in Playground
+                  </button>
+                )}
+              </div>
               <textarea
                 className="w-full min-h-[12rem] max-h-72 bg-app-code border border-app-border rounded p-2 text-syn-string font-mono text-xs outline-none focus:border-app-accent resize-y"
                 value={requestJson}
@@ -727,9 +748,21 @@ function RpcMethodTester({
 
             {/* Response Viewer */}
             <div className="flex flex-col">
-              <label className="block text-[10px] text-app-textMuted uppercase font-bold mb-1 select-none">
-                Response
-              </label>
+              <div className="flex justify-between items-center mb-1 select-none">
+                <label className="block text-[10px] text-app-textMuted uppercase font-bold">
+                  Response
+                </label>
+                {onOpenDecoderModal && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenDecoderModal(method.outputType)}
+                    className="text-[9px] text-syn-primitive hover:text-syn-primitive/85 font-bold uppercase tracking-wider cursor-pointer"
+                    title="Open response message schema in Playground"
+                  >
+                    Open in Playground
+                  </button>
+                )}
+              </div>
               <div className="flex-1 min-h-[12rem] max-h-72 bg-app-code border border-app-border rounded p-3 font-mono text-[11px] overflow-auto relative">
                 {/* Global Copy Button */}
                 {(response || streamMessages.length > 0) && (
@@ -902,6 +935,7 @@ function RpcMethodTester({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

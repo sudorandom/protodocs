@@ -119,6 +119,7 @@ export default function App() {
   const [frontPageMarkdown, setFrontPageMarkdown] = useState<string>('');
   const [footerMarkdown, setFooterMarkdown] = useState<string>('');
   const [sidebarView, setSidebarView] = useState<'files' | 'services'>('files');
+  const [expandedDecoderFqn, setExpandedDecoderFqn] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [searchSelectedIndex, setSearchSelectedIndex] = useState<number>(-1);
@@ -237,6 +238,16 @@ export default function App() {
       goToElement(info.file, targetId);
     }
   };
+
+  const handleOpenDecoder = useCallback((fqn: string | null) => {
+    setExpandedDecoderFqn(fqn);
+    if (fqn) {
+      const info = typeIndex[fqn];
+      if (info && info.file) {
+        goToElement(info.file, fqn);
+      }
+    }
+  }, [typeIndex, goToElement]);
 
   // Find references to a type or option across all files, messages, enums, and services
   const findReferences = (fqn: string) => {
@@ -1363,6 +1374,7 @@ export default function App() {
                         config={config}
                         customHeaders={customHeaders}
                         setCustomHeaders={setCustomHeaders}
+                        onOpenDecoderModal={handleOpenDecoder}
                       />
                     ))}
 
@@ -1375,6 +1387,10 @@ export default function App() {
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                         onPinClick={handlePinClick}
+                        onOpenDecoderModal={handleOpenDecoder}
+                        registry={registry}
+                        allowedProtocols={config.protocols}
+                        expandedDecoderFqn={expandedDecoderFqn}
                       />
                     ))}
 
@@ -1438,6 +1454,8 @@ export default function App() {
           onClose={() => setActiveTooltip(null)}
           onGoToDefinition={goToDefinition}
           onFindReferences={findReferences}
+          onOpenDecoderDrawer={handleOpenDecoder}
+          typeIndex={typeIndex}
         />
       </Suspense>
 

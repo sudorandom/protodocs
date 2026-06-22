@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState, useRef } from 'react';
+import { useLayoutEffect, useState, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -24,6 +24,8 @@ interface TooltipProps {
   onClose: () => void;
   onGoToDefinition: (fqn: string) => void;
   onFindReferences: (fqn: string) => void;
+  onOpenDecoderDrawer?: (fqn: string) => void;
+  typeIndex: Record<string, any>;
 }
 
 export default function Tooltip({
@@ -31,9 +33,25 @@ export default function Tooltip({
   onClose,
   onGoToDefinition,
   onFindReferences,
+  onOpenDecoderDrawer,
+  typeIndex,
 }: TooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
-  
+
+  const isMessage = useMemo(() => {
+    if (!activeTooltip || !typeIndex) return false;
+    const typeInfo = typeIndex[activeTooltip.fqn];
+    return typeInfo && typeInfo.kind === 'message';
+  }, [activeTooltip, typeIndex]);
+
+  const [copiedFqn, setCopiedFqn] = useState(false);
+
+  const handleCopyFqn = (fqn: string) => {
+    navigator.clipboard.writeText(fqn);
+    setCopiedFqn(true);
+    setTimeout(() => setCopiedFqn(false), 2000);
+  };
+
   // Track coordinates state
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const [prevTooltip, setPrevTooltip] = useState<TooltipState | null>(null);
@@ -150,20 +168,43 @@ export default function Tooltip({
         )}
       </div>
 
-      {activeTooltip.isPinned && activeTooltip.category !== 'primitive' && activeTooltip.hasDefinition && (
+      {activeTooltip.isPinned && activeTooltip.category !== 'primitive' && (
         <div className="mt-3.5 pt-3 border-t border-app-border flex flex-col gap-1.5">
-          <button
-            onClick={() => onGoToDefinition(activeTooltip.fqn)}
-            className="text-left px-2.5 py-1.5 text-xs font-medium text-app-textBright hover:bg-app-accentBg hover:text-app-accent rounded transition-colors"
-          >
-            Go to Definition
-          </button>
+          {activeTooltip.hasDefinition && (
+            <button
+              onClick={() => onGoToDefinition(activeTooltip.fqn)}
+              className="text-left px-2.5 py-1.5 text-xs font-medium text-app-textBright hover:bg-app-accentBg hover:text-app-accent rounded transition-colors cursor-pointer"
+            >
+              Go to Definition
+            </button>
+          )}
           <button
             onClick={() => onFindReferences(activeTooltip.fqn)}
-            className="text-left px-2.5 py-1.5 text-xs font-medium text-app-textBright hover:bg-app-accentBg hover:text-app-accent rounded transition-colors"
+            className="text-left px-2.5 py-1.5 text-xs font-medium text-app-textBright hover:bg-app-accentBg hover:text-app-accent rounded transition-colors cursor-pointer"
           >
             Find References
           </button>
+          <button
+            onClick={() => handleCopyFqn(activeTooltip.fqn)}
+            className="text-left px-2.5 py-1.5 text-xs font-medium text-app-textBright hover:bg-app-accentBg hover:text-app-accent rounded transition-colors cursor-pointer flex items-center justify-between"
+          >
+            <span>Copy Full Name</span>
+            {copiedFqn && <span className="text-[10px] text-green-400 font-semibold select-none">Copied!</span>}
+          </button>
+          {isMessage && onOpenDecoderDrawer && (
+            <button
+              onClick={() => {
+                onOpenDecoderDrawer(activeTooltip.fqn);
+                onClose();
+              }}
+              className="text-left px-2.5 py-1.5 text-xs font-semibold text-syn-primitive hover:bg-app-accentBg rounded transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
+              </svg>
+              Decode/Encode
+            </button>
+          )}
         </div>
       )}
     </div>
