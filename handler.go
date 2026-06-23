@@ -57,10 +57,8 @@ type Config struct {
 	ServerURL string
 	// ReflectionURL is the default server reflection URL.
 	ReflectionURL string
-	// FrontPageMarkdown is the markdown string content for the front page.
-	FrontPageMarkdown string
-	// BottomOfFrontPageMarkdown is the markdown string content for the footer.
-	BottomOfFrontPageMarkdown string
+	// FrontPageSections are ordered sections rendered on the front page.
+	FrontPageSections []FrontPageSection
 	// ServiceEndpoints maps service names to default server URLs (can be a single string or slice of strings).
 	ServiceEndpoints map[string][]string
 	// PrioritizedPaths is a list of paths to prioritize in the UI.
@@ -94,6 +92,14 @@ type Config struct {
 	// ProxyAllowedHosts is a list of hosts that the proxy is allowed to forward requests to.
 	// Use "*" to allow all hosts (recommended for desktop and local CLI use).
 	ProxyAllowedHosts []string
+}
+
+// FrontPageSection defines one ordered front page block.
+type FrontPageSection struct {
+	// Type selects the section renderer: markdown, markdown-small, descriptor-stats-panel, or service-list-panel.
+	Type string
+	// Markdown is used by markdown and markdown-small sections.
+	Markdown string
 }
 
 type layeredFileSystem struct {
@@ -686,8 +692,7 @@ func NewHandler(cfg Config) (http.Handler, error) {
 		len(cfg.DescriptorFiles) > 0 ||
 		cfg.ServerURL != "" ||
 		cfg.ReflectionURL != "" ||
-		cfg.FrontPageMarkdown != "" ||
-		cfg.BottomOfFrontPageMarkdown != "" ||
+		len(cfg.FrontPageSections) > 0 ||
 		len(cfg.ServiceEndpoints) > 0 ||
 		len(cfg.PrioritizedPaths) > 0 ||
 		len(cfg.HighlightedFiles) > 0 ||
@@ -708,27 +713,34 @@ func NewHandler(cfg Config) (http.Handler, error) {
 			}
 		}
 
+		frontPageSections := make([]*pb.FrontPageSection, 0, len(cfg.FrontPageSections))
+		for _, section := range cfg.FrontPageSections {
+			frontPageSections = append(frontPageSections, &pb.FrontPageSection{
+				Type:     section.Type,
+				Markdown: section.Markdown,
+			})
+		}
+
 		appCfg := &pb.Config{
-			Title:                     cfg.Title,
-			LogoText:                  cfg.LogoText,
-			LogoUrl:                   cfg.LogoURL,
-			LogoUrlLight:              cfg.LogoURLLight,
-			LogoUrlDark:               cfg.LogoURLDark,
-			LogoUrlCyberpunk:          cfg.LogoURLCyberpunk,
-			LoadingMethod:             cfg.LoadingMethod,
-			DescriptorFiles:           cfg.DescriptorFiles,
-			ServerUrl:                 cfg.ServerURL,
-			ReflectionUrl:             cfg.ReflectionURL,
-			FrontPageMarkdown:         cfg.FrontPageMarkdown,
-			BottomOfFrontPageMarkdown: cfg.BottomOfFrontPageMarkdown,
-			ServiceEndpoints:          serviceEndpoints,
-			PrioritizedPaths:          cfg.PrioritizedPaths,
-			HighlightedFiles:          cfg.HighlightedFiles,
-			BackToText:                cfg.BackToText,
-			BackToUrl:                 cfg.BackToURL,
-			Proxy:                     cfg.Proxy,
-			DefaultTab:                cfg.DefaultTab,
-			Protocols:                 cfg.Protocols,
+			Title:             cfg.Title,
+			LogoText:          cfg.LogoText,
+			LogoUrl:           cfg.LogoURL,
+			LogoUrlLight:      cfg.LogoURLLight,
+			LogoUrlDark:       cfg.LogoURLDark,
+			LogoUrlCyberpunk:  cfg.LogoURLCyberpunk,
+			LoadingMethod:     cfg.LoadingMethod,
+			DescriptorFiles:   cfg.DescriptorFiles,
+			ServerUrl:         cfg.ServerURL,
+			ReflectionUrl:     cfg.ReflectionURL,
+			FrontPageSections: frontPageSections,
+			ServiceEndpoints:  serviceEndpoints,
+			PrioritizedPaths:  cfg.PrioritizedPaths,
+			HighlightedFiles:  cfg.HighlightedFiles,
+			BackToText:        cfg.BackToText,
+			BackToUrl:         cfg.BackToURL,
+			Proxy:             cfg.Proxy,
+			DefaultTab:        cfg.DefaultTab,
+			Protocols:         cfg.Protocols,
 		}
 
 		// Register in-memory FileDescriptorSet under the default path

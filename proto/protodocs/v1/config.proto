@@ -18,6 +18,27 @@ message Endpoints {
   repeated string endpoints = 1;
 }
 
+// FrontPageSection describes one ordered block on the landing page.
+message FrontPageSection {
+  // The renderer used for this front page section.
+  // Options are:
+  // - "markdown": Renders markdown as primary page content.
+  // - "markdown-small": Renders markdown as compact footer-style content.
+  // - "descriptor-stats-panel": Renders aggregate counts from loaded descriptors.
+  // - "service-list-panel": Renders all services with a short description snippet.
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "markdown",
+      "markdown-small",
+      "descriptor-stats-panel",
+      "service-list-panel"
+    ]
+  }];
+
+  // Markdown content used by markdown and markdown-small sections.
+  string markdown = 2;
+}
+
 // Config represents the complete configuration structure for ProtoDocs.
 // It matches the options parsed from config.yaml in the frontend and Go CLI.
 message Config {
@@ -55,11 +76,11 @@ message Config {
   // The fallback target server URL used for live reflection queries.
   string reflection_url = 10;
 
-  // Markdown content rendered on the main landing/welcome page.
-  string front_page_markdown = 11;
+  // Ordered sections rendered on the main landing/welcome page.
+  repeated FrontPageSection front_page_sections = 11;
 
-  // Markdown content rendered at the bottom of the landing page (e.g. footer/copyright).
-  string bottom_of_front_page_markdown = 12;
+  reserved 12;
+  reserved "bottom_of_front_page_markdown";
 
   // A map linking service names (e.g., "connectrpc.eliza.v1.ElizaService")
   // to their specific target server endpoints.

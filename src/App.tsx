@@ -35,8 +35,7 @@ interface AppConfig {
   logoUrlDark?: string;
   logoUrlCyberpunk?: string;
   logoText: string;
-  frontPageMarkdown?: string;
-  bottomOfFrontPageMarkdown?: string;
+  frontPageSections?: FrontPageSectionConfig[];
   serviceEndpoints?: Record<string, string | string[]>;
   prioritizedPaths?: string[];
   highlightedFiles?: string[];
@@ -47,14 +46,18 @@ interface AppConfig {
   protocols?: string[];
 }
 
+interface FrontPageSectionConfig {
+  type: 'markdown' | 'markdown-small' | 'descriptor-stats-panel' | 'service-list-panel';
+  markdown?: string;
+}
+
 const DEFAULT_CONFIG: AppConfig = {
   loadingMethod: 'http',
   descriptorFiles: [],
   reflectionUrl: 'https://demo.connectrpc.com',
   logoUrl: '',
   logoText: 'ProtoDocs',
-  frontPageMarkdown: '',
-  bottomOfFrontPageMarkdown: '',
+  frontPageSections: [],
   defaultTab: 'services',
 };
 
@@ -119,8 +122,6 @@ export default function App() {
       return null;
     }
   }, [schema]);
-  const [frontPageMarkdown, setFrontPageMarkdown] = useState<string>('');
-  const [footerMarkdown, setFooterMarkdown] = useState<string>('');
   const [sidebarView, setSidebarView] = useState<'files' | 'services'>('files');
   const [expandedDecoderFqn, setExpandedDecoderFqn] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -696,11 +697,18 @@ export default function App() {
             if (pbConfig.logoUrlCyberpunk) {
               activeConfig.logoUrlCyberpunk = pbConfig.logoUrlCyberpunk;
             }
-            if (pbConfig.frontPageMarkdown) {
-              activeConfig.frontPageMarkdown = pbConfig.frontPageMarkdown;
-            }
-            if (pbConfig.bottomOfFrontPageMarkdown) {
-              activeConfig.bottomOfFrontPageMarkdown = pbConfig.bottomOfFrontPageMarkdown;
+            if (pbConfig.frontPageSections && pbConfig.frontPageSections.length > 0) {
+              activeConfig.frontPageSections = pbConfig.frontPageSections
+                .filter((section) =>
+                  section.type === 'markdown'
+                  || section.type === 'markdown-small'
+                  || section.type === 'descriptor-stats-panel'
+                  || section.type === 'service-list-panel'
+                )
+                .map((section) => ({
+                  type: section.type as FrontPageSectionConfig['type'],
+                  markdown: section.markdown,
+                }));
             }
             if (pbConfig.serverUrl) {
               activeConfig.reflectionUrl = pbConfig.serverUrl;
@@ -938,6 +946,156 @@ export default function App() {
     return groups;
   }, [schema]);
 
+  const descriptorStats = useMemo(() => {
+    const packages = new Set<string>();
+    let messages = 0;
+    let enums = 0;
+    let services = 0;
+    let methods = 0;
+
+    const walkMessages = (messageList: any[] = []) => {
+      messageList.forEach((message) => {
+        messages++;
+        enums += message.enumType?.length || 0;
+        walkMessages(message.nestedType || []);
+      });
+    };
+
+    schema.file.forEach((file) => {
+      if (file.package) {
+        packages.add(file.package);
+      }
+      enums += file.enumType?.length || 0;
+      walkMessages(file.messageType || []);
+      services += file.service?.length || 0;
+      file.service?.forEach((service: any) => {
+        methods += service.method?.length || 0;
+      });
+    });
+
+    return {
+      modules: packages.size,
+      files: schema.file.length,
+      messages,
+      enums,
+      services,
+      methods,
+    };
+  }, [schema]);
+
+  const frontPageServices = useMemo(() => {
+    const services: Array<{ packageName: string; file: string; name: string; fqn: string; description: string; methodCount: number }> = [];
+    schema.file.forEach((file) => {
+      const packageName = file.package || 'unnamed';
+      file.service?.forEach((service: any) => {
+        const fqn = file.package ? `.${file.package}.${service.name}` : `.${service.name}`;
+        services.push({
+          packageName,
+          file: file.name,
+          name: service.name,
+          fqn,
+          description: cleanComment(service.description || ''),
+          methodCount: service.method?.length || 0,
+        });
+      });
+    });
+    return services.sort((a, b) => a.fqn.localeCompare(b.fqn));
+  }, [schema]);
+
+  const frontPageSections = config.frontPageSections || [];
+
+  const renderFrontPageSection = (section: FrontPageSectionConfig, index: number) => {
+    if (section.type === 'markdown') {
+      return (
+        <section key={index} className="prose dark:prose-invert max-w-none text-app-textMain">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {section.markdown || ''}
+          </ReactMarkdown>
+        </section>
+      );
+    }
+
+    if (section.type === 'markdown-small') {
+      return (
+        <section key={index} className="pt-8 border-t border-app-border/40 prose dark:prose-invert max-w-none text-xs text-app-textMuted/60">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {section.markdown || ''}
+          </ReactMarkdown>
+        </section>
+      );
+    }
+
+    if (section.type === 'descriptor-stats-panel') {
+      const stats = [
+        ['Modules', descriptorStats.modules],
+        ['Files', descriptorStats.files],
+        ['Messages', descriptorStats.messages],
+        ['Enums', descriptorStats.enums],
+        ['Services', descriptorStats.services],
+        ['Methods', descriptorStats.methods],
+      ];
+      return (
+        <section key={index} className="border border-app-border bg-app-panel rounded-lg overflow-hidden">
+          <div className="px-5 py-4 border-b border-app-border/60">
+            <h2 className="text-sm font-bold text-app-textBright">Descriptor Stats</h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 divide-x divide-y divide-app-border/50">
+            {stats.map(([label, value]) => (
+              <div key={label} className="px-5 py-5 min-w-0">
+                <div className="text-2xl font-bold text-app-textBright tabular-nums">{value.toLocaleString()}</div>
+                <div className="mt-1 text-[11px] uppercase tracking-wide text-app-textMuted font-semibold">{label}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+    }
+
+    if (section.type === 'service-list-panel') {
+      return (
+        <section key={index} className="border border-app-border bg-app-panel rounded-lg overflow-hidden">
+          <div className="px-5 py-4 border-b border-app-border/60 flex items-center justify-between gap-4">
+            <h2 className="text-sm font-bold text-app-textBright">Services</h2>
+            <span className="text-[11px] text-app-textMuted font-mono">{frontPageServices.length.toLocaleString()} total</span>
+          </div>
+          {frontPageServices.length > 0 ? (
+            <div className="divide-y divide-app-border/50">
+              {frontPageServices.map((service) => (
+                <button
+                  key={service.fqn}
+                  type="button"
+                  onClick={() => goToElement(service.file, service.fqn)}
+                  className="w-full text-left px-5 py-4 hover:bg-app-hoverBg transition-colors cursor-pointer"
+                >
+                  <div className="flex items-start justify-between gap-4 min-w-0">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-app-textBright truncate">{service.name}</div>
+                      <div className="mt-1 text-[11px] text-app-textMuted font-mono truncate">{service.packageName}</div>
+                    </div>
+                    <span className="shrink-0 text-[11px] text-app-accent font-mono border border-app-border rounded px-2 py-1">
+                      {service.methodCount} {service.methodCount === 1 ? 'method' : 'methods'}
+                    </span>
+                  </div>
+                  {service.description && (
+                    <p className="mt-3 text-xs leading-relaxed text-app-textMuted line-clamp-2">
+                      {service.description}
+                    </p>
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="px-5 py-10 text-center text-sm text-app-textMuted font-mono">
+              No services found in the loaded descriptors.
+            </div>
+          )}
+        </section>
+      );
+    }
+
+    return null;
+  };
+
   // Search Results matcher (limit to 10 results)
   const searchResults = useMemo(() => {
     if (!searchQuery) return [];
@@ -1054,15 +1212,6 @@ export default function App() {
       setIsSearchOpen(false);
     }
   };
-
-  // Synchronize front page and footer markdown content from config
-  useEffect(() => {
-    setFrontPageMarkdown(config.frontPageMarkdown || '');
-  }, [config.frontPageMarkdown]);
-
-  useEffect(() => {
-    setFooterMarkdown(config.bottomOfFrontPageMarkdown || '');
-  }, [config.bottomOfFrontPageMarkdown]);
 
   const currentFileObj = schema.file.find((f) => f.name === activeFile);
 
@@ -1419,24 +1568,14 @@ export default function App() {
           <div className="max-w-4xl mx-auto w-full">
             {!activeFile || activeFile === '' ? (
               <div className="pb-8 select-text w-full max-w-4xl mx-auto">
-                {frontPageMarkdown ? (
-                  <div className="prose dark:prose-invert max-w-none text-app-textMain">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {frontPageMarkdown}
-                    </ReactMarkdown>
+                {frontPageSections.length > 0 ? (
+                  <div className="space-y-8">
+                    {frontPageSections.map((section, index) => renderFrontPageSection(section, index))}
                   </div>
                 ) : (
                   <div className="text-center py-20 text-app-textMuted font-mono">
                     <h2 className="text-2xl font-bold text-app-textBright mb-4">Welcome to ProtoDocs</h2>
                     <p className="text-sm">Select a file or service in the sidebar to start browsing the schema documentation.</p>
-                  </div>
-                )}
-
-                {footerMarkdown && (
-                  <div className="mt-12 pt-8 border-t border-app-border/40 prose dark:prose-invert max-w-none text-xs text-app-textMuted/60">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {footerMarkdown}
-                    </ReactMarkdown>
                   </div>
                 )}
               </div>

@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file protodocs/v1/config.proto.
  */
 export const file_protodocs_v1_config: GenFile = /*@__PURE__*/
-  fileDesc("Chlwcm90b2RvY3MvdjEvY29uZmlnLnByb3RvEgxwcm90b2RvY3MudjEiHgoJRW5kcG9pbnRzEhEKCWVuZHBvaW50cxgBIAMoCSK9BQoGQ29uZmlnEg0KBXRpdGxlGAEgASgJEhEKCWxvZ29fdGV4dBgCIAEoCRIQCghsb2dvX3VybBgDIAEoCRIWCg5sb2dvX3VybF9saWdodBgEIAEoCRIVCg1sb2dvX3VybF9kYXJrGAUgASgJEhoKEmxvZ29fdXJsX2N5YmVycHVuaxgGIAEoCRI4Cg5sb2FkaW5nX21ldGhvZBgHIAEoCUIgukgdchtSAFIEaHR0cFIHY29ubmVjdFIIZ3JwYy13ZWISGAoQZGVzY3JpcHRvcl9maWxlcxgIIAMoCRISCgpzZXJ2ZXJfdXJsGAkgASgJEhYKDnJlZmxlY3Rpb25fdXJsGAogASgJEhsKE2Zyb250X3BhZ2VfbWFya2Rvd24YCyABKAkSJQodYm90dG9tX29mX2Zyb250X3BhZ2VfbWFya2Rvd24YDCABKAkSRQoRc2VydmljZV9lbmRwb2ludHMYDSADKAsyKi5wcm90b2RvY3MudjEuQ29uZmlnLlNlcnZpY2VFbmRwb2ludHNFbnRyeRIZChFwcmlvcml0aXplZF9wYXRocxgOIAMoCRIZChFoaWdobGlnaHRlZF9maWxlcxgPIAMoCRIUCgxiYWNrX3RvX3RleHQYECABKAkSEwoLYmFja190b191cmwYESABKAkSDQoFcHJveHkYEiABKAgSLQoLZGVmYXVsdF90YWIYEyABKAlCGLpIFXITUgBSBWZpbGVzUghzZXJ2aWNlcxI4Cglwcm90b2NvbHMYFCADKAlCJbpIIpIBHxgBIhtyGVIHY29ubmVjdFIEZ3JwY1IIZ3JwYy13ZWIaUAoVU2VydmljZUVuZHBvaW50c0VudHJ5EgsKA2tleRgBIAEoCRImCgV2YWx1ZRgCIAEoCzIXLnByb3RvZG9jcy52MS5FbmRwb2ludHM6AjgBQkJaQGdpdGh1Yi5jb20vc3Vkb3JhbmRvbS9wcm90b2RvY3MvZ2VuL3Byb3RvL3Byb3RvZG9jcy92MTtwcm90b2RvY3NiBnByb3RvMw", [file_buf_validate_validate]);
+  fileDesc("Chlwcm90b2RvY3MvdjEvY29uZmlnLnByb3RvEgxwcm90b2RvY3MudjEiHgoJRW5kcG9pbnRzEhEKCWVuZHBvaW50cxgBIAMoCSJ/ChBGcm9udFBhZ2VTZWN0aW9uElkKBHR5cGUYASABKAlCS7pISHJGUghtYXJrZG93blIObWFya2Rvd24tc21hbGxSFmRlc2NyaXB0b3Itc3RhdHMtcGFuZWxSEnNlcnZpY2UtbGlzdC1wYW5lbBIQCghtYXJrZG93bhgCIAEoCSLbBQoGQ29uZmlnEg0KBXRpdGxlGAEgASgJEhEKCWxvZ29fdGV4dBgCIAEoCRIQCghsb2dvX3VybBgDIAEoCRIWCg5sb2dvX3VybF9saWdodBgEIAEoCRIVCg1sb2dvX3VybF9kYXJrGAUgASgJEhoKEmxvZ29fdXJsX2N5YmVycHVuaxgGIAEoCRI4Cg5sb2FkaW5nX21ldGhvZBgHIAEoCUIgukgdchtSAFIEaHR0cFIHY29ubmVjdFIIZ3JwYy13ZWISGAoQZGVzY3JpcHRvcl9maWxlcxgIIAMoCRISCgpzZXJ2ZXJfdXJsGAkgASgJEhYKDnJlZmxlY3Rpb25fdXJsGAogASgJEjsKE2Zyb250X3BhZ2Vfc2VjdGlvbnMYCyADKAsyHi5wcm90b2RvY3MudjEuRnJvbnRQYWdlU2VjdGlvbhJFChFzZXJ2aWNlX2VuZHBvaW50cxgNIAMoCzIqLnByb3RvZG9jcy52MS5Db25maWcuU2VydmljZUVuZHBvaW50c0VudHJ5EhkKEXByaW9yaXRpemVkX3BhdGhzGA4gAygJEhkKEWhpZ2hsaWdodGVkX2ZpbGVzGA8gAygJEhQKDGJhY2tfdG9fdGV4dBgQIAEoCRITCgtiYWNrX3RvX3VybBgRIAEoCRINCgVwcm94eRgSIAEoCBItCgtkZWZhdWx0X3RhYhgTIAEoCUIYukgVchNSAFIFZmlsZXNSCHNlcnZpY2VzEjgKCXByb3RvY29scxgUIAMoCUIlukgikgEfGAEiG3IZUgdjb25uZWN0UgRncnBjUghncnBjLXdlYhpQChVTZXJ2aWNlRW5kcG9pbnRzRW50cnkSCwoDa2V5GAEgASgJEiYKBXZhbHVlGAIgASgLMhcucHJvdG9kb2NzLnYxLkVuZHBvaW50czoCOAFKBAgMEA1SHWJvdHRvbV9vZl9mcm9udF9wYWdlX21hcmtkb3duQkJaQGdpdGh1Yi5jb20vc3Vkb3JhbmRvbS9wcm90b2RvY3MvZ2VuL3Byb3RvL3Byb3RvZG9jcy92MTtwcm90b2RvY3NiBnByb3RvMw", [file_buf_validate_validate]);
 
 /**
  * Endpoints contains a list of server URL strings.
@@ -39,6 +39,39 @@ export type Endpoints = Message<"protodocs.v1.Endpoints"> & {
  */
 export const EndpointsSchema: GenMessage<Endpoints> = /*@__PURE__*/
   messageDesc(file_protodocs_v1_config, 0);
+
+/**
+ * FrontPageSection describes one ordered block on the landing page.
+ *
+ * @generated from message protodocs.v1.FrontPageSection
+ */
+export type FrontPageSection = Message<"protodocs.v1.FrontPageSection"> & {
+  /**
+   * The renderer used for this front page section.
+   * Options are:
+   * - "markdown": Renders markdown as primary page content.
+   * - "markdown-small": Renders markdown as compact footer-style content.
+   * - "descriptor-stats-panel": Renders aggregate counts from loaded descriptors.
+   * - "service-list-panel": Renders all services with a short description snippet.
+   *
+   * @generated from field: string type = 1;
+   */
+  type: string;
+
+  /**
+   * Markdown content used by markdown and markdown-small sections.
+   *
+   * @generated from field: string markdown = 2;
+   */
+  markdown: string;
+};
+
+/**
+ * Describes the message protodocs.v1.FrontPageSection.
+ * Use `create(FrontPageSectionSchema)` to create a new message.
+ */
+export const FrontPageSectionSchema: GenMessage<FrontPageSection> = /*@__PURE__*/
+  messageDesc(file_protodocs_v1_config, 1);
 
 /**
  * Config represents the complete configuration structure for ProtoDocs.
@@ -122,18 +155,11 @@ export type Config = Message<"protodocs.v1.Config"> & {
   reflectionUrl: string;
 
   /**
-   * Markdown content rendered on the main landing/welcome page.
+   * Ordered sections rendered on the main landing/welcome page.
    *
-   * @generated from field: string front_page_markdown = 11;
+   * @generated from field: repeated protodocs.v1.FrontPageSection front_page_sections = 11;
    */
-  frontPageMarkdown: string;
-
-  /**
-   * Markdown content rendered at the bottom of the landing page (e.g. footer/copyright).
-   *
-   * @generated from field: string bottom_of_front_page_markdown = 12;
-   */
-  bottomOfFrontPageMarkdown: string;
+  frontPageSections: FrontPageSection[];
 
   /**
    * A map linking service names (e.g., "connectrpc.eliza.v1.ElizaService")
@@ -201,5 +227,5 @@ export type Config = Message<"protodocs.v1.Config"> & {
  * Use `create(ConfigSchema)` to create a new message.
  */
 export const ConfigSchema: GenMessage<Config> = /*@__PURE__*/
-  messageDesc(file_protodocs_v1_config, 1);
+  messageDesc(file_protodocs_v1_config, 2);
 

@@ -173,7 +173,7 @@ The `protodocs.Config` struct supports the following options:
 * `Prefix`: The URL path prefix under which the handler is hosted (e.g. `"/docs/"`).
 * `Descriptors`: In-memory `*descriptorpb.FileDescriptorSet` served at `/descriptors.binpb`.
 * `Registry`: Dynamic `*protoregistry.Files` registry.
-* `FrontPageMarkdown` / `BottomOfFrontPageMarkdown`: Optional markdown for welcome body/footer.
+* `FrontPageSections`: Ordered front page sections (`"markdown"`, `"markdown-small"`, `"descriptor-stats-panel"`, or `"service-list-panel"`).
 * `BackToText` / `BackToURL`: Header link back to your main portal.
 * `DefaultTab`: Default tab to focus in the sidebar (`"files"` or `"services"`).
 
@@ -200,12 +200,17 @@ descriptor_files:
   - "/my-descriptors.binpb"
 server_url: "http://127.0.0.1"
 default_file: "my-app/v1/service.proto"
-front_page_markdown: |
-  # Welcome
-  This is the front page.
-bottom_of_front_page_markdown: |
-  # Footer
-  This is the footer.
+front_page_sections:
+  - type: markdown
+    markdown: |
+      # Welcome
+      This is the front page.
+  - type: descriptor-stats-panel
+  - type: service-list-panel
+  - type: markdown-small
+    markdown: |
+      # Footer
+      This is the footer.
 ```
 
 ---

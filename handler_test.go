@@ -131,13 +131,15 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 	markdownContent := "# Welcome to my docs"
 
 	handler, err := NewHandler(Config{
-		Title:             "Custom API Portal",
-		LogoText:          "MyLogo",
-		Descriptors:       descriptorSet,
-		FrontPageMarkdown: markdownContent,
-		BackToText:        "Back to Home",
-		BackToURL:         "https://example.com/home",
-		DefaultTab:        "files",
+		Title:       "Custom API Portal",
+		LogoText:    "MyLogo",
+		Descriptors: descriptorSet,
+		FrontPageSections: []FrontPageSection{
+			{Type: "markdown", Markdown: markdownContent},
+		},
+		BackToText: "Back to Home",
+		BackToURL:  "https://example.com/home",
+		DefaultTab: "files",
 	})
 	if err != nil {
 		t.Fatalf("failed to create handler: %v", err)
@@ -189,8 +191,14 @@ func TestNewHandler_CustomConfigAndInMemory(t *testing.T) {
 		t.Error("expected '/descriptors.binpb' in descriptor_files list, but not found")
 	}
 
-	if appCfg.FrontPageMarkdown != markdownContent {
-		t.Errorf("expected FrontPageMarkdown %q, got %q", markdownContent, appCfg.FrontPageMarkdown)
+	if len(appCfg.FrontPageSections) != 1 {
+		t.Fatalf("expected 1 front page section, got %d", len(appCfg.FrontPageSections))
+	}
+	if appCfg.FrontPageSections[0].Type != "markdown" {
+		t.Errorf("expected front page section type 'markdown', got %q", appCfg.FrontPageSections[0].Type)
+	}
+	if appCfg.FrontPageSections[0].Markdown != markdownContent {
+		t.Errorf("expected front page section markdown %q, got %q", markdownContent, appCfg.FrontPageSections[0].Markdown)
 	}
 
 	// 2. Fetch the in-memory descriptor file
