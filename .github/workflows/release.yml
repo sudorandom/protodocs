@@ -93,6 +93,7 @@ jobs:
           - os: ubuntu-latest
             platform: linux/amd64
             artifact_name: ProtoDocs-Linux-amd64.tar.gz
+            build_tags: webkit2_41
     permissions:
       contents: write
 
@@ -117,9 +118,15 @@ jobs:
 
     - name: Build Wails App
       shell: bash
+      env:
+        BUILD_TAGS: ${{ matrix.build_tags || '' }}
       run: |
         cd desktop
-        go tool wails build -platform ${{ matrix.platform }} -clean
+        if [ -n "$BUILD_TAGS" ]; then
+          go tool wails build -platform ${{ matrix.platform }} -clean -tags "$BUILD_TAGS"
+        else
+          go tool wails build -platform ${{ matrix.platform }} -clean
+        fi
 
     - name: Package Desktop Artifact (macOS)
       if: matrix.os == 'macos-latest'
