@@ -91,6 +91,9 @@ type Config struct {
 	DefaultTab string
 	// Protocols lists the protocols supported by the UI (e.g. 'connect', 'grpc', 'grpc-web')
 	Protocols []string
+	// ProxyAllowedHosts is a list of hosts that the proxy is allowed to forward requests to.
+	// Use "*" to allow all hosts (recommended for desktop and local CLI use).
+	ProxyAllowedHosts []string
 }
 
 type layeredFileSystem struct {
@@ -184,6 +187,9 @@ func (p *ProxyHandler) isHostAllowed(targetHost string) bool {
 		hostname = h
 	}
 	for _, allowed := range p.allowedProxyHosts {
+		if allowed == "*" {
+			return true
+		}
 		allowedHost := allowed
 		if ah, _, err := net.SplitHostPort(allowed); err == nil {
 			allowedHost = ah
@@ -395,7 +401,8 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Copy response headers
 	for k, vv := range resp.Header {
 		kLower := strings.ToLower(k)
-		if kLower == "connection" || kLower == "keep-alive" || kLower == "transfer-encoding" {
+		if kLower == "connection" || kLower == "keep-alive" || kLower == "transfer-encoding" ||
+			strings.HasPrefix(kLower, "access-control-") {
 			continue
 		}
 		for _, v := range vv {
@@ -793,6 +800,11 @@ func NewHandler(cfg Config) (http.Handler, error) {
 	for _, endpoints := range cfg.ServiceEndpoints {
 		for _, endpoint := range endpoints {
 			addHostFromURL(endpoint)
+		}
+	}
+	for _, ah := range cfg.ProxyAllowedHosts {
+		if !slices.Contains(allowedHosts, ah) {
+			allowedHosts = append(allowedHosts, ah)
 		}
 	}
 

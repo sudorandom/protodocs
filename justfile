@@ -13,6 +13,13 @@ run-cli *args:
     pnpm build
     go run ./cmd/protodocs {{args}}
 
+# Run the desktop application in Wails development mode (supports live-reload)
+desktop-dev:
+    cd desktop && go tool wails dev
+
+# Build the production native desktop application bundle
+desktop-build:
+    cd desktop && go tool wails build
 
 lint: build
     pnpm lint

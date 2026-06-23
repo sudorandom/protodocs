@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && cp dist/index.html dist/404.html",
+    "build:desktop": "tsc -b && vite build && cp dist/index.html dist/404.html && rm -rf desktop/dist && cp -R dist desktop/dist",
     "lint": "eslint . && tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",

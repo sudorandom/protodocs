@@ -77,3 +77,75 @@ jobs:
           bin/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-desktop:
+    name: Build Desktop (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: darwin/universal
+            artifact_name: ProtoDocs-macOS-universal.zip
+          - os: windows-latest
+            platform: windows/amd64
+            artifact_name: ProtoDocs-Windows-amd64.zip
+          - os: ubuntu-latest
+            platform: linux/amd64
+            artifact_name: ProtoDocs-Linux-amd64.tar.gz
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup mise
+      uses: jdx/mise-action@v2
+
+    - name: Install Linux GTK dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev build-essential pkg-config
+
+    - name: Install dependencies
+      run: pnpm install
+
+    - name: Build frontend for desktop
+      run: pnpm build:desktop
+
+    - name: Build Wails App
+      shell: bash
+      run: |
+        cd desktop
+        go tool wails build -platform ${{ matrix.platform }} -clean
+
+    - name: Package Desktop Artifact (macOS)
+      if: matrix.os == 'macos-latest'
+      shell: bash
+      run: |
+        cd desktop/build/bin
+        zip -r ../../../${{ matrix.artifact_name }} ProtoDocs.app
+
+    - name: Package Desktop Artifact (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        cd desktop/build/bin
+        zip ../../../${{ matrix.artifact_name }} ProtoDocs.exe
+
+    - name: Package Desktop Artifact (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      shell: bash
+      run: |
+        cd desktop/build/bin
+        tar -czf ../../../${{ matrix.artifact_name }} ProtoDocs
+
+    - name: Upload to GitHub Release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: ${{ matrix.artifact_name }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

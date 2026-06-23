@@ -36,8 +36,17 @@ export function generateMockJson(
 
   const msg = typeInfo.obj;
   const mock: Record<string, any> = {};
+  const generatedOneofs = new Set<number>();
 
   msg.field?.forEach((f: any) => {
+    if (f.oneofIndex !== undefined && f.oneofIndex !== null) {
+      if (generatedOneofs.has(f.oneofIndex)) {
+        // Skip subsequent fields in the same oneof to prevent duplicate-oneof JSON errors
+        return;
+      }
+      generatedOneofs.add(f.oneofIndex);
+    }
+
     const isRepeated = f.label === 3;
     let val: any = null;
 

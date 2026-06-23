@@ -1,5 +1,10 @@
+let desktopProxyUrl = '';
 let proxyChecked = false;
 let proxyAvailable = false;
+
+export function setDesktopProxyUrl(url: string) {
+  desktopProxyUrl = url;
+}
 
 export function getBaseUrl(): string {
   if (typeof window === 'undefined') {
@@ -22,6 +27,14 @@ export function resolveUrl(relativeUrl: string): string {
   if (relativeUrl.startsWith('http://') || relativeUrl.startsWith('https://') || relativeUrl.startsWith('ws://') || relativeUrl.startsWith('wss://')) {
     return relativeUrl;
   }
+  
+  if (desktopProxyUrl && (relativeUrl.startsWith('/api/') || relativeUrl.startsWith('api/'))) {
+    const rel = relativeUrl.startsWith('/') ? relativeUrl.substring(1) : relativeUrl;
+    // Strip trailing slashes from proxy URL and prepend to API path
+    const cleanProxy = desktopProxyUrl.endsWith('/') ? desktopProxyUrl.slice(0, -1) : desktopProxyUrl;
+    return `${cleanProxy}/${rel}`;
+  }
+
   const base = getBaseUrl();
   const rel = relativeUrl.startsWith('/') ? relativeUrl.substring(1) : relativeUrl;
   return base + rel;
@@ -54,7 +67,7 @@ export function isProxyEnabled(): boolean {
       return true;
     }
   }
-  return proxyAvailable;
+  return proxyAvailable || desktopProxyUrl !== '';
 }
 
 export function getProxiedUrlAndHeaders(

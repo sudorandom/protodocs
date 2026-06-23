@@ -1,0 +1,43 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "ProtoDocs",
+  "outputfilename": "ProtoDocs",
+  "frontend:dir": "../",
+  "frontend:install": "pnpm install",
+  "frontend:build": "pnpm build:desktop",
+  "frontend:dev:watcher": "pnpm dev",
+  "frontend:dev:serverUrl": "auto",
+  "wailsjsdir": "../src/wailsjs",
+  "author": {
+    "name": "protodocs",
+    "email": "support@protodocs.dev"
+  },
+  "info": {
+    "productName": "ProtoDocs",
+    "productVersion": "1.0.0",
+    "companyName": "protodocs.dev",
+    "fileAssociations": [
+      {
+        "ext": "binpb",
+        "name": "Protobuf Binary Descriptor",
+        "description": "Protocol Buffer Compiled Binary FileDescriptorSet",
+        "iconName": "appicon",
+        "role": "Viewer"
+      },
+      {
+        "ext": "pb",
+        "name": "Protobuf Compiled Schema",
+        "description": "Protocol Buffer Compiled Binary FileDescriptorSet",
+        "iconName": "appicon",
+        "role": "Viewer"
+      },
+      {
+        "ext": "desc",
+        "name": "Protobuf Descriptor Set",
+        "description": "Protocol Buffer Compiled Binary FileDescriptorSet",
+        "iconName": "appicon",
+        "role": "Viewer"
+      }
+    ]
+  }
+}

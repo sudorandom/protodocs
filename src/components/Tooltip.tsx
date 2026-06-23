@@ -173,23 +173,34 @@ export default function Tooltip({
           {activeTooltip.hasDefinition && (
             <button
               onClick={() => onGoToDefinition(activeTooltip.fqn)}
-              className="text-left px-2.5 py-1.5 text-xs font-medium text-app-textBright hover:bg-app-accentBg hover:text-app-accent rounded transition-colors cursor-pointer"
+              className="text-left px-2.5 py-1.5 text-xs font-medium text-app-textBright hover:bg-app-accentBg hover:text-app-accent rounded transition-colors cursor-pointer flex items-center gap-1.5"
             >
-              Go to Definition
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+              <span>Go to Definition</span>
             </button>
           )}
           <button
             onClick={() => onFindReferences(activeTooltip.fqn)}
-            className="text-left px-2.5 py-1.5 text-xs font-medium text-app-textBright hover:bg-app-accentBg hover:text-app-accent rounded transition-colors cursor-pointer"
+            className="text-left px-2.5 py-1.5 text-xs font-medium text-app-textBright hover:bg-app-accentBg hover:text-app-accent rounded transition-colors cursor-pointer flex items-center gap-1.5"
           >
-            Find References
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.602 10.602z" />
+            </svg>
+            <span>Find References</span>
           </button>
           <button
             onClick={() => handleCopyFqn(activeTooltip.fqn)}
             className="text-left px-2.5 py-1.5 text-xs font-medium text-app-textBright hover:bg-app-accentBg hover:text-app-accent rounded transition-colors cursor-pointer flex items-center justify-between"
           >
-            <span>Copy Full Name</span>
-            {copiedFqn && <span className="text-[10px] text-green-400 font-semibold select-none">Copied!</span>}
+            <div className="flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 8.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v8.25A2.25 2.25 0 006 16.5h2.25m8.25-8.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-7.5A2.25 2.25 0 018.25 18v-1.5m8.25-8.25h-6a2.25 2.25 0 00-2.25 2.25v6" />
+              </svg>
+              <span>Copy Full Name</span>
+            </div>
+            {copiedFqn && <span className="text-[10px] text-green-400 font-semibold select-none mr-1">Copied!</span>}
           </button>
           {isMessage && onOpenDecoderDrawer && (
             <button
@@ -197,7 +208,7 @@ export default function Tooltip({
                 onOpenDecoderDrawer(activeTooltip.fqn);
                 onClose();
               }}
-              className="text-left px-2.5 py-1.5 text-xs font-semibold text-syn-primitive hover:bg-app-accentBg rounded transition-colors cursor-pointer flex items-center gap-1.5"
+              className="text-left px-2.5 py-1.5 text-xs font-medium text-app-textBright hover:bg-app-accentBg hover:text-app-accent rounded transition-colors cursor-pointer flex items-center gap-1.5"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />

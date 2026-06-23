@@ -59,12 +59,13 @@ func main() {
 
 	// Build configuration
 	cfg := protodocs.Config{
-		Title:         "ProtoDocs (CLI)",
-		LogoText:      "ProtoDocs (CLI)",
-		LoadingMethod: loadingMethod,
-		LocalPath:     staticDir,
-		Proxy:         true,
-		DefaultTab:    defaultTab,
+		Title:             "ProtoDocs",
+		LogoText:          "ProtoDocs",
+		LoadingMethod:     loadingMethod,
+		LocalPath:         staticDir,
+		Proxy:             true,
+		ProxyAllowedHosts: []string{"*"},
+		DefaultTab:        defaultTab,
 	}
 
 	if reflectionURL != "" {
@@ -97,12 +98,14 @@ func main() {
 		cfg.Descriptors = mergedSet
 	}
 
-	// Add the demo config defaults if nothing was supplied (mimics standard CLI behavior)
+	// If nothing was supplied, configure the default descriptor files.
 	if len(descriptorFiles) == 0 && reflectionURL == "" {
-		cfg.DescriptorFiles = []string{"/eliza.binpb"}
-		cfg.FrontPageMarkdown = "# Welcome to ProtoDocs 🚀\n\nSelect a file or service in the sidebar to start browsing the schema documentation."
-		cfg.ServiceEndpoints = map[string][]string{
-			"connectrpc.eliza.v1.ElizaService": {"https://demo.connectrpc.com"},
+		cfg.DescriptorFiles = []string{
+			"/eliza.binpb",
+			"/googleapis.binpb",
+			"/protovalidate.binpb",
+			"/wellknowntypes.binpb",
+			"/config.binpb",
 		}
 	}
 

@@ -3,9 +3,10 @@ import { createFileRegistry, fromJson } from '@bufbuild/protobuf';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import YAML from 'yaml';
-import { loadDescriptorsFromUrls } from './lib/descriptor-loader';
+import { loadDescriptorsFromUrls, loadDescriptorsFromBytesList } from './lib/descriptor-loader';
+import UploadZone from './components/UploadZone';
 import { loadSchemaFromReflection } from './lib/reflection-client';
-import { checkProxyAvailable, resolveUrl } from './lib/proxy';
+import { checkProxyAvailable, resolveUrl, setDesktopProxyUrl } from './lib/proxy';
 import type { TooltipState } from './components/Tooltip';
 import type { ReferencePanelState } from './components/ReferencePanel';
 import { formatOptionKey, formatOptionValue } from './lib/options-formatter-helpers';
@@ -48,7 +49,7 @@ interface AppConfig {
 
 const DEFAULT_CONFIG: AppConfig = {
   loadingMethod: 'http',
-  descriptorFiles: ['/protovalidate.binpb', '/googleapis.binpb'],
+  descriptorFiles: [],
   reflectionUrl: 'https://demo.connectrpc.com',
   logoUrl: '',
   logoText: 'ProtoDocs',
@@ -90,6 +91,8 @@ export default function App() {
     setThemeState(newTheme);
     localStorage.setItem('protodocs_theme', newTheme);
   };
+
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && !!(window as any).go?.main?.App);
 
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [schema, setSchema] = useState<{ file: any[] }>({ file: [] });
@@ -142,6 +145,8 @@ export default function App() {
   const [activeTooltip, setActiveTooltip] = useState<TooltipState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
   const contentAreaRef = useRef<HTMLElement>(null);
 
   // Build type index for cross-linking
@@ -423,7 +428,11 @@ export default function App() {
     try {
       let loadedSchema;
       if (targetConfig.loadingMethod === 'http') {
-        loadedSchema = await loadDescriptorsFromUrls(targetConfig.descriptorFiles);
+        if (!targetConfig.descriptorFiles || targetConfig.descriptorFiles.length === 0) {
+          loadedSchema = { file: [] };
+        } else {
+          loadedSchema = await loadDescriptorsFromUrls(targetConfig.descriptorFiles);
+        }
       } else {
         loadedSchema = await loadSchemaFromReflection(targetConfig.reflectionUrl, targetConfig.loadingMethod);
       }
@@ -474,11 +483,188 @@ export default function App() {
     }
   };
 
+  const handleFilesUploaded = useCallback(async (files: File[]) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const bytesList: Uint8Array[] = [];
+      for (const file of files) {
+        const buffer = await file.arrayBuffer();
+        bytesList.push(new Uint8Array(buffer));
+      }
+      const loadedSchema = await loadDescriptorsFromBytesList(bytesList);
+      setSchema(loadedSchema);
+      
+      if (loadedSchema.file && loadedSchema.file.length > 0) {
+        let totalServices = 0;
+        loadedSchema.file.forEach((f: any) => {
+          if (f.service && f.service.length > 0) {
+            totalServices += f.service.length;
+          }
+        });
+        if (totalServices > 0) {
+          setSidebarView('services');
+        } else {
+          setSidebarView('files');
+        }
+        setActiveFile('');
+      }
+    } catch (err: any) {
+      console.error('Error loading uploaded descriptors:', err);
+      setError(err?.message || 'Failed to parse descriptor files. Ensure they are valid binary FileDescriptorSet files.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleConnectReflection = useCallback(async (url: string, method: 'connect' | 'grpc-web' | 'grpc') => {
+    const newConfig: AppConfig = {
+      ...config,
+      loadingMethod: method,
+      reflectionUrl: url,
+      descriptorFiles: [],
+    };
+    setConfig(newConfig);
+    await loadSchema(newConfig);
+  }, [config]);
+
+  const handleLoadDemo = useCallback(async () => {
+    const demoConfig: AppConfig = {
+      ...config,
+      loadingMethod: 'http',
+      descriptorFiles: ['/eliza.binpb'],
+    };
+    setConfig(demoConfig);
+    await loadSchema(demoConfig);
+  }, [config]);
+
+  const handleResetSchema = useCallback(() => {
+    setSchema({ file: [] });
+    setActiveFile('');
+    setError(null);
+  }, []);
+
+  const loadAssociatedFile = useCallback(async (filePath: string) => {
+    const wailsApp = (window as any).go?.main?.App;
+    if (!wailsApp || typeof wailsApp.ReadFileBytes !== 'function') return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const bytes = await wailsApp.ReadFileBytes(filePath);
+      const loadedSchema = await loadDescriptorsFromBytesList([new Uint8Array(bytes)]);
+      setSchema(loadedSchema);
+      setSidebarView('files');
+      setActiveFile('');
+    } catch (err: any) {
+      console.error('Error loading associated file:', err);
+      setError(err?.message || `Failed to load associated file: ${filePath}`);
+    } finally {
+      setLoading(false);
+      document.body.classList.remove('loading');
+    }
+  }, []);
+
+  // Listen to file open events from Wails (for double-clicking files while app is running)
+  useEffect(() => {
+    const runtime = (window as any).runtime;
+    if (runtime && typeof runtime.EventsOn === 'function') {
+      runtime.EventsOn('open-file', (filePath: string) => {
+        loadAssociatedFile(filePath);
+      });
+      return () => {
+        if (typeof runtime.EventsOff === 'function') {
+          runtime.EventsOff('open-file');
+        }
+      };
+    }
+  }, [loadAssociatedFile]);
+
+  // Set up global window drag/drop listeners for descriptor files
+  useEffect(() => {
+    if (!isDesktop) return;
+
+    const onDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    const onDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter.current++;
+      if (e.dataTransfer && e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+        setIsDragging(true);
+      }
+    };
+    const onDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter.current--;
+      if (dragCounter.current === 0) {
+        setIsDragging(false);
+      }
+    };
+    const onDrop = async (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+      dragCounter.current = 0;
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const filesArray = Array.from(e.dataTransfer.files);
+        await handleFilesUploaded(filesArray);
+      }
+    };
+
+    window.addEventListener('dragover', onDragOver);
+    window.addEventListener('dragenter', onDragEnter);
+    window.addEventListener('dragleave', onDragLeave);
+    window.addEventListener('drop', onDrop);
+
+    return () => {
+      window.removeEventListener('dragover', onDragOver);
+      window.removeEventListener('dragenter', onDragEnter);
+      window.removeEventListener('dragleave', onDragLeave);
+      window.removeEventListener('drop', onDrop);
+    };
+  }, [handleFilesUploaded, isDesktop]);
+
   // Load config and initial schema on start
   useEffect(() => {
     const initializeConfig = async () => {
       try {
         const activeConfig = { ...DEFAULT_CONFIG };
+
+        // 0. Check if running inside Wails desktop wrapper
+        const getWailsProxy = async (): Promise<string | null> => {
+          const checkWails = () => (window as any).go?.main?.App;
+          if (checkWails() && typeof checkWails().GetProxyUrl === 'function') {
+            return checkWails().GetProxyUrl();
+          }
+          return new Promise((resolve) => {
+            let attempts = 0;
+            const interval = setInterval(async () => {
+              attempts++;
+              const wailsApp = checkWails();
+              if (wailsApp && typeof wailsApp.GetProxyUrl === 'function') {
+                clearInterval(interval);
+                resolve(await wailsApp.GetProxyUrl());
+              } else if (attempts > 50) { // 500ms max wait
+                clearInterval(interval);
+                resolve(null);
+              }
+            }, 10);
+          });
+        };
+
+        const proxyUrl = await getWailsProxy();
+        const localIsDesktop = !!(window as any).go?.main?.App;
+        if (localIsDesktop) {
+          setIsDesktop(true);
+        }
+        if (proxyUrl) {
+          setDesktopProxyUrl(proxyUrl);
+          activeConfig.proxy = true;
+        }
 
         // 1. Fetch config.yaml first as the base config
         try {
@@ -488,7 +674,7 @@ export default function App() {
             const yamlObj = YAML.parse(yamlText);
             const pbConfig = fromJson(ConfigSchema, yamlObj, { ignoreUnknownFields: true });
             
-            if (pbConfig.descriptorFiles && pbConfig.descriptorFiles.length > 0) {
+            if (pbConfig.descriptorFiles && pbConfig.descriptorFiles.length > 0 && !localIsDesktop) {
               activeConfig.loadingMethod = 'http';
               activeConfig.descriptorFiles = pbConfig.descriptorFiles;
             }
@@ -602,8 +788,17 @@ export default function App() {
           activeConfig.defaultTab = defaultTabParam;
         }
 
+        let openedFileOnLaunch = '';
+        if (localIsDesktop && typeof (window as any).go?.main?.App.GetInitialFile === 'function') {
+          openedFileOnLaunch = await (window as any).go?.main?.App.GetInitialFile();
+        }
+
         setConfig(activeConfig);
-        await loadSchema(activeConfig);
+        if (openedFileOnLaunch) {
+          await loadAssociatedFile(openedFileOnLaunch);
+        } else {
+          await loadSchema(activeConfig);
+        }
       } catch (e: any) {
         console.error('Failed to initialize config or schema:', e);
         setError(e?.message || 'Failed to initialize Proto schema.');
@@ -922,6 +1117,34 @@ export default function App() {
     : theme === 'cyberpunk' ? config.logoUrlCyberpunk || config.logoUrl
     : config.logoUrlDark || config.logoUrl;
 
+  if (!loading && (!schema.file || schema.file.length === 0)) {
+    return (
+      <div className={`flex h-screen w-screen bg-app-base text-app-textMain font-sans overflow-hidden transition-colors duration-200 ${themeClass}`}>
+        <UploadZone
+          onFilesUploaded={handleFilesUploaded}
+          onConnectReflection={handleConnectReflection}
+          onLoadDemo={handleLoadDemo}
+          loading={loading}
+          error={error}
+          theme={theme}
+          setTheme={setTheme}
+          isDesktop={isDesktop}
+        />
+        {isDragging && (
+          <div className="fixed inset-0 bg-app-base/80 backdrop-blur-md z-50 flex flex-col items-center justify-center border-4 border-dashed border-app-accent pointer-events-none">
+            <div className="bg-app-panel border border-app-border rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl scale-up max-w-sm text-center">
+              <svg className="w-16 h-16 text-app-accent animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+              </svg>
+              <h3 className="text-xl font-bold text-app-textBright">Drop to Load Schema</h3>
+              <p className="text-sm text-app-textMuted font-mono">Drop your compiled binary protobuf descriptor files here to immediately browse their schemas.</p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className={`flex h-screen w-screen bg-app-base text-app-textMain font-sans overflow-hidden transition-colors duration-200 ${themeClass}`}>
 
@@ -1001,6 +1224,19 @@ export default function App() {
 
           {/* Search container */}
           <div className="shrink-0 flex items-center gap-4">
+            {isDesktop && (
+              <button
+                type="button"
+                onClick={handleResetSchema}
+                className="text-app-textMuted hover:text-app-textBright p-1.5 rounded-lg hover:bg-app-hoverBg cursor-pointer transition-colors flex items-center gap-1.5 text-xs font-semibold shrink-0 border border-app-border/40"
+                title="Load a different protobuf descriptor or connection"
+              >
+                <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.25">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+                <span>Upload Schema</span>
+              </button>
+            )}
             {activeFile && (
               <div className="relative">
                 <button
@@ -1472,6 +1708,17 @@ export default function App() {
         )}
       </Suspense>
 
+      {isDragging && (
+        <div className="fixed inset-0 bg-app-base/80 backdrop-blur-md z-50 flex flex-col items-center justify-center border-4 border-dashed border-app-accent pointer-events-none">
+          <div className="bg-app-panel border border-app-border rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl scale-up max-w-sm text-center font-sans">
+            <svg className="w-16 h-16 text-app-accent animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+            </svg>
+            <h3 className="text-xl font-bold text-app-textBright">Drop to Load Schema</h3>
+            <p className="text-sm text-app-textMuted leading-relaxed">Drop your compiled binary protobuf descriptor files here to immediately browse their schemas.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

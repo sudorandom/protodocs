@@ -546,3 +546,38 @@ func TestNewHandler_InvalidConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestProxyWildcardSecurityPolicy(t *testing.T) {
+	handler, err := NewHandler(Config{
+		ProxyAllowedHosts: []string{"*"},
+	})
+	if err != nil {
+		t.Fatalf("failed to create handler: %v", err)
+	}
+
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	client := &http.Client{}
+
+	sendProxyReq := func(targetURL string) int {
+		req, err := http.NewRequest("POST", ts.URL+"/api/proxy", nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.Header.Set("X-Target-Url", targetURL)
+		req.Header.Set("Content-Type", "application/json")
+		res, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("failed to send request: %v", err)
+		}
+		defer func() { _ = res.Body.Close() }()
+		return res.StatusCode
+	}
+
+	// Any external endpoint should NOT return 403 Forbidden with wildcard allowed hosts configured.
+	status := sendProxyReq("http://non-existent-wildcard-target-12345.com/connectrpc.eliza.v1.ElizaService/Say")
+	if status == http.StatusForbidden {
+		t.Errorf("expected request to be allowed with wildcard, got 403 Forbidden")
+	}
+}

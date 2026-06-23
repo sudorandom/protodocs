@@ -162,3 +162,51 @@ export async function loadDescriptorsFromUrls(urls: string[]): Promise<UnifiedSc
 
   return { file: fileList };
 }
+
+/**
+ * Parses a list of binary FileDescriptorSet byte buffers and combines them into a single schema.
+ */
+export async function loadDescriptorsFromBytesList(buffers: Uint8Array[]): Promise<UnifiedSchema> {
+  const fileDescriptorsMap = new Map<string, any>();
+
+  // Initialize with inlined well-known types
+  const wktFiles = getWellKnownTypes();
+  for (const fd of wktFiles) {
+    fileDescriptorsMap.set(fd.name, fd);
+  }
+
+  // Parse all file descriptor sets in the buffers
+  for (const bytes of buffers) {
+    try {
+      const descriptorSet = fromBinary(FileDescriptorSetSchema, bytes);
+      for (const fd of descriptorSet.file) {
+        fileDescriptorsMap.set(fd.name, fd);
+      }
+    } catch (err) {
+      console.error('Failed to parse bytes as FileDescriptorSet:', err);
+      throw new Error('Failed to parse descriptor. Ensure the file is a valid binary FileDescriptorSet.');
+    }
+  }
+
+  if (fileDescriptorsMap.size === 0) {
+    throw new Error('No files found in any of the loaded descriptor sets');
+  }
+
+  // Create a unified registry from all loaded file descriptors to resolve custom options
+  const unifiedFds = {
+    $typeName: 'google.protobuf.FileDescriptorSet',
+    file: Array.from(fileDescriptorsMap.values())
+  };
+  const registry = createFileRegistry(unifiedFds as any);
+
+  // Convert parsed FileDescriptorProto messages to JSON representation and attach comments
+  const fileList = Array.from(fileDescriptorsMap.values()).map((fd) => {
+    const jsonStr = toJsonString(FileDescriptorProtoSchema, fd, { registry, enumAsInteger: true });
+    const fileObj = JSON.parse(jsonStr);
+    attachComments(fileObj);
+    return fileObj;
+  });
+
+  return { file: fileList };
+}
+
