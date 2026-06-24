@@ -5,7 +5,7 @@
   "frontend:dir": "../",
   "frontend:install": "pnpm install",
   "frontend:build": "pnpm build:desktop",
-  "frontend:dev:watcher": "pnpm dev",
+  "frontend:dev:watcher": "pnpm dev:desktop",
   "frontend:dev:serverUrl": "auto",
   "wailsjsdir": "../src/wailsjs",
   "author": {
@@ -14,7 +14,7 @@
   },
   "info": {
     "productName": "ProtoDocs",
-    "productVersion": "1.0.0",
+    "productVersion": "0.0.0",
     "companyName": "protodocs.dev",
     "fileAssociations": [
       {

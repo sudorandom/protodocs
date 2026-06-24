@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -41,6 +42,9 @@ func main() {
 	pflag.String("reflection-url", "", "Default gRPC/Connect Server Reflection URL")
 	pflag.String("loading-method", "", "Default loading method ('http', 'grpc-web', 'connect')")
 	pflag.String("default-tab", "", "Default tab to focus in the sidebar ('files' or 'services')")
+	pflag.StringArray("bsr", nil, "Buf Schema Registry module to load (owner/repository[:ref] or buf.build/owner/repository[:ref])")
+	pflag.String("bsr-token", "", "Buf Schema Registry API token (defaults to BUF_TOKEN)")
+	pflag.Bool("bsr-source-info", true, "Request source information from the Buf Schema Registry")
 	pflag.Bool("open", true, "Automatically open ProtoDocs in the browser")
 	pflag.Parse()
 
@@ -53,9 +57,15 @@ func main() {
 	reflectionURL := viper.GetString("reflection-url")
 	loadingMethod := viper.GetString("loading-method")
 	defaultTab := viper.GetString("default-tab")
+	bsrToken := viper.GetString("bsr-token")
+	bsrSourceInfo := viper.GetBool("bsr-source-info")
 	autoOpen := viper.GetBool("open")
 
 	descriptorFiles := pflag.Args()
+	bsrModules, err := pflag.CommandLine.GetStringArray("bsr")
+	if err != nil {
+		log.Fatalf("Failed to read BSR module flags: %v", err)
+	}
 
 	// Build configuration
 	cfg := protodocs.Config{
@@ -112,8 +122,35 @@ Browse the loaded protobuf descriptors as linked reference documentation. Use th
 		cfg.Descriptors = mergedSet
 	}
 
+	if len(bsrModules) > 0 {
+		modules := make([]protodocs.BSRModule, 0, len(bsrModules))
+		for _, moduleRef := range bsrModules {
+			moduleRef = strings.TrimSpace(moduleRef)
+			if moduleRef == "" {
+				continue
+			}
+			modules = append(modules, protodocs.BSRModule{
+				Module:     moduleRef,
+				SourceInfo: bsrSourceInfo,
+			})
+		}
+		if len(modules) > 0 {
+			if bsrToken == "" {
+				bsrToken = os.Getenv("BUF_TOKEN")
+			}
+			bsrSet, err := protodocs.FetchBSRDescriptors(context.Background(), nil, modules, bsrToken)
+			if err != nil {
+				log.Fatalf("Failed to load BSR descriptors: %v", err)
+			}
+			if cfg.Descriptors == nil {
+				cfg.Descriptors = &descriptorpb.FileDescriptorSet{}
+			}
+			cfg.Descriptors.File = append(cfg.Descriptors.File, bsrSet.File...)
+		}
+	}
+
 	// If nothing was supplied, configure the default descriptor files.
-	if len(descriptorFiles) == 0 && reflectionURL == "" {
+	if len(descriptorFiles) == 0 && len(bsrModules) == 0 && reflectionURL == "" {
 		cfg.DescriptorFiles = []string{
 			"/eliza.binpb",
 			"/googleapis.binpb",

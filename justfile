@@ -19,7 +19,12 @@ desktop-dev:
 
 # Build the production native desktop application bundle
 desktop-build:
+    node scripts/sync-version.mjs
     cd desktop && go tool wails build
+
+# Build the macOS DMG installer from a local desktop build
+desktop-dmg: desktop-build
+    scripts/create-macos-dmg.sh desktop/build/bin/ProtoDocs.app protodocs-desktop-darwin.dmg
 
 lint: build
     pnpm lint
@@ -63,8 +68,8 @@ package:
 build-cli:
     pnpm build
     mkdir -p bin
-    GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/protodocs-linux-amd64 ./cmd/protodocs
-    GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o bin/protodocs-linux-arm64 ./cmd/protodocs
-    GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o bin/protodocs-darwin-arm64 ./cmd/protodocs
-    GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o bin/protodocs-windows-amd64.exe ./cmd/protodocs
-
+    GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/protodocs-cli-linux-amd64 ./cmd/protodocs
+    GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o bin/protodocs-cli-linux-arm64 ./cmd/protodocs
+    GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o bin/protodocs-cli-darwin-amd64 ./cmd/protodocs
+    GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o bin/protodocs-cli-darwin-arm64 ./cmd/protodocs
+    GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o bin/protodocs-cli-windows-amd64.exe ./cmd/protodocs

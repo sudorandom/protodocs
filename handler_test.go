@@ -1,6 +1,7 @@
 package protodocs
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -89,6 +90,138 @@ func TestNewHandler_Default(t *testing.T) {
 
 	if resHealth.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200 for api/health, got %d", resHealth.StatusCode)
+	}
+}
+
+func TestParseBSRModuleRef(t *testing.T) {
+	tests := []struct {
+		name        string
+		module      string
+		refOverride string
+		want        bsrModuleRef
+		wantErr     bool
+	}{
+		{
+			name:   "default ref",
+			module: "buf.build/googleapis/googleapis",
+			want: bsrModuleRef{
+				Owner:  "googleapis",
+				Module: "googleapis",
+				Ref:    "main",
+			},
+		},
+		{
+			name:   "shorthand module",
+			module: "googleapis/googleapis",
+			want: bsrModuleRef{
+				Owner:  "googleapis",
+				Module: "googleapis",
+				Ref:    "main",
+			},
+		},
+		{
+			name:   "inline ref",
+			module: "BUF.BUILD/googleapis/googleapis:v1.2.3",
+			want: bsrModuleRef{
+				Owner:  "googleapis",
+				Module: "googleapis",
+				Ref:    "v1.2.3",
+			},
+		},
+		{
+			name:        "override ref",
+			module:      "buf.build/googleapis/googleapis:v1.2.3",
+			refOverride: "main",
+			want: bsrModuleRef{
+				Owner:  "googleapis",
+				Module: "googleapis",
+				Ref:    "main",
+			},
+		},
+		{name: "url is rejected", module: "https://buf.build/googleapis/googleapis", wantErr: true},
+		{name: "non buf host is rejected", module: "example.com/googleapis/googleapis", wantErr: true},
+		{name: "missing module part", module: "googleapis", wantErr: true},
+		{name: "bad ref", module: "buf.build/googleapis/googleapis:../main", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseBSRModuleRef(tt.module, tt.refOverride)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("got %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTokenForBSRHost(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		host string
+		want string
+	}{
+		{name: "plain token", raw: "token", host: "buf.build", want: "token"},
+		{name: "host token match", raw: "first@example.com, second@buf.build", host: "buf.build", want: "second"},
+		{name: "host token no match", raw: "first@example.com", host: "buf.build", want: ""},
+		{name: "single at token", raw: "token@buf.build", host: "buf.build", want: "token"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tokenForBSRHost(tt.raw, tt.host); got != tt.want {
+				t.Fatalf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBSRDescriptorEndpointValidation(t *testing.T) {
+	handler, err := NewHandler(Config{Proxy: true})
+	if err != nil {
+		t.Fatalf("failed to create handler: %v", err)
+	}
+
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	res, err := http.Post(ts.URL+"/api/bsr/descriptor", "application/json", bytes.NewBufferString(`{"modules":[{"module":"localhost/acme/weather"}]}`))
+	if err != nil {
+		t.Fatalf("failed to post BSR request: %v", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", res.StatusCode)
+	}
+}
+
+func TestBSRDescriptorEndpointDisabledWithoutProxy(t *testing.T) {
+	handler, err := NewHandler(Config{})
+	if err != nil {
+		t.Fatalf("failed to create handler: %v", err)
+	}
+
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	res, err := http.Post(ts.URL+"/api/bsr/descriptor", "application/json", bytes.NewBufferString(`{"modules":[{"module":"buf.build/acme/weather"}]}`))
+	if err != nil {
+		t.Fatalf("failed to post BSR request: %v", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected status 404, got %d", res.StatusCode)
 	}
 }
 
@@ -322,6 +455,7 @@ func TestProxySecurityPolicies(t *testing.T) {
 	}
 
 	handler, err := NewHandler(Config{
+		Proxy:     true,
 		ServerURL: "http://default-endpoint.com",
 		ServiceEndpoints: map[string][]string{
 			"connectrpc.eliza.v1.ElizaService": {
@@ -442,6 +576,7 @@ func TestServeWs_Bidi(t *testing.T) {
 
 	// 2. Setup the proxy handler allowing loopback
 	handler, err := NewHandler(Config{
+		Proxy:    true,
 		Registry: &protoregistry.Files{},
 	})
 	if err != nil {
@@ -557,6 +692,7 @@ func TestNewHandler_InvalidConfig(t *testing.T) {
 
 func TestProxyWildcardSecurityPolicy(t *testing.T) {
 	handler, err := NewHandler(Config{
+		Proxy:             true,
 		ProxyAllowedHosts: []string{"*"},
 	})
 	if err != nil {

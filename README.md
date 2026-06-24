@@ -18,6 +18,10 @@
 
 ### Screenshots
 
+| Schema Loader |
+| :---: |
+| ![Schema Loader](./e2e/screenshots/00-schema-loader.png) |
+
 | Message Detail | Service Detail (Try-it-now) |
 | :---: | :---: |
 | ![Message Detail](./e2e/screenshots/01-message-detail.png) | ![Service Detail](./e2e/screenshots/02-service-detail.png) |
@@ -99,7 +103,20 @@ graph LR
 
 ProtoDocs can be deployed and run in several ways. Choose the method that best matches your architecture:
 
-### 1. Running with Go CLI
+### 1. Desktop App
+ProtoDocs is available as a native desktop app for macOS, Windows, and Linux from the [latest GitHub releases page](https://github.com/sudorandom/protodocs/releases/latest).
+
+The desktop app is the easiest way to inspect local descriptor files without hosting anything. It includes the same interactive schema browser as the web UI, plus native file loading support for compiled descriptor sets (`.binpb` or `.pb`). You can also connect to live gRPC or Connect services with Server Reflection enabled.
+
+After launching the app, use the schema loader to:
+* Open or drag in compiled descriptor files.
+* Connect to a reflection-enabled server.
+* Load the built-in demo schema.
+
+> [!NOTE]
+> Desktop builds are not currently code-signed. Operating systems may show warnings or require an extra confirmation before opening the app. Preventing those warnings requires platform-specific signing and notarization.
+
+### 2. Running with Go CLI
 You can download the pre-built `protodocs` binary for your platform from the [latest GitHub releases page](https://github.com/sudorandom/protodocs/releases/latest).
 
 Alternatively, you can run or install it directly using Go:
@@ -120,7 +137,7 @@ Options include:
 
 If no options or descriptor files are supplied, the CLI automatically runs with demo settings loading the Eliza sample.
 
-### 2. Embedded Go Library Handler
+### 3. Embedded Go Library Handler
 ProtoDocs can be imported as a library and mounted directly onto any Go HTTP server. 
 
 A complete runnable example is available in the [examples/simple](./examples/simple) directory.
@@ -179,7 +196,7 @@ The `protodocs.Config` struct supports the following options:
 
 ---
 
-### 3. Static Website Distribution & Configuration
+### 4. Static Website Distribution & Configuration
 ProtoDocs runs entirely as a client-side static web application. You can download the pre-packaged static archive (`protodocs-static.tar.gz`) containing the HTML/JS bundle directly from the [latest GitHub releases page](https://github.com/sudorandom/protodocs/releases/latest).
 
 Extract this archive on your web host (such as Nginx, Apache, S3, Netlify, or GitHub Pages) to host your documentation.
@@ -215,7 +232,7 @@ front_page_sections:
 
 ---
 
-### 4. Running with Docker
+### 5. Running with Docker
 
 #### Running the Pre-built Image
 ```sh
@@ -269,7 +286,7 @@ We use [just](https://github.com/casey/just) for automating project tasks. Check
 *   **`just playwright`**: Runs Playwright E2E browser tests and generates screenshots.
 *   **`just descriptors`**: Re-generates standard Protobuf descriptor binaries in the `public/` directory (e.g., googleapis, protovalidate, eliza).
 *   **`just package`**: Generates a clean production bundle and packages it as `protodocs-static.tar.gz`.
-*   **`just build-cli`**: Compiles the Go CLI for multiple targets (`linux-amd64`, `linux-arm64`, `darwin-arm64`, `windows-amd64`).
+*   **`just build-cli`**: Compiles the Go CLI for multiple targets (`linux-amd64`, `linux-arm64`, `darwin-amd64`, `darwin-arm64`, `windows-amd64`).
 
 ---
 

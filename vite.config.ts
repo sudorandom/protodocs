@@ -2,10 +2,28 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import fs from 'node:fs'
+import path from 'node:path'
+
+const packageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'))
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [tailwindcss(), react()],
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    {
+      name: 'protodocs-config-mode',
+      configureServer(server) {
+        if (mode !== 'desktop') return;
+        server.middlewares.use('/config.yaml', (_req, res) => {
+          const configPath = path.resolve(__dirname, 'public/config.desktop.yaml');
+          res.setHeader('Content-Type', 'text/yaml; charset=utf-8');
+          res.end(fs.readFileSync(configPath));
+        });
+      },
+    },
+    tailwindcss(),
+    react(),
+  ],
   base: './',
   server: {
     proxy: process.env.PROXY_TARGET ? {
@@ -15,9 +33,12 @@ export default defineConfig({
       },
     } : undefined,
   },
+  define: {
+    __PROTODOCS_VERSION__: JSON.stringify(packageJson.version),
+  },
   test: {
     globals: true,
-    environment: 'jsdom',
+    environment: 'node',
     include: ['src/**/*.test.ts'],
   },
   build: {
@@ -32,5 +53,4 @@ export default defineConfig({
       }
     }
   }
-})
-
+}))
