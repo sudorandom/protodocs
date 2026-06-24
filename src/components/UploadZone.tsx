@@ -131,7 +131,6 @@ export default function UploadZone({
       )}
 
       <div className={`absolute ${onClose ? 'top-5 left-5' : 'top-5 right-5'} flex items-center gap-2`}>
-        <span className="text-xs text-app-textMuted font-mono">Theme</span>
         <div className="flex bg-app-panel border border-app-border rounded-lg p-0.5 select-none shrink-0">
           {(['light', 'dark', 'cyberpunk'] as const).map((t) => (
             <button
