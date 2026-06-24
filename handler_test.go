@@ -105,7 +105,15 @@ func TestParseBSRModuleRef(t *testing.T) {
 			name:   "default ref",
 			module: "buf.build/googleapis/googleapis",
 			want: bsrModuleRef{
-				Host:   "buf.build",
+				Owner:  "googleapis",
+				Module: "googleapis",
+				Ref:    "main",
+			},
+		},
+		{
+			name:   "shorthand module",
+			module: "googleapis/googleapis",
+			want: bsrModuleRef{
 				Owner:  "googleapis",
 				Module: "googleapis",
 				Ref:    "main",
@@ -115,7 +123,6 @@ func TestParseBSRModuleRef(t *testing.T) {
 			name:   "inline ref",
 			module: "BUF.BUILD/googleapis/googleapis:v1.2.3",
 			want: bsrModuleRef{
-				Host:   "buf.build",
 				Owner:  "googleapis",
 				Module: "googleapis",
 				Ref:    "v1.2.3",
@@ -126,16 +133,14 @@ func TestParseBSRModuleRef(t *testing.T) {
 			module:      "buf.build/googleapis/googleapis:v1.2.3",
 			refOverride: "main",
 			want: bsrModuleRef{
-				Host:   "buf.build",
 				Owner:  "googleapis",
 				Module: "googleapis",
 				Ref:    "main",
 			},
 		},
 		{name: "url is rejected", module: "https://buf.build/googleapis/googleapis", wantErr: true},
-		{name: "localhost is rejected", module: "localhost/googleapis/googleapis", wantErr: true},
-		{name: "ip is rejected", module: "127.0.0.1/googleapis/googleapis", wantErr: true},
-		{name: "missing module part", module: "buf.build/googleapis", wantErr: true},
+		{name: "non buf host is rejected", module: "example.com/googleapis/googleapis", wantErr: true},
+		{name: "missing module part", module: "googleapis", wantErr: true},
 		{name: "bad ref", module: "buf.build/googleapis/googleapis:../main", wantErr: true},
 	}
 

@@ -42,7 +42,7 @@ func main() {
 	pflag.String("reflection-url", "", "Default gRPC/Connect Server Reflection URL")
 	pflag.String("loading-method", "", "Default loading method ('http', 'grpc-web', 'connect')")
 	pflag.String("default-tab", "", "Default tab to focus in the sidebar ('files' or 'services')")
-	pflag.StringArray("bsr", nil, "Buf Schema Registry module to load (host/owner/repository[:ref])")
+	pflag.StringArray("bsr", nil, "Buf Schema Registry module to load (owner/repository[:ref] or buf.build/owner/repository[:ref])")
 	pflag.String("bsr-token", "", "Buf Schema Registry API token (defaults to BUF_TOKEN)")
 	pflag.Bool("bsr-source-info", true, "Request source information from the Buf Schema Registry")
 	pflag.Bool("open", true, "Automatically open ProtoDocs in the browser")

@@ -36,9 +36,13 @@ var upgrader = websocket.Upgrader{
 }
 
 var (
-	bsrHostPattern = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$`)
 	bsrPartPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$`)
 	bsrRefPattern  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$`)
+)
+
+const (
+	defaultBSRHost              = "buf.build"
+	defaultBSRDescriptorBaseURL = "https://buf.build/"
 )
 
 //go:embed dist/*
@@ -391,7 +395,6 @@ type BSRModule struct {
 }
 
 type bsrModuleRef struct {
-	Host   string
 	Owner  string
 	Module string
 	Ref    string
@@ -420,19 +423,19 @@ func parseBSRModuleRef(moduleRef string, refOverride string) (bsrModuleRef, erro
 	}
 
 	parts := strings.Split(modulePart, "/")
-	if len(parts) != 3 {
-		return bsrModuleRef{}, fmt.Errorf("module must use host/owner/repository format")
+	if len(parts) == 3 {
+		if !strings.EqualFold(parts[0], defaultBSRHost) {
+			return bsrModuleRef{}, fmt.Errorf("unsupported BSR host")
+		}
+		parts = parts[1:]
 	}
-	if !bsrHostPattern.MatchString(parts[0]) || strings.Contains(parts[0], "..") {
-		return bsrModuleRef{}, fmt.Errorf("invalid BSR host")
+	if len(parts) != 2 {
+		return bsrModuleRef{}, fmt.Errorf("module must use owner/repository or buf.build/owner/repository format")
 	}
-	if net.ParseIP(parts[0]) != nil || strings.EqualFold(parts[0], "localhost") {
-		return bsrModuleRef{}, fmt.Errorf("invalid BSR host")
-	}
-	if !bsrPartPattern.MatchString(parts[1]) {
+	if !bsrPartPattern.MatchString(parts[0]) {
 		return bsrModuleRef{}, fmt.Errorf("invalid BSR owner")
 	}
-	if !bsrPartPattern.MatchString(parts[2]) {
+	if !bsrPartPattern.MatchString(parts[1]) {
 		return bsrModuleRef{}, fmt.Errorf("invalid BSR repository")
 	}
 	if !bsrRefPattern.MatchString(ref) {
@@ -440,9 +443,8 @@ func parseBSRModuleRef(moduleRef string, refOverride string) (bsrModuleRef, erro
 	}
 
 	return bsrModuleRef{
-		Host:   strings.ToLower(parts[0]),
-		Owner:  parts[1],
-		Module: parts[2],
+		Owner:  parts[0],
+		Module: parts[1],
 		Ref:    ref,
 	}, nil
 }
@@ -474,11 +476,15 @@ func tokenForBSRHost(rawToken string, host string) string {
 	return ""
 }
 
+func (m bsrModuleRef) descriptorPath() string {
+	return fmt.Sprintf("/%s/%s/descriptor/%s", url.PathEscape(m.Owner), url.PathEscape(m.Module), url.PathEscape(m.Ref))
+}
+
 func (m bsrModuleRef) descriptorURL(sourceInfo bool) string {
 	u := url.URL{
 		Scheme: "https",
-		Host:   m.Host,
-		Path:   fmt.Sprintf("/%s/%s/descriptor/%s", m.Owner, m.Module, m.Ref),
+		Host:   defaultBSRHost,
+		Path:   m.descriptorPath(),
 	}
 	if sourceInfo {
 		q := u.Query()
@@ -488,14 +494,14 @@ func (m bsrModuleRef) descriptorURL(sourceInfo bool) string {
 	return u.String()
 }
 
-func bsrHTTPClient(client *http.Client, host string) *http.Client {
+func bsrHTTPClient(client *http.Client) *http.Client {
 	if client == nil {
 		client = http.DefaultClient
 	}
 	nextClient := *client
 	previousRedirectPolicy := nextClient.CheckRedirect
 	nextClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if req.URL.Scheme != "https" || !strings.EqualFold(req.URL.Hostname(), host) {
+		if req.URL.Scheme != "https" || !strings.EqualFold(req.URL.Hostname(), defaultBSRHost) {
 			return fmt.Errorf("BSR redirect to a different host is not allowed")
 		}
 		if previousRedirectPolicy != nil {
@@ -509,18 +515,29 @@ func bsrHTTPClient(client *http.Client, host string) *http.Client {
 	return &nextClient
 }
 
+func doBSRDescriptorRequest(client *http.Client, req *http.Request) (*http.Response, error) {
+	if req.URL == nil || req.URL.Scheme != "https" || !strings.EqualFold(req.URL.Hostname(), defaultBSRHost) {
+		return nil, fmt.Errorf("invalid BSR request target")
+	}
+	return bsrHTTPClient(client).Do(req)
+}
+
 func fetchBSRDescriptor(ctx context.Context, client *http.Client, module bsrModuleRef, token string, sourceInfo bool) (*descriptorpb.FileDescriptorSet, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, module.descriptorURL(sourceInfo), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, defaultBSRDescriptorBaseURL, nil)
 	if err != nil {
 		return nil, err
+	}
+	req.URL.Path = module.descriptorPath()
+	if sourceInfo {
+		q := req.URL.Query()
+		q.Set("source_info", "true")
+		req.URL.RawQuery = q.Encode()
 	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	// lgtm[go/request-forgery] BSR descriptor URLs are constructed from validated host/owner/module/ref components.
-	// codeql[go/request-forgery] BSR descriptor URLs are constructed from validated host/owner/module/ref components.
-	resp, err := bsrHTTPClient(client, module.Host).Do(req)
+	resp, err := doBSRDescriptorRequest(client, req)
 	if err != nil {
 		return nil, err
 	}
@@ -552,9 +569,9 @@ func FetchBSRDescriptors(ctx context.Context, client *http.Client, modules []BSR
 		if err != nil {
 			return nil, err
 		}
-		fds, err := fetchBSRDescriptor(ctx, client, module, tokenForBSRHost(token, module.Host), requestedModule.SourceInfo)
+		fds, err := fetchBSRDescriptor(ctx, client, module, tokenForBSRHost(token, defaultBSRHost), requestedModule.SourceInfo)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch BSR descriptor for %s/%s/%s:%s: %w", module.Host, module.Owner, module.Module, module.Ref, err)
+			return nil, fmt.Errorf("failed to fetch BSR descriptor for %s/%s/%s:%s: %w", defaultBSRHost, module.Owner, module.Module, module.Ref, err)
 		}
 		mergedSet.File = append(mergedSet.File, fds.File...)
 	}
@@ -1198,9 +1215,9 @@ func (h *Handler) serveBSRDescriptor(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("invalid BSR module: %v", err), http.StatusBadRequest)
 			return
 		}
-		fds, err := fetchBSRDescriptor(r.Context(), h.proxyHandler.client, module, tokenForBSRHost(token, module.Host), requestedModule.SourceInfo)
+		fds, err := fetchBSRDescriptor(r.Context(), h.proxyHandler.client, module, tokenForBSRHost(token, defaultBSRHost), requestedModule.SourceInfo)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("failed to fetch BSR descriptor for %s/%s/%s:%s: %v", module.Host, module.Owner, module.Module, module.Ref, err), http.StatusBadGateway)
+			http.Error(w, fmt.Sprintf("failed to fetch BSR descriptor for %s/%s/%s:%s: %v", defaultBSRHost, module.Owner, module.Module, module.Ref, err), http.StatusBadGateway)
 			return
 		}
 		mergedSet.File = append(mergedSet.File, fds.File...)
