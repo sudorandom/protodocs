@@ -5,6 +5,8 @@ import tailwindcss from '@tailwindcss/vite'
 import fs from 'node:fs'
 import path from 'node:path'
 
+const packageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'))
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [
@@ -30,6 +32,9 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
       },
     } : undefined,
+  },
+  define: {
+    __PROTODOCS_VERSION__: JSON.stringify(packageJson.version),
   },
   test: {
     globals: true,

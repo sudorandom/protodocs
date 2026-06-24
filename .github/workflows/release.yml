@@ -113,7 +113,7 @@ jobs:
         include:
           - os: macos-latest
             platform: darwin/universal
-            artifact_name: protodocs-desktop-darwin-universal.zip
+            artifact_name: protodocs-desktop-darwin-universal.dmg
           - os: windows-latest
             platform: windows/amd64
             artifact_name: protodocs-desktop-windows-amd64.zip
@@ -143,6 +143,9 @@ jobs:
     - name: Build frontend for desktop
       run: pnpm build:desktop
 
+    - name: Sync desktop version metadata
+      run: node scripts/sync-version.mjs
+
     - name: Build Wails App (Linux)
       if: matrix.os == 'ubuntu-latest'
       shell: bash
@@ -161,8 +164,7 @@ jobs:
       if: matrix.os == 'macos-latest'
       shell: bash
       run: |
-        cd desktop/build/bin
-        zip -r ../../../${{ matrix.artifact_name }} ProtoDocs.app
+        bash scripts/create-macos-dmg.sh desktop/build/bin/ProtoDocs.app "${{ matrix.artifact_name }}"
 
     - name: Package Desktop Artifact (Windows)
       if: matrix.os == 'windows-latest'

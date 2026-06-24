@@ -30,3 +30,5 @@ test-results
 protodocs-static.tar.gz
 
 bin
+
+*.dmg

@@ -4,10 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "sync-version": "node scripts/sync-version.mjs",
     "dev": "vite",
     "dev:desktop": "vite --mode desktop",
     "build": "tsc -b && vite build && cp dist/index.html dist/404.html",
-    "build:desktop": "tsc -b && vite build && cp dist/index.html dist/404.html && rm -rf desktop/dist && cp -R dist desktop/dist && cp public/config.desktop.yaml desktop/dist/config.yaml",
+    "build:desktop": "node scripts/sync-version.mjs && tsc -b && vite build && cp dist/index.html dist/404.html && rm -rf desktop/dist && cp -R dist desktop/dist && cp public/config.desktop.yaml desktop/dist/config.yaml",
     "lint": "eslint . && tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",

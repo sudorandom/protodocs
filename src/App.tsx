@@ -29,6 +29,7 @@ const EnumViewer = lazy(() => import('./components/EnumViewer'));
 const ExtensionGroupViewer = lazy(() => import('./components/ExtensionGroupViewer'));
 const QuickBrowse = lazy(() => import('./components/QuickBrowse'));
 const Minimap = lazy(() => import('./components/Minimap'));
+const APP_VERSION = __PROTODOCS_VERSION__;
 
 interface AppConfig {
   loadingMethod: 'http' | 'grpc-web' | 'connect' | 'grpc';
@@ -1402,6 +1403,7 @@ export default function App() {
           theme={theme}
           setTheme={setTheme}
           logoUrl={activeLogoUrl}
+          appVersion={APP_VERSION}
           isDesktop={isDesktop}
           canLoadBsr={isDesktop || config.proxy === true}
         />
@@ -1949,6 +1951,7 @@ export default function App() {
               theme={theme}
               setTheme={setTheme}
               logoUrl={activeLogoUrl}
+              appVersion={APP_VERSION}
               isDesktop={isDesktop}
               canLoadBsr={isDesktop || config.proxy === true}
               onClose={handleCloseSchemaLoader}

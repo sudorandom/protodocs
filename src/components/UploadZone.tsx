@@ -12,6 +12,7 @@ interface UploadZoneProps {
   theme: 'dark' | 'light' | 'cyberpunk';
   setTheme: (theme: 'dark' | 'light' | 'cyberpunk') => void;
   logoUrl: string;
+  appVersion: string;
   isDesktop?: boolean;
   canLoadBsr?: boolean;
   onClose?: () => void;
@@ -29,6 +30,7 @@ export default function UploadZone({
   theme,
   setTheme,
   logoUrl,
+  appVersion,
   isDesktop = false,
   canLoadBsr = false,
   onClose,
@@ -368,7 +370,7 @@ export default function UploadZone({
       </div>
 
       <div className="mt-5 text-center text-[10px] text-app-textMuted/50 font-mono">
-        ProtoDocs v1.0.0
+        ProtoDocs v{appVersion}
       </div>
     </div>
   );
