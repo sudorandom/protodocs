@@ -18,17 +18,32 @@
 
 ### Screenshots
 
-| Schema Loader |
-| :---: |
-| ![Schema Loader](./e2e/screenshots/00-schema-loader.png) |
-
-| Message Detail | Service Detail (Try-it-now) |
+| Schema Loader | Message Detail |
 | :---: | :---: |
-| ![Message Detail](./e2e/screenshots/01-message-detail.png) | ![Service Detail](./e2e/screenshots/02-service-detail.png) |
+| ![Schema Loader](./e2e/screenshots/00-schema-loader.png) | ![Message Detail](./e2e/screenshots/01-message-detail.png) |
+
+| Service Detail (Try-it-now) | Payload Decoder |
+| :---: | :---: |
+| ![Service Detail](./e2e/screenshots/02-service-detail.png) | ![Payload Decoder](./e2e/screenshots/05-encoding-decoding-panel.png) |
 
 | File Source (DSL) | Search Results |
 | :---: | :---: |
 | ![File Source](./e2e/screenshots/03-file-source.png) | ![Search Results](./e2e/screenshots/04-search-results.png) |
+
+### Theme Variants
+
+| Light | Dark | Cyberpunk |
+| :---: | :---: | :---: |
+| ![Schema Loader Light](./e2e/screenshots/06-schema-loader-light.png) | ![Schema Loader Dark](./e2e/screenshots/00-schema-loader.png) | ![Schema Loader Cyberpunk](./e2e/screenshots/07-schema-loader-cyberpunk.png) |
+
+### Run Modes
+
+ProtoDocs supports four common deployment patterns:
+
+1. **Desktop App (with proxy)** - Native macOS, Windows, and Linux app with built-in proxying for RPC calls.
+2. **Static Website (like protodocs.dev)** - Client-side deployment that loads schema files from the web host.
+3. **Embedded into Go applications (with proxy)** - Mount ProtoDocs directly into a Go HTTP server.
+4. **With a CLI command (with proxy)** - Run the Go CLI to serve the UI locally with proxy support.
 
 ### Architecture & Run Modes
 

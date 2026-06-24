@@ -599,10 +599,14 @@ export default function App() {
     const wailsApp = (window as any).go?.main?.App;
     if (!wailsApp || typeof wailsApp.ReadFileBytes !== 'function') return;
 
+    const normalizedPath = filePath.startsWith('file://')
+      ? decodeURIComponent(filePath.replace(/^file:\/\/+/, '/'))
+      : decodeURIComponent(filePath);
+
     setLoading(true);
     setError(null);
     try {
-      const bytes = await wailsApp.ReadFileBytes(filePath);
+      const bytes = await wailsApp.ReadFileBytes(normalizedPath);
       const loadedSchema = await loadDescriptorsFromBytesList([new Uint8Array(bytes)]);
       setSchema(loadedSchema);
       setIsSchemaLoaderOpen(false);
@@ -610,7 +614,7 @@ export default function App() {
       setActiveFile('');
     } catch (err: any) {
       console.error('Error loading associated file:', err);
-      setError(err?.message || `Failed to load associated file: ${filePath}`);
+      setError(err?.message || `Failed to load associated file: ${normalizedPath}`);
     } finally {
       setLoading(false);
       document.body.classList.remove('loading');
@@ -850,6 +854,13 @@ export default function App() {
         let openedFileOnLaunch = '';
         if (localIsDesktop && typeof (window as any).go?.main?.App.GetInitialFile === 'function') {
           openedFileOnLaunch = await (window as any).go?.main?.App.GetInitialFile();
+          if (!openedFileOnLaunch) {
+            const deadline = Date.now() + 1000;
+            while (!openedFileOnLaunch && Date.now() < deadline) {
+              await new Promise((resolve) => setTimeout(resolve, 50));
+              openedFileOnLaunch = await (window as any).go?.main?.App.GetInitialFile();
+            }
+          }
         }
 
         setConfig(activeConfig);

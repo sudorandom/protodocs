@@ -8,6 +8,31 @@ test.describe('Screenshot tests', () => {
     });
   });
 
+  const captureSchemaLoader = async (page: any, theme: 'light' | 'dark' | 'cyberpunk', path: string) => {
+    await page.route('**/config.yaml*', async (route) => {
+      await route.fulfill({ status: 404, body: '' });
+    });
+    await page.addInitScript((themeName) => {
+      window.localStorage.setItem('protodocs_theme', themeName);
+    }, theme);
+    await page.goto('/');
+    await expect(page.getByText('Load Schema')).toBeVisible();
+    await page.waitForTimeout(500);
+    await page.screenshot({ path });
+  };
+
+  test('schema loader dark theme', async ({ page }) => {
+    await captureSchemaLoader(page, 'dark', 'e2e/screenshots/00-schema-loader.png');
+  });
+
+  test('schema loader light theme', async ({ page }) => {
+    await captureSchemaLoader(page, 'light', 'e2e/screenshots/06-schema-loader-light.png');
+  });
+
+  test('schema loader cyberpunk theme', async ({ page }) => {
+    await captureSchemaLoader(page, 'cyberpunk', 'e2e/screenshots/07-schema-loader-cyberpunk.png');
+  });
+
   test('message detail page', async ({ page }) => {
     // Navigate to a specific message symbol within a file
     await page.goto('/?descriptors=/googleapis.binpb,/protovalidate.binpb#/files/google/api/http.proto?symbol=.google.api.HttpRule');
@@ -35,6 +60,26 @@ test.describe('Screenshot tests', () => {
     await page.waitForTimeout(300);
 
     await page.screenshot({ path: 'e2e/screenshots/02-service-detail.png' });
+  });
+
+  test('encoding and decoding panel', async ({ page }) => {
+    // Navigate to a message page that can open the payload encoder/decoder panel
+    await page.goto('/?descriptors=/googleapis.binpb,/protovalidate.binpb#/files/google/api/http.proto?symbol=.google.api.HttpRule');
+    await expect(page.locator('[id=".google.api.HttpRule"]')).toBeVisible();
+    await page.waitForTimeout(500);
+
+    // Open the payload playground from the message tooltip
+    await page.locator('.proto-heading', { hasText: 'HttpRule' }).first().click();
+    await expect(page.locator('button', { hasText: 'Decode/Encode' })).toBeVisible();
+    await page.locator('button', { hasText: 'Decode/Encode' }).click();
+
+    // Wait for the panel to mount and its template content to appear
+    await expect(page.locator('[id=".google.api.HttpRule-decoder-panel"]')).toBeVisible();
+    await expect(page.locator('button', { hasText: 'Payload Encoder' })).toBeVisible();
+    await expect(page.locator('textarea[placeholder*="Enter valid JSON"]')).not.toHaveValue('');
+    await page.waitForTimeout(400);
+
+    await page.screenshot({ path: 'e2e/screenshots/05-encoding-decoding-panel.png' });
   });
 
   test('file source page', async ({ page }) => {
