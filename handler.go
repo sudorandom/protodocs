@@ -480,20 +480,6 @@ func (m bsrModuleRef) descriptorPath() string {
 	return fmt.Sprintf("/%s/%s/descriptor/%s", url.PathEscape(m.Owner), url.PathEscape(m.Module), url.PathEscape(m.Ref))
 }
 
-func (m bsrModuleRef) descriptorURL(sourceInfo bool) string {
-	u := url.URL{
-		Scheme: "https",
-		Host:   defaultBSRHost,
-		Path:   m.descriptorPath(),
-	}
-	if sourceInfo {
-		q := u.Query()
-		q.Set("source_info", "true")
-		u.RawQuery = q.Encode()
-	}
-	return u.String()
-}
-
 func bsrHTTPClient(client *http.Client) *http.Client {
 	if client == nil {
 		client = http.DefaultClient
