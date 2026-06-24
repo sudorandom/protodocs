@@ -116,17 +116,19 @@ jobs:
     - name: Build frontend for desktop
       run: pnpm build:desktop
 
-    - name: Build Wails App
+    - name: Build Wails App (Linux)
+      if: matrix.os == 'ubuntu-latest'
       shell: bash
-      env:
-        BUILD_TAGS: ${{ matrix.build_tags || '' }}
       run: |
         cd desktop
-        if [ -n "$BUILD_TAGS" ]; then
-          go tool wails build -platform ${{ matrix.platform }} -clean -tags "$BUILD_TAGS"
-        else
-          go tool wails build -platform ${{ matrix.platform }} -clean
-        fi
+        go tool wails build -platform ${{ matrix.platform }} -clean -tags "${{ matrix.build_tags }}"
+
+    - name: Build Wails App
+      if: matrix.os != 'ubuntu-latest'
+      shell: bash
+      run: |
+        cd desktop
+        go tool wails build -platform ${{ matrix.platform }} -clean
 
     - name: Package Desktop Artifact (macOS)
       if: matrix.os == 'macos-latest'
@@ -137,10 +139,9 @@ jobs:
 
     - name: Package Desktop Artifact (Windows)
       if: matrix.os == 'windows-latest'
-      shell: bash
+      shell: pwsh
       run: |
-        cd desktop/build/bin
-        zip ../../../${{ matrix.artifact_name }} ProtoDocs.exe
+        Compress-Archive -Path desktop/build/bin/ProtoDocs.exe -DestinationPath ${{ matrix.artifact_name }}
 
     - name: Package Desktop Artifact (Linux)
       if: matrix.os == 'ubuntu-latest'
