@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/sudorandom/protodocs/compare/v0.1.0...v0.1.1) (2026-06-24)
+
+
+### Bug Fixes
+
+* fixes 'open with' ([845c1b5](https://github.com/sudorandom/protodocs/commit/845c1b53422f4d2cff9b81d7a71d17fc330b2b77))
+
 ## [0.1.0](https://github.com/sudorandom/protodocs/compare/v0.0.20...v0.1.0) (2026-06-23)
 
 
