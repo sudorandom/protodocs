@@ -606,8 +606,14 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const bytes = await wailsApp.ReadFileBytes(normalizedPath);
-      const loadedSchema = await loadDescriptorsFromBytesList([new Uint8Array(bytes)]);
+      // Wails v2 serializes Go []byte as a base64 string — decode it before use
+      const base64 = await wailsApp.ReadFileBytes(normalizedPath);
+      const binaryStr = atob(base64);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      const loadedSchema = await loadDescriptorsFromBytesList([bytes]);
       setSchema(loadedSchema);
       setIsSchemaLoaderOpen(false);
       setSidebarView('files');
@@ -621,19 +627,38 @@ export default function App() {
     }
   }, []);
 
-  // Listen to file open events from Wails (for double-clicking files while app is running)
+  // Listen to file open events from Wails (for double-clicking files while app is running).
+  // window.runtime may not be injected yet at first render, so retry until available.
   useEffect(() => {
-    const runtime = (window as any).runtime;
-    if (runtime && typeof runtime.EventsOn === 'function') {
-      runtime.EventsOn('open-file', (filePath: string) => {
-        loadAssociatedFile(filePath);
-      });
-      return () => {
-        if (typeof runtime.EventsOff === 'function') {
-          runtime.EventsOff('open-file');
-        }
-      };
+    let cleanup: (() => void) | undefined;
+    let cancelled = false;
+
+    const tryRegister = () => {
+      const runtime = (window as any).runtime;
+      if (runtime && typeof runtime.EventsOn === 'function') {
+        runtime.EventsOn('open-file', (filePath: string) => {
+          loadAssociatedFile(filePath);
+        });
+        cleanup = () => {
+          if (typeof runtime.EventsOff === 'function') {
+            runtime.EventsOff('open-file');
+          }
+        };
+        return true;
+      }
+      return false;
+    };
+
+    if (!tryRegister()) {
+      // Retry until window.runtime is injected by Wails
+      const interval = setInterval(() => {
+        if (cancelled) { clearInterval(interval); return; }
+        if (tryRegister()) { clearInterval(interval); }
+      }, 50);
+      return () => { cancelled = true; clearInterval(interval); cleanup?.(); };
     }
+
+    return () => { cancelled = true; cleanup?.(); };
   }, [loadAssociatedFile]);
 
   // Set up global window drag/drop listeners for descriptor files
@@ -855,9 +880,10 @@ export default function App() {
         if (localIsDesktop && typeof (window as any).go?.main?.App.GetInitialFile === 'function') {
           openedFileOnLaunch = await (window as any).go?.main?.App.GetInitialFile();
           if (!openedFileOnLaunch) {
-            const deadline = Date.now() + 1000;
+            // macOS may deliver OnFileOpen slightly after the app starts — poll for up to 3 seconds
+            const deadline = Date.now() + 3000;
             while (!openedFileOnLaunch && Date.now() < deadline) {
-              await new Promise((resolve) => setTimeout(resolve, 50));
+              await new Promise((resolve) => setTimeout(resolve, 100));
               openedFileOnLaunch = await (window as any).go?.main?.App.GetInitialFile();
             }
           }
