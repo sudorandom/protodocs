@@ -7,3 +7,14 @@ protocols:
   - connect
   - grpc
   - grpc-web
+front_page_sections:
+  - type: markdown
+    markdown: |
+      # Loaded Schema Overview
+
+      This workspace is generated from the descriptor set currently loaded in the desktop app. Use the panels below to scan the shape of the schema, then jump into files or services from the sidebar.
+  - type: descriptor-stats-panel
+  - type: service-list-panel
+  - type: markdown-small
+    markdown: |
+      Desktop session powered by the local ProtoDocs proxy.

@@ -24,6 +24,22 @@ func main() {
 		LogoText:          "ProtoDocs",
 		Proxy:             true,
 		ProxyAllowedHosts: []string{"*"},
+		DefaultTab:        "files",
+		Protocols:         []string{"connect", "grpc", "grpc-web"},
+		FrontPageSections: []protodocs.FrontPageSection{
+			{
+				Type: "markdown",
+				Markdown: `# Loaded Schema Overview
+
+This workspace is generated from the descriptor set currently loaded in the desktop app. Use the panels below to scan the shape of the schema, then jump into files or services from the sidebar.`,
+			},
+			{Type: "descriptor-stats-panel"},
+			{Type: "service-list-panel"},
+			{
+				Type:     "markdown-small",
+				Markdown: `Desktop session powered by the local ProtoDocs proxy.`,
+			},
+		},
 	}
 	handler, err := protodocs.NewHandler(cfg)
 	if err != nil {

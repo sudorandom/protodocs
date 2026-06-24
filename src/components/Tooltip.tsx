@@ -1,6 +1,7 @@
 import { useLayoutEffect, useState, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import ExternalLink from './ExternalLink';
 
 export interface TooltipState {
   x: number;
@@ -152,19 +153,16 @@ export default function Tooltip({
       </div>
 
       <div className="text-xs text-app-textMain leading-relaxed break-words font-sans max-h-80 overflow-y-auto hide-scrollbar prose dark:prose-invert prose-tooltip max-w-none">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ExternalLink }}>
           {descText}
         </ReactMarkdown>
         {descUrl && (
-          <a
+          <ExternalLink
             href={descUrl}
-            target="_blank"
-            rel="noreferrer"
             className="text-app-accent hover:underline block mt-2 text-[10px] uppercase font-bold tracking-wider"
-            onClick={(e) => e.stopPropagation()}
           >
             View Docs ↗
-          </a>
+          </ExternalLink>
         )}
       </div>
 

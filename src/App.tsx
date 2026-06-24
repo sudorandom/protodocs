@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import YAML from 'yaml';
 import { loadDescriptorsFromUrls, loadDescriptorsFromBytesList } from './lib/descriptor-loader';
+import { loadBsrDescriptorBytes } from './lib/bsr-loader';
 import UploadZone from './components/UploadZone';
 import { loadSchemaFromReflection } from './lib/reflection-client';
 import { checkProxyAvailable, resolveUrl, setDesktopProxyUrl } from './lib/proxy';
@@ -11,11 +12,13 @@ import type { TooltipState } from './components/Tooltip';
 import type { ReferencePanelState } from './components/ReferencePanel';
 import { formatOptionKey, formatOptionValue } from './lib/options-formatter-helpers';
 import OptionLink from './components/OptionLink';
+import ExternalLink from './components/ExternalLink';
 import { populateTypeIndexWithOptions, normalizeFileDescriptor } from './lib/option-resolver';
 import { reconstructProto, getEditionString, cleanComment } from './lib/proto-reconstructor';
 import KeywordLink from './components/KeywordLink';
 import { ConfigSchema } from './gen/protodocs/v1/config_pb';
 import { safeHttpUrl } from './lib/safe-url';
+import { getActiveLogoUrl } from './lib/logo';
 
 const Sidebar = lazy(() => import('./components/Sidebar'));
 const Tooltip = lazy(() => import('./components/Tooltip'));
@@ -100,6 +103,7 @@ export default function App() {
 
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [schema, setSchema] = useState<{ file: any[] }>({ file: [] });
+  const [isSchemaLoaderOpen, setIsSchemaLoaderOpen] = useState(false);
   const [activeFile, setActiveFile] = useState<string>('');
   const [isDownloadOpen, setIsDownloadOpen] = useState<boolean>(false);
   const [isQuickBrowseOpen, setIsQuickBrowseOpen] = useState<boolean>(false);
@@ -440,6 +444,7 @@ export default function App() {
       }
 
       setSchema(loadedSchema);
+      setIsSchemaLoaderOpen(false);
 
       // Focus tab based on config (or default to services if > 0 count of services)
       let totalServices = 0;
@@ -496,6 +501,7 @@ export default function App() {
       }
       const loadedSchema = await loadDescriptorsFromBytesList(bytesList);
       setSchema(loadedSchema);
+      setIsSchemaLoaderOpen(false);
       
       if (loadedSchema.file && loadedSchema.file.length > 0) {
         let totalServices = 0;
@@ -530,19 +536,61 @@ export default function App() {
     await loadSchema(newConfig);
   }, [config, loadSchema]);
 
+  const handleLoadBsr = useCallback(async (module: string, ref: string, token: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const bytes = await loadBsrDescriptorBytes({
+        module,
+        ref,
+        token,
+        sourceInfo: true,
+      });
+      const loadedSchema = await loadDescriptorsFromBytesList([bytes]);
+      setSchema(loadedSchema);
+      setIsSchemaLoaderOpen(false);
+
+      let totalServices = 0;
+      if (loadedSchema.file) {
+        loadedSchema.file.forEach((f: any) => {
+          if (f.service && f.service.length > 0) {
+            totalServices += f.service.length;
+          }
+        });
+      }
+      setSidebarView(totalServices > 0 ? 'services' : 'files');
+      setActiveFile('');
+    } catch (err: any) {
+      console.error('Error loading BSR descriptor:', err);
+      setError(err?.message || 'Failed to load BSR module.');
+      setSchema({ file: [] });
+    } finally {
+      setLoading(false);
+      document.body.classList.remove('loading');
+    }
+  }, []);
+
   const handleLoadDemo = useCallback(async () => {
     const demoConfig: AppConfig = {
       ...config,
       loadingMethod: 'http',
       descriptorFiles: ['/eliza.binpb'],
+      serviceEndpoints: {
+        ...config.serviceEndpoints,
+        'connectrpc.eliza.v1.ElizaService': ['https://demo.connectrpc.com'],
+      },
     };
     setConfig(demoConfig);
     await loadSchema(demoConfig);
   }, [config, loadSchema]);
 
-  const handleResetSchema = useCallback(() => {
-    setSchema({ file: [] });
-    setActiveFile('');
+  const handleOpenSchemaLoader = useCallback(() => {
+    setIsSchemaLoaderOpen(true);
+    setError(null);
+  }, []);
+
+  const handleCloseSchemaLoader = useCallback(() => {
+    setIsSchemaLoaderOpen(false);
     setError(null);
   }, []);
 
@@ -556,6 +604,7 @@ export default function App() {
       const bytes = await wailsApp.ReadFileBytes(filePath);
       const loadedSchema = await loadDescriptorsFromBytesList([new Uint8Array(bytes)]);
       setSchema(loadedSchema);
+      setIsSchemaLoaderOpen(false);
       setSidebarView('files');
       setActiveFile('');
     } catch (err: any) {
@@ -1009,7 +1058,7 @@ export default function App() {
     if (section.type === 'markdown') {
       return (
         <section key={index} className="prose dark:prose-invert max-w-none text-app-textMain">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ExternalLink }}>
             {section.markdown || ''}
           </ReactMarkdown>
         </section>
@@ -1019,7 +1068,7 @@ export default function App() {
     if (section.type === 'markdown-small') {
       return (
         <section key={index} className="pt-8 border-t border-app-border/40 prose dark:prose-invert max-w-none text-xs text-app-textMuted/60">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ExternalLink }}>
             {section.markdown || ''}
           </ReactMarkdown>
         </section>
@@ -1027,26 +1076,101 @@ export default function App() {
     }
 
     if (section.type === 'descriptor-stats-panel') {
-      const stats = [
-        ['Modules', descriptorStats.modules],
-        ['Files', descriptorStats.files],
-        ['Messages', descriptorStats.messages],
-        ['Enums', descriptorStats.enums],
-        ['Services', descriptorStats.services],
-        ['Methods', descriptorStats.methods],
+      const stats: Array<{ label: string; value: number; accent: string }> = [
+        { label: 'Packages', value: descriptorStats.modules, accent: 'bg-sky-500' },
+        { label: 'Files', value: descriptorStats.files, accent: 'bg-emerald-500' },
+        { label: 'Methods', value: descriptorStats.methods, accent: 'bg-rose-500' },
       ];
+      const typeTotal = descriptorStats.messages + descriptorStats.enums + descriptorStats.services;
+      const typeMix = [
+        { label: 'Messages', value: descriptorStats.messages, color: 'bg-violet-500', textColor: 'text-violet-400' },
+        { label: 'Enums', value: descriptorStats.enums, color: 'bg-amber-500', textColor: 'text-amber-400' },
+        { label: 'Services', value: descriptorStats.services, color: 'bg-cyan-500', textColor: 'text-cyan-400' },
+      ].map((item) => ({
+        ...item,
+        percent: typeTotal > 0 ? (item.value / typeTotal) * 100 : 0,
+      }));
+      const rpcSurface = descriptorStats.services > 0
+        ? `${descriptorStats.methods.toLocaleString()} methods across ${descriptorStats.services.toLocaleString()} services`
+        : 'No RPC services in this descriptor set';
       return (
         <section key={index} className="border border-app-border bg-app-panel rounded-lg overflow-hidden">
-          <div className="px-5 py-4 border-b border-app-border/60">
-            <h2 className="text-sm font-bold text-app-textBright">Descriptor Stats</h2>
+          <div className="px-5 py-4 border-b border-app-border/60 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold text-app-textBright">Descriptor Overview</h2>
+              <p className="mt-1 text-xs text-app-textMuted">Live summary of the loaded FileDescriptorSet.</p>
+            </div>
+            <div className="text-[11px] font-mono text-app-textMuted">
+              {typeTotal.toLocaleString()} declared types
+            </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 divide-x divide-y divide-app-border/50">
-            {stats.map(([label, value]) => (
-              <div key={label} className="px-5 py-5 min-w-0">
-                <div className="text-2xl font-bold text-app-textBright tabular-nums">{value.toLocaleString()}</div>
-                <div className="mt-1 text-[11px] uppercase tracking-wide text-app-textMuted font-semibold">{label}</div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 border-b border-app-border/60">
+            <div className="lg:col-span-3 p-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {stats.map((stat) => (
+                <div key={stat.label} className="rounded-lg border border-app-border/70 bg-app-base/45 p-4 min-w-0">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-2xl font-bold text-app-textBright tabular-nums">{stat.value.toLocaleString()}</div>
+                    <span className={`h-2.5 w-2.5 rounded-full ${stat.accent}`} />
+                  </div>
+                  <div className="mt-1 text-[11px] uppercase tracking-wide text-app-textMuted font-semibold">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="lg:col-span-2 p-5 border-t lg:border-t-0 lg:border-l border-app-border/60 flex flex-col justify-center gap-4">
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-app-textMuted font-semibold">RPC Surface</div>
+                <div className="mt-1 text-sm font-semibold text-app-textBright">{rpcSurface}</div>
               </div>
-            ))}
+            </div>
+          </div>
+
+          <div className="px-5 py-5">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-2">
+              <div>
+                <h3 className="text-xs font-bold text-app-textBright uppercase tracking-wide">Declared Type Mix</h3>
+                <p className="mt-1 text-xs text-app-textMuted">
+                  Messages, enums, and services as a share of the loaded schema.
+                </p>
+              </div>
+              <div className="text-[11px] font-mono text-app-textMuted">
+                {typeTotal.toLocaleString()} total
+              </div>
+            </div>
+
+            <div className="mt-4 h-7 rounded-lg bg-app-hoverBg overflow-hidden flex border border-app-border/60">
+              {typeMix.map((item) => (
+                item.value > 0 && (
+                  <div
+                    key={item.label}
+                    className={`${item.color} h-full flex items-center justify-center min-w-[3px]`}
+                    style={{ width: `${item.percent}%` }}
+                    title={`${item.label}: ${item.value.toLocaleString()} (${Math.round(item.percent)}%)`}
+                  >
+                    {item.percent >= 16 && (
+                      <span className="text-[10px] font-bold text-white/95 drop-shadow-sm">
+                        {item.label}
+                      </span>
+                    )}
+                  </div>
+                )
+              ))}
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {typeMix.map((item) => (
+                <div key={item.label} className="flex items-center justify-between gap-3 rounded-lg border border-app-border/60 bg-app-base/35 px-3 py-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`h-2.5 w-2.5 rounded-full ${item.color} shrink-0`} />
+                    <span className="text-xs font-semibold text-app-textBright truncate">{item.label}</span>
+                  </div>
+                  <div className="text-[11px] font-mono text-app-textMuted shrink-0">
+                    <span className={item.textColor}>{item.value.toLocaleString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       );
@@ -1262,11 +1386,7 @@ export default function App() {
   }, [currentFileObj]);
 
   const themeClass = theme === 'dark' ? 'theme-dark' : `theme-${theme}`;
-  const activeLogoUrl = safeHttpUrl(
-    theme === 'light' ? config.logoUrlLight || config.logoUrl
-    : theme === 'cyberpunk' ? config.logoUrlCyberpunk || config.logoUrl
-    : config.logoUrlDark || config.logoUrl
-  );
+  const activeLogoUrl = getActiveLogoUrl(config, theme);
   const safeBackToUrl = safeHttpUrl(config.backToUrl);
 
   if (!loading && (!schema.file || schema.file.length === 0)) {
@@ -1275,12 +1395,15 @@ export default function App() {
         <UploadZone
           onFilesUploaded={handleFilesUploaded}
           onConnectReflection={handleConnectReflection}
+          onLoadBsr={handleLoadBsr}
           onLoadDemo={handleLoadDemo}
           loading={loading}
           error={error}
           theme={theme}
           setTheme={setTheme}
+          logoUrl={activeLogoUrl}
           isDesktop={isDesktop}
+          canLoadBsr={isDesktop || config.proxy === true}
         />
         {isDragging && (
           <div className="fixed inset-0 bg-app-base/80 backdrop-blur-md z-50 flex flex-col items-center justify-center border-4 border-dashed border-app-accent pointer-events-none">
@@ -1380,14 +1503,14 @@ export default function App() {
             {isDesktop && (
               <button
                 type="button"
-                onClick={handleResetSchema}
+                onClick={handleOpenSchemaLoader}
                 className="text-app-textMuted hover:text-app-textBright p-1.5 rounded-lg hover:bg-app-hoverBg cursor-pointer transition-colors flex items-center gap-1.5 text-xs font-semibold shrink-0 border border-app-border/40"
                 title="Load a different protobuf descriptor or connection"
               >
                 <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.25">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                 </svg>
-                <span>Upload Schema</span>
+                <span>Load Schema</span>
               </button>
             )}
             {activeFile && (
@@ -1813,6 +1936,25 @@ export default function App() {
             theme={theme}
           />
         </Suspense>
+
+        {isSchemaLoaderOpen && (
+          <div className="fixed inset-0 z-[100] bg-app-base/85 backdrop-blur-md">
+            <UploadZone
+              onFilesUploaded={handleFilesUploaded}
+              onConnectReflection={handleConnectReflection}
+              onLoadBsr={handleLoadBsr}
+              onLoadDemo={handleLoadDemo}
+              loading={loading}
+              error={error}
+              theme={theme}
+              setTheme={setTheme}
+              logoUrl={activeLogoUrl}
+              isDesktop={isDesktop}
+              canLoadBsr={isDesktop || config.proxy === true}
+              onClose={handleCloseSchemaLoader}
+            />
+          </div>
+        )}
 
         {/* Reference Panel Drawer */}
         <Suspense fallback={null}>

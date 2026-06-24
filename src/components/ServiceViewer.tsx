@@ -9,6 +9,8 @@ import { isProxyEnabled } from '../lib/proxy';
 import KeywordLink from './KeywordLink';
 import { cleanComment } from '../lib/proto-reconstructor';
 
+const DEFAULT_LOCAL_ENDPOINT_URL = 'http://localhost:6660';
+
 interface ServiceViewerProps {
   service: any;
   file: any;
@@ -293,31 +295,38 @@ function RpcMethodTester({
       }
     }
     if (list.length === 0) {
-      const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080';
-      addUrl(currentOrigin);
+      addUrl(DEFAULT_LOCAL_ENDPOINT_URL);
     }
     return list;
   }, [config, packageName, serviceName]);
 
   const showCustomLocal = useMemo(() => {
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080';
-    return options.length === 1 && options[0] === currentOrigin;
+    return options.length === 1 && options[0] === DEFAULT_LOCAL_ENDPOINT_URL;
   }, [options]);
+  const showCustomEndpoint = hasProxy || showCustomLocal;
 
   const [endpointUrl, setEndpointUrl] = useState(() => {
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080';
-    return options[0] || currentOrigin;
+    return options[0] || DEFAULT_LOCAL_ENDPOINT_URL;
   });
   const [isCustomLocal, setIsCustomLocal] = useState(false);
 
   useEffect(() => {
-    if (isCustomLocal && !showCustomLocal) {
+    if (isCustomLocal && !showCustomEndpoint) {
       setIsCustomLocal(false);
       setEndpointUrl(options[0]);
     } else if (!isCustomLocal && !options.includes(endpointUrl)) {
       setEndpointUrl(options[0]);
     }
-  }, [options, endpointUrl, isCustomLocal, showCustomLocal]);
+  }, [options, endpointUrl, isCustomLocal, showCustomEndpoint]);
+
+  const isHttpEndpointUrl = (urlStr: string) => {
+    try {
+      const parsed = new URL(urlStr);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
 
   const isLocalUrl = (urlStr: string) => {
     try {
@@ -331,14 +340,17 @@ function RpcMethodTester({
   };
 
   const isValidEndpoint = useMemo(() => {
-    if (isCustomLocal && showCustomLocal) {
+    if (hasProxy) {
+      return isHttpEndpointUrl(endpointUrl);
+    }
+    if (isCustomLocal && showCustomEndpoint) {
       return isLocalUrl(endpointUrl);
     }
     if (options.includes(endpointUrl)) {
       return true;
     }
     return isLocalUrl(endpointUrl);
-  }, [endpointUrl, options, isCustomLocal, showCustomLocal]);
+  }, [endpointUrl, options, isCustomLocal, showCustomEndpoint, hasProxy]);
   const [protocol, setProtocol] = useState<'connect' | 'grpc-web' | 'grpc'>(() => {
     if (protocolsToShow.includes('connect')) return 'connect';
     return protocolsToShow[0] || 'connect';
@@ -570,50 +582,54 @@ function RpcMethodTester({
                   </span>
                 )}
               </div>
-              <div className="flex flex-col gap-1.5">
-                <div className="flex gap-2">
-                  <select
-                    className="bg-app-base border border-app-border rounded px-2 py-1 text-app-textBright outline-none focus:border-app-accent font-sans text-xs flex-1"
-                    value={isCustomLocal && showCustomLocal ? "custom-local" : (options.includes(endpointUrl) ? endpointUrl : options[0])}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === "custom-local") {
-                        setIsCustomLocal(true);
-                        const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080';
-                        if (isLocalUrl(currentOrigin)) {
-                          setEndpointUrl(currentOrigin);
-                        } else {
-                          setEndpointUrl("http://localhost:8080");
-                        }
+              <div className="flex flex-col gap-2">
+                <select
+                  className="bg-app-base border border-app-border rounded px-2 py-1.5 text-app-textBright outline-none focus:border-app-accent font-sans text-xs w-full"
+                  value={isCustomLocal && showCustomEndpoint ? "custom-local" : (options.includes(endpointUrl) ? endpointUrl : options[0])}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "custom-local") {
+                      setIsCustomLocal(true);
+                      if (isHttpEndpointUrl(endpointUrl)) {
+                        setEndpointUrl(endpointUrl);
                       } else {
-                        setIsCustomLocal(false);
-                        setEndpointUrl(val);
+                        setEndpointUrl(DEFAULT_LOCAL_ENDPOINT_URL);
                       }
-                    }}
-                  >
-                    {options.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                    {showCustomLocal && (
-                      <option value="custom-local">Custom Local (127.0.0.1 / localhost)...</option>
-                    )}
-                  </select>
+                    } else {
+                      setIsCustomLocal(false);
+                      setEndpointUrl(val);
+                    }
+                  }}
+                >
+                  {options.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                  {showCustomEndpoint && (
+                    <option value="custom-local">{hasProxy ? 'Custom endpoint...' : 'Local endpoint...'}</option>
+                  )}
+                </select>
 
-                  {(isCustomLocal && showCustomLocal) && (
+                {(isCustomLocal && showCustomEndpoint) && (
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[10px] text-app-textMuted uppercase font-bold">
+                      {hasProxy ? 'Custom Endpoint URL' : 'Local Endpoint URL'}
+                    </span>
                     <input
                       type="text"
-                      placeholder="http://localhost:8080"
-                      className="bg-app-base border border-app-border rounded px-2 py-1 text-app-textBright outline-none focus:border-app-accent font-mono text-xs w-48"
+                      placeholder={hasProxy ? 'https://api.example.com' : DEFAULT_LOCAL_ENDPOINT_URL}
+                      className="bg-app-base border border-app-border rounded px-2 py-1.5 text-app-textBright outline-none focus:border-app-accent font-mono text-xs w-full"
                       value={endpointUrl}
                       onChange={(e) => setEndpointUrl(e.target.value)}
                     />
-                  )}
-                </div>
+                  </label>
+                )}
                 {!isValidEndpoint && (
                   <div className="text-[10px] text-red-400 font-semibold select-none leading-normal">
-                    Error: Only configured endpoints or local (127.0.0.1 / localhost) URLs are allowed.
+                    {hasProxy
+                      ? 'Error: Enter a valid http:// or https:// endpoint URL.'
+                      : 'Error: Only configured endpoints or local (127.0.0.1 / localhost) URLs are allowed.'}
                   </div>
                 )}
               </div>

@@ -24,11 +24,22 @@ export default function Minimap({ contentRef, activeFile, schema, theme }: Minim
   const [currentScale, setCurrentScale] = useState<number>(1);
   const [currentMinimapScrollY, setCurrentMinimapScrollY] = useState<number>(0);
   const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [hasOverflow, setHasOverflow] = useState<boolean>(false);
+
+  const updateOverflowState = useCallback(() => {
+    const content = contentRef.current;
+    if (!content) {
+      setHasOverflow(false);
+      return;
+    }
+    setHasOverflow(content.scrollHeight > content.clientHeight + 24);
+  }, [contentRef]);
 
   // Re-cache content elements when file or schema changes
   const updateElementsCache = useCallback(() => {
     const content = contentRef.current;
     if (!content) return;
+    updateOverflowState();
 
     const contentRect = content.getBoundingClientRect();
     const elementsList: CachedElement[] = [];
@@ -65,7 +76,7 @@ export default function Minimap({ contentRef, activeFile, schema, theme }: Minim
     });
 
     setCachedElements(elementsList);
-  }, [contentRef]);
+  }, [contentRef, updateOverflowState]);
 
   // Draw loop
   const draw = useCallback(() => {
@@ -251,10 +262,12 @@ export default function Minimap({ contentRef, activeFile, schema, theme }: Minim
     }
 
     const handleScroll = () => {
+      updateOverflowState();
       drawRef.current();
     };
 
     const handleResize = () => {
+      updateOverflowState();
       updateElementsCache();
     };
 
@@ -271,7 +284,7 @@ export default function Minimap({ contentRef, activeFile, schema, theme }: Minim
       content.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
     };
-  }, [contentRef, activeFile, schema, updateElementsCache]);
+  }, [contentRef, activeFile, schema, updateElementsCache, updateOverflowState]);
 
   // Redraw when draw callback changes (or any of its dependencies do)
   useEffect(() => {
@@ -314,6 +327,10 @@ export default function Minimap({ contentRef, activeFile, schema, theme }: Minim
       window.removeEventListener('touchend', handleTouchEnd);
     };
   }, [isDragging]);
+
+  if (!hasOverflow) {
+    return null;
+  }
 
   return (
     <div

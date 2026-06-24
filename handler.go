@@ -1,8 +1,10 @@
 package protodocs
 
 import (
+	"context"
 	"embed"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -12,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -31,6 +34,12 @@ var upgrader = websocket.Upgrader{
 		return true
 	},
 }
+
+var (
+	bsrHostPattern = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$`)
+	bsrPartPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$`)
+	bsrRefPattern  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$`)
+)
 
 //go:embed dist/*
 var embeddedFiles embed.FS
@@ -361,6 +370,195 @@ func doValidatedProxyRequest(httpClient *http.Client, proxyReq *http.Request) (*
 	// lgtm[go/request-forgery] Proxy targets are parsed, normalized, and checked against the proxy policy before this helper is called.
 	// codeql[go/request-forgery] Proxy targets are parsed, normalized, and checked against the proxy policy before this helper is called.
 	return httpClient.Do(proxyReq)
+}
+
+type bsrDescriptorRequest struct {
+	Modules []bsrModuleRequest `json:"modules"`
+	Token   string             `json:"token"`
+}
+
+type bsrModuleRequest struct {
+	Module     string `json:"module"`
+	Ref        string `json:"ref"`
+	SourceInfo bool   `json:"sourceInfo"`
+}
+
+// BSRModule identifies a Buf Schema Registry module descriptor to load.
+type BSRModule struct {
+	Module     string
+	Ref        string
+	SourceInfo bool
+}
+
+type bsrModuleRef struct {
+	Host   string
+	Owner  string
+	Module string
+	Ref    string
+}
+
+func parseBSRModuleRef(moduleRef string, refOverride string) (bsrModuleRef, error) {
+	moduleRef = strings.TrimSpace(moduleRef)
+	refOverride = strings.TrimSpace(refOverride)
+	if moduleRef == "" {
+		return bsrModuleRef{}, fmt.Errorf("module is required")
+	}
+	if strings.Contains(moduleRef, "://") {
+		return bsrModuleRef{}, fmt.Errorf("module must be a BSR module reference, not a URL")
+	}
+
+	modulePart := moduleRef
+	ref := refOverride
+	if before, after, found := strings.Cut(moduleRef, ":"); found {
+		modulePart = before
+		if ref == "" {
+			ref = after
+		}
+	}
+	if ref == "" {
+		ref = "main"
+	}
+
+	parts := strings.Split(modulePart, "/")
+	if len(parts) != 3 {
+		return bsrModuleRef{}, fmt.Errorf("module must use host/owner/repository format")
+	}
+	if !bsrHostPattern.MatchString(parts[0]) || strings.Contains(parts[0], "..") {
+		return bsrModuleRef{}, fmt.Errorf("invalid BSR host")
+	}
+	if net.ParseIP(parts[0]) != nil || strings.EqualFold(parts[0], "localhost") {
+		return bsrModuleRef{}, fmt.Errorf("invalid BSR host")
+	}
+	if !bsrPartPattern.MatchString(parts[1]) {
+		return bsrModuleRef{}, fmt.Errorf("invalid BSR owner")
+	}
+	if !bsrPartPattern.MatchString(parts[2]) {
+		return bsrModuleRef{}, fmt.Errorf("invalid BSR repository")
+	}
+	if !bsrRefPattern.MatchString(ref) {
+		return bsrModuleRef{}, fmt.Errorf("invalid BSR reference")
+	}
+
+	return bsrModuleRef{
+		Host:   strings.ToLower(parts[0]),
+		Owner:  parts[1],
+		Module: parts[2],
+		Ref:    ref,
+	}, nil
+}
+
+func tokenForBSRHost(rawToken string, host string) string {
+	rawToken = strings.TrimSpace(rawToken)
+	if rawToken == "" {
+		return ""
+	}
+	if !strings.Contains(rawToken, ",") && !strings.Contains(rawToken, "@") {
+		return rawToken
+	}
+	for _, tokenEntry := range strings.Split(rawToken, ",") {
+		tokenEntry = strings.TrimSpace(tokenEntry)
+		if tokenEntry == "" {
+			continue
+		}
+		token, tokenHost, found := strings.Cut(tokenEntry, "@")
+		if !found {
+			if !strings.Contains(rawToken, ",") {
+				return tokenEntry
+			}
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(tokenHost), host) {
+			return strings.TrimSpace(token)
+		}
+	}
+	return ""
+}
+
+func (m bsrModuleRef) descriptorURL(sourceInfo bool) string {
+	u := url.URL{
+		Scheme: "https",
+		Host:   m.Host,
+		Path:   fmt.Sprintf("/%s/%s/descriptor/%s", m.Owner, m.Module, m.Ref),
+	}
+	if sourceInfo {
+		q := u.Query()
+		q.Set("source_info", "true")
+		u.RawQuery = q.Encode()
+	}
+	return u.String()
+}
+
+func bsrHTTPClient(client *http.Client, host string) *http.Client {
+	if client == nil {
+		client = http.DefaultClient
+	}
+	nextClient := *client
+	previousRedirectPolicy := nextClient.CheckRedirect
+	nextClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if req.URL.Scheme != "https" || !strings.EqualFold(req.URL.Hostname(), host) {
+			return fmt.Errorf("BSR redirect to a different host is not allowed")
+		}
+		if previousRedirectPolicy != nil {
+			return previousRedirectPolicy(req, via)
+		}
+		if len(via) >= 10 {
+			return fmt.Errorf("stopped after 10 redirects")
+		}
+		return nil
+	}
+	return &nextClient
+}
+
+func fetchBSRDescriptor(ctx context.Context, client *http.Client, module bsrModuleRef, token string, sourceInfo bool) (*descriptorpb.FileDescriptorSet, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, module.descriptorURL(sourceInfo), nil)
+	if err != nil {
+		return nil, err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	// lgtm[go/request-forgery] BSR descriptor URLs are constructed from validated host/owner/module/ref components.
+	// codeql[go/request-forgery] BSR descriptor URLs are constructed from validated host/owner/module/ref components.
+	resp, err := bsrHTTPClient(client, module.Host).Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("BSR returned HTTP %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	fds := &descriptorpb.FileDescriptorSet{}
+	if err := proto.Unmarshal(body, fds); err != nil {
+		return nil, fmt.Errorf("failed to parse BSR descriptor response: %w", err)
+	}
+	return fds, nil
+}
+
+// FetchBSRDescriptors downloads and merges binary FileDescriptorSets from the Buf Schema Registry.
+func FetchBSRDescriptors(ctx context.Context, client *http.Client, modules []BSRModule, token string) (*descriptorpb.FileDescriptorSet, error) {
+	if client == nil {
+		client = http.DefaultClient
+	}
+	mergedSet := &descriptorpb.FileDescriptorSet{}
+	for _, requestedModule := range modules {
+		module, err := parseBSRModuleRef(requestedModule.Module, requestedModule.Ref)
+		if err != nil {
+			return nil, err
+		}
+		fds, err := fetchBSRDescriptor(ctx, client, module, tokenForBSRHost(token, module.Host), requestedModule.SourceInfo)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch BSR descriptor for %s/%s/%s:%s: %w", module.Host, module.Owner, module.Module, module.Ref, err)
+		}
+		mergedSet.File = append(mergedSet.File, fds.File...)
+	}
+	return mergedSet, nil
 }
 
 func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -897,6 +1095,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		h.proxyHandler.ServeWs(w, r)
 
+	case "/api/bsr/descriptor":
+		if !h.config.Proxy {
+			http.NotFound(w, r)
+			return
+		}
+		h.serveBSRDescriptor(w, r)
+
 	case "/config.yaml":
 		w.Header().Set("Content-Type", "application/yaml")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -949,4 +1154,64 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		r2.URL.Path = path
 		h.fileServer.ServeHTTP(w, r2)
 	}
+}
+
+func (h *Handler) serveBSRDescriptor(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req bsrDescriptorRequest
+	decoder := json.NewDecoder(io.LimitReader(r.Body, 64*1024))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
+		http.Error(w, fmt.Sprintf("invalid BSR request: %v", err), http.StatusBadRequest)
+		return
+	}
+	if len(req.Modules) == 0 {
+		http.Error(w, "at least one BSR module is required", http.StatusBadRequest)
+		return
+	}
+	if len(req.Modules) > 10 {
+		http.Error(w, "too many BSR modules requested", http.StatusBadRequest)
+		return
+	}
+
+	token := strings.TrimSpace(req.Token)
+	if token == "" {
+		token = strings.TrimSpace(os.Getenv("BUF_TOKEN"))
+	}
+
+	mergedSet := &descriptorpb.FileDescriptorSet{}
+	for _, requestedModule := range req.Modules {
+		module, err := parseBSRModuleRef(requestedModule.Module, requestedModule.Ref)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("invalid BSR module: %v", err), http.StatusBadRequest)
+			return
+		}
+		fds, err := fetchBSRDescriptor(r.Context(), h.proxyHandler.client, module, tokenForBSRHost(token, module.Host), requestedModule.SourceInfo)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("failed to fetch BSR descriptor for %s/%s/%s:%s: %v", module.Host, module.Owner, module.Module, module.Ref, err), http.StatusBadGateway)
+			return
+		}
+		mergedSet.File = append(mergedSet.File, fds.File...)
+	}
+
+	descriptorBytes, err := proto.Marshal(mergedSet)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to marshal BSR descriptor set: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	_, _ = w.Write(descriptorBytes)
 }
