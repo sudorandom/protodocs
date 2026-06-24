@@ -98,18 +98,13 @@ export default function UploadZone({
         
         {/* Header */}
         <div className="text-center">
-          <div className="flex justify-center mb-3">
-            <div className="h-12 w-12 rounded-xl bg-app-accentBg border border-app-accent/50 flex items-center justify-center text-app-accent shadow-inner">
-              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.25">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.003 9.003 0 008.354-5.646 9.003 9.003 0 00-8.354-5.646 9.003 9.003 0 00-8.354 5.646 9.003 9.003 0 008.354 5.646z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 11V3m0 0L8.5 6.5M12 3l3.5 3.5" />
-              </svg>
-            </div>
+          <div className="flex justify-center">
+            <img
+              src="logo.png"
+              alt="ProtoDocs"
+              className="w-full max-w-md rounded-lg border border-app-border/70 bg-[#0f172a] object-contain shadow-xl"
+            />
           </div>
-          <h1 className="text-3xl font-extrabold text-app-textBright tracking-tight">ProtoDocs</h1>
-          <p className="text-sm text-app-textMuted mt-2 font-medium max-w-md mx-auto leading-relaxed">
-            Premium, zero-compile interactive documentation for Protocol Buffer schemas.
-          </p>
         </div>
 
         {/* Error Banner */}
