@@ -29,18 +29,92 @@ jobs:
     - name: Build CLI Binaries
       run: just build-cli
 
+    - name: Package CLI Archives
+      shell: bash
+      run: |
+        set -euo pipefail
+        rm -rf release cli-archives
+        mkdir -p release cli-archives
+        cp protodocs-static.tar.gz release/
+
+        for target in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64; do
+          mkdir -p "cli-archives/protodocs-cli-${target}"
+          cp "bin/protodocs-cli-${target}" "cli-archives/protodocs-cli-${target}/protodocs"
+          tar -czf "release/protodocs-cli-${target}.tar.gz" -C "cli-archives/protodocs-cli-${target}" protodocs
+        done
+
+        mkdir -p cli-archives/protodocs-cli-windows-amd64
+        cp bin/protodocs-cli-windows-amd64.exe cli-archives/protodocs-cli-windows-amd64/protodocs.exe
+        (cd cli-archives/protodocs-cli-windows-amd64 && zip -q "../../release/protodocs-cli-windows-amd64.zip" protodocs.exe)
+
+    - name: Generate Checksums
+      shell: bash
+      run: |
+        cd release
+        shasum -a 256 * > SHA256SUMS.txt
+
+    - name: Generate Homebrew Formula
+      shell: bash
+      run: |
+        set -euo pipefail
+        version="${GITHUB_REF_NAME#v}"
+        release_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
+        darwin_amd64_sha="$(shasum -a 256 release/protodocs-cli-darwin-amd64.tar.gz | awk '{print $1}')"
+        darwin_arm64_sha="$(shasum -a 256 release/protodocs-cli-darwin-arm64.tar.gz | awk '{print $1}')"
+        linux_amd64_sha="$(shasum -a 256 release/protodocs-cli-linux-amd64.tar.gz | awk '{print $1}')"
+        linux_arm64_sha="$(shasum -a 256 release/protodocs-cli-linux-arm64.tar.gz | awk '{print $1}')"
+
+        cat > release/protodocs.rb <<EOF
+        class Protodocs < Formula
+          desc "Interactive documentation explorer for Protocol Buffer schemas"
+          homepage "https://github.com/${GITHUB_REPOSITORY}"
+          version "${version}"
+
+          on_macos do
+            if Hardware::CPU.arm?
+              url "${release_url}/protodocs-cli-darwin-arm64.tar.gz"
+              sha256 "${darwin_arm64_sha}"
+            else
+              url "${release_url}/protodocs-cli-darwin-amd64.tar.gz"
+              sha256 "${darwin_amd64_sha}"
+            end
+          end
+
+          on_linux do
+            if Hardware::CPU.arm?
+              url "${release_url}/protodocs-cli-linux-arm64.tar.gz"
+              sha256 "${linux_arm64_sha}"
+            else
+              url "${release_url}/protodocs-cli-linux-amd64.tar.gz"
+              sha256 "${linux_amd64_sha}"
+            end
+          end
+
+          def install
+            bin.install "protodocs"
+          end
+
+          test do
+            assert_match "Usage", shell_output("#{bin}/protodocs --help")
+          end
+        end
+        EOF
+
     - name: Upload Static Package Artifact
       uses: actions/upload-artifact@v4
       with:
         name: protodocs-static-package
-        path: protodocs-static.tar.gz
+        path: release/protodocs-static.tar.gz
         if-no-files-found: error
 
     - name: Upload CLI Binaries Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: protodocs-cli-binaries
-        path: bin/*
+        name: protodocs-cli-archives
+        path: |
+          release/protodocs-cli-*
+          release/SHA256SUMS.txt
+          release/protodocs.rb
         if-no-files-found: error
 
     - name: Set up QEMU
@@ -73,8 +147,10 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: |
-          protodocs-static.tar.gz
-          bin/*
+          release/protodocs-static.tar.gz
+          release/protodocs-cli-*
+          release/SHA256SUMS.txt
+          release/protodocs.rb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -86,13 +162,13 @@ jobs:
         include:
           - os: macos-latest
             platform: darwin/universal
-            artifact_name: ProtoDocs-macOS-universal.zip
+            artifact_name: protodocs-desktop-darwin-universal.zip
           - os: windows-latest
             platform: windows/amd64
-            artifact_name: ProtoDocs-Windows-amd64.zip
+            artifact_name: protodocs-desktop-windows-amd64.zip
           - os: ubuntu-latest
             platform: linux/amd64
-            artifact_name: ProtoDocs-Linux-amd64.tar.gz
+            artifact_name: protodocs-desktop-linux-amd64.tar.gz
             build_tags: webkit2_41
     permissions:
       contents: write
