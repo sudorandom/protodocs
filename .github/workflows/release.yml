@@ -98,6 +98,8 @@ jobs:
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
+        body_path: .github/RELEASE_TEMPLATE.md
+        append_body: true
         files: |
           release/protodocs-static.tar.gz
           release/protodocs-cli-*
@@ -183,6 +185,8 @@ jobs:
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
+        body_path: .github/RELEASE_TEMPLATE.md
+        append_body: true
         files: ${{ matrix.artifact_name }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
