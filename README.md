@@ -119,12 +119,6 @@ After launching the app, use the schema loader to:
 ### 2. Running with Go CLI
 You can download the pre-built `protodocs` binary for your platform from the [latest GitHub releases page](https://github.com/sudorandom/protodocs/releases/latest).
 
-On macOS or Linux, you can also install the latest release with Homebrew using the formula attached to each GitHub release:
-
-```sh
-brew install https://github.com/sudorandom/protodocs/releases/latest/download/protodocs.rb
-```
-
 Alternatively, you can run or install it directly using Go:
 
 ```sh

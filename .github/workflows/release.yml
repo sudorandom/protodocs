@@ -53,53 +53,6 @@ jobs:
         cd release
         shasum -a 256 * > SHA256SUMS.txt
 
-    - name: Generate Homebrew Formula
-      shell: bash
-      run: |
-        set -euo pipefail
-        version="${GITHUB_REF_NAME#v}"
-        release_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
-        darwin_amd64_sha="$(shasum -a 256 release/protodocs-cli-darwin-amd64.tar.gz | awk '{print $1}')"
-        darwin_arm64_sha="$(shasum -a 256 release/protodocs-cli-darwin-arm64.tar.gz | awk '{print $1}')"
-        linux_amd64_sha="$(shasum -a 256 release/protodocs-cli-linux-amd64.tar.gz | awk '{print $1}')"
-        linux_arm64_sha="$(shasum -a 256 release/protodocs-cli-linux-arm64.tar.gz | awk '{print $1}')"
-
-        cat > release/protodocs.rb <<EOF
-        class Protodocs < Formula
-          desc "Interactive documentation explorer for Protocol Buffer schemas"
-          homepage "https://github.com/${GITHUB_REPOSITORY}"
-          version "${version}"
-
-          on_macos do
-            if Hardware::CPU.arm?
-              url "${release_url}/protodocs-cli-darwin-arm64.tar.gz"
-              sha256 "${darwin_arm64_sha}"
-            else
-              url "${release_url}/protodocs-cli-darwin-amd64.tar.gz"
-              sha256 "${darwin_amd64_sha}"
-            end
-          end
-
-          on_linux do
-            if Hardware::CPU.arm?
-              url "${release_url}/protodocs-cli-linux-arm64.tar.gz"
-              sha256 "${linux_arm64_sha}"
-            else
-              url "${release_url}/protodocs-cli-linux-amd64.tar.gz"
-              sha256 "${linux_amd64_sha}"
-            end
-          end
-
-          def install
-            bin.install "protodocs"
-          end
-
-          test do
-            assert_match "Usage", shell_output("#{bin}/protodocs --help")
-          end
-        end
-        EOF
-
     - name: Upload Static Package Artifact
       uses: actions/upload-artifact@v4
       with:
@@ -114,7 +67,6 @@ jobs:
         path: |
           release/protodocs-cli-*
           release/SHA256SUMS.txt
-          release/protodocs.rb
         if-no-files-found: error
 
     - name: Set up QEMU
@@ -150,7 +102,6 @@ jobs:
           release/protodocs-static.tar.gz
           release/protodocs-cli-*
           release/SHA256SUMS.txt
-          release/protodocs.rb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
