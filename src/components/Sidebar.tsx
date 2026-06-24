@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { safeHttpUrl } from '../lib/safe-url';
 
 interface SidebarProps {
   logoUrl: string;
@@ -80,6 +81,7 @@ export default function Sidebar({
   highlightedFiles,
 }: SidebarProps) {
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
+  const safeLogoUrl = safeHttpUrl(logoUrl);
 
   // Close theme dropdown when clicking anywhere outside of it
   useEffect(() => {
@@ -164,8 +166,8 @@ export default function Sidebar({
           }}
           className="flex items-center gap-2 truncate cursor-pointer hover:opacity-85 transition-opacity"
         >
-          {logoUrl ? (
-            <img src={logoUrl} alt="Logo" className="max-h-8 object-contain" />
+          {safeLogoUrl ? (
+            <img src={safeLogoUrl} alt="Logo" className="max-h-8 object-contain" />
           ) : (
             <div className="flex items-center gap-2 select-none">
               {/* Default Theme-Adaptive Logo SVG Icon */}

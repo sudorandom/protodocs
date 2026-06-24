@@ -130,9 +130,9 @@ export async function loadDescriptorsFromUrls(urls: string[]): Promise<UnifiedSc
         fileDescriptorsMap.set(fd.name, fd);
       }
     } catch (err) {
-      console.error(`Error loading descriptor file from ${url}:`, err);
+      console.error('Error loading descriptor file from:', url, err);
       if (url.includes('wellknowntypes.binpb')) {
-        console.warn(`Non-fatal warning: Failed to load well-known types from ${url}. Continuing...`);
+        console.warn('Non-fatal warning: Failed to load well-known types from descriptor URL. Continuing.', url);
       } else {
         throw err;
       }
@@ -209,4 +209,3 @@ export async function loadDescriptorsFromBytesList(buffers: Uint8Array[]): Promi
 
   return { file: fileList };
 }
-

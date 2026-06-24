@@ -322,6 +322,7 @@ func TestProxySecurityPolicies(t *testing.T) {
 	}
 
 	handler, err := NewHandler(Config{
+		Proxy:     true,
 		ServerURL: "http://default-endpoint.com",
 		ServiceEndpoints: map[string][]string{
 			"connectrpc.eliza.v1.ElizaService": {
@@ -442,6 +443,7 @@ func TestServeWs_Bidi(t *testing.T) {
 
 	// 2. Setup the proxy handler allowing loopback
 	handler, err := NewHandler(Config{
+		Proxy:    true,
 		Registry: &protoregistry.Files{},
 	})
 	if err != nil {
@@ -557,6 +559,7 @@ func TestNewHandler_InvalidConfig(t *testing.T) {
 
 func TestProxyWildcardSecurityPolicy(t *testing.T) {
 	handler, err := NewHandler(Config{
+		Proxy:             true,
 		ProxyAllowedHosts: []string{"*"},
 	})
 	if err != nil {

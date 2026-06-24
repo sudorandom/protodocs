@@ -186,7 +186,7 @@ func NewProxyHandler(allowedHosts []string, registry *protoregistry.Files, descr
 
 func (p *ProxyHandler) isHostAllowed(targetHost string) bool {
 	if len(p.allowedProxyHosts) == 0 {
-		return true
+		return false
 	}
 	hostname := targetHost
 	if h, _, err := net.SplitHostPort(targetHost); err == nil {
@@ -205,6 +205,29 @@ func (p *ProxyHandler) isHostAllowed(targetHost string) bool {
 		}
 	}
 	return false
+}
+
+func normalizeProxyTarget(rawTarget string) (*url.URL, string, error) {
+	targetURL, err := url.Parse(rawTarget)
+	if err != nil {
+		return nil, "", fmt.Errorf("invalid URL: %w", err)
+	}
+	if !targetURL.IsAbs() || targetURL.Host == "" {
+		return nil, "", fmt.Errorf("target URL must be absolute")
+	}
+	if targetURL.Scheme != "http" && targetURL.Scheme != "https" {
+		return nil, "", fmt.Errorf("target URL scheme must be http or https")
+	}
+	if targetURL.User != nil {
+		return nil, "", fmt.Errorf("target URL must not include credentials")
+	}
+	if targetURL.Fragment != "" {
+		return nil, "", fmt.Errorf("target URL must not include a fragment")
+	}
+	if targetURL.Hostname() == "" {
+		return nil, "", fmt.Errorf("target URL host is required")
+	}
+	return targetURL, targetURL.String(), nil
 }
 
 func parseServiceAndMethod(path string) (string, string, bool) {
@@ -300,7 +323,7 @@ func (p *ProxyHandler) isTargetAllowed(targetURL *url.URL, requestHost string) b
 		if len(p.allowedProxyHosts) > 0 {
 			return p.isHostAllowed(targetURL.Host)
 		}
-		return true
+		return false
 	}
 
 	for _, expectedEndpointStr := range expectedEndpoints {
@@ -346,7 +369,7 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	targetURL, err := url.Parse(targetURLStr)
+	targetURL, normalizedTargetURL, err := normalizeProxyTarget(targetURLStr)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Invalid X-Target-Url: %v", err), http.StatusBadRequest)
 		return
@@ -358,7 +381,7 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create request copy
-	proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, targetURLStr, r.Body)
+	proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, normalizedTargetURL, r.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create request: %v", err), http.StatusInternalServerError)
 		return
@@ -514,7 +537,7 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	targetURL, err := url.Parse(initMsg.URL)
+	targetURL, normalizedTargetURL, err := normalizeProxyTarget(initMsg.URL)
 	if err != nil {
 		_ = c.WriteJSON(map[string]interface{}{"status": 400, "error": "invalid URL"})
 		return
@@ -527,7 +550,7 @@ func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
 
 	pr, pw := io.Pipe()
 
-	proxyReq, err := http.NewRequestWithContext(r.Context(), http.MethodPost, initMsg.URL, pr)
+	proxyReq, err := http.NewRequestWithContext(r.Context(), http.MethodPost, normalizedTargetURL, pr)
 	if err != nil {
 		_ = c.WriteJSON(map[string]interface{}{"status": 500, "error": err.Error()})
 		return
@@ -850,9 +873,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"status":"ok","proxy":true,"version":"1.0.0"}`))
 
 	case "/api/proxy":
+		if !h.config.Proxy {
+			http.NotFound(w, r)
+			return
+		}
 		h.proxyHandler.ServeHTTP(w, r)
 
 	case "/api/proxy/ws":
+		if !h.config.Proxy {
+			http.NotFound(w, r)
+			return
+		}
 		h.proxyHandler.ServeWs(w, r)
 
 	case "/config.yaml":

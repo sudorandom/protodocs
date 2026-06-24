@@ -15,6 +15,7 @@ import { populateTypeIndexWithOptions, normalizeFileDescriptor } from './lib/opt
 import { reconstructProto, getEditionString, cleanComment } from './lib/proto-reconstructor';
 import KeywordLink from './components/KeywordLink';
 import { ConfigSchema } from './gen/protodocs/v1/config_pb';
+import { safeHttpUrl } from './lib/safe-url';
 
 const Sidebar = lazy(() => import('./components/Sidebar'));
 const Tooltip = lazy(() => import('./components/Tooltip'));
@@ -423,7 +424,7 @@ export default function App() {
   };
 
   // Load the schema based on configured method
-  const loadSchema = async (targetConfig: AppConfig) => {
+  const loadSchema = useCallback(async (targetConfig: AppConfig) => {
     setLoading(true);
     setError(null);
     try {
@@ -482,7 +483,7 @@ export default function App() {
       setLoading(false);
       document.body.classList.remove('loading');
     }
-  };
+  }, []);
 
   const handleFilesUploaded = useCallback(async (files: File[]) => {
     setLoading(true);
@@ -527,7 +528,7 @@ export default function App() {
     };
     setConfig(newConfig);
     await loadSchema(newConfig);
-  }, [config]);
+  }, [config, loadSchema]);
 
   const handleLoadDemo = useCallback(async () => {
     const demoConfig: AppConfig = {
@@ -537,7 +538,7 @@ export default function App() {
     };
     setConfig(demoConfig);
     await loadSchema(demoConfig);
-  }, [config]);
+  }, [config, loadSchema]);
 
   const handleResetSchema = useCallback(() => {
     setSchema({ file: [] });
@@ -816,7 +817,7 @@ export default function App() {
     };
 
     initializeConfig();
-  }, []);
+  }, [loadAssociatedFile, loadSchema]);
 
   // Listen to hash change for back/forward browser navigation
   useEffect(() => {
@@ -1261,10 +1262,12 @@ export default function App() {
   }, [currentFileObj]);
 
   const themeClass = theme === 'dark' ? 'theme-dark' : `theme-${theme}`;
-  const activeLogoUrl =
+  const activeLogoUrl = safeHttpUrl(
     theme === 'light' ? config.logoUrlLight || config.logoUrl
     : theme === 'cyberpunk' ? config.logoUrlCyberpunk || config.logoUrl
-    : config.logoUrlDark || config.logoUrl;
+    : config.logoUrlDark || config.logoUrl
+  );
+  const safeBackToUrl = safeHttpUrl(config.backToUrl);
 
   if (!loading && (!schema.file || schema.file.length === 0)) {
     return (
@@ -1346,9 +1349,10 @@ export default function App() {
               </svg>
             </button>
 
-            {config.backToUrl && (
+            {safeBackToUrl && (
               <a
-                href={config.backToUrl}
+                href={safeBackToUrl}
+                rel="noopener noreferrer"
                 className="flex items-center gap-1 text-app-textMuted hover:text-app-textBright hover:bg-app-hoverBg px-2.5 py-1.5 rounded-lg font-sans text-sm font-semibold transition-colors shrink-0 mr-2 border border-app-border/40"
                 title={config.backToText || 'Back'}
               >
