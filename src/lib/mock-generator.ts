@@ -9,24 +9,9 @@ export function generateMockJson(
   }
   visited.add(typeName);
 
-  // Well-Known Type overrides
-  if (typeName === '.google.protobuf.Timestamp') {
-    return new Date().toISOString();
-  }
-  if (typeName === '.google.protobuf.Duration') {
-    return "3.000s";
-  }
-  if (typeName === '.google.protobuf.Empty') {
-    return {};
-  }
-  if (typeName === '.google.protobuf.Struct') {
-    return { "example_key": "example_value" };
-  }
-  if (typeName === '.google.protobuf.Value') {
-    return "example_value";
-  }
-  if (typeName === '.google.protobuf.ListValue') {
-    return ["value1", "value2"];
+  const wellKnownValue = getWellKnownTypeSample(typeName);
+  if (wellKnownValue !== undefined) {
+    return wellKnownValue;
   }
 
   const typeInfo = typeIndex[typeName];
@@ -99,4 +84,45 @@ export function generateMockJson(
   });
 
   return mock;
+}
+
+function getWellKnownTypeSample(typeName: string): any {
+  switch (typeName) {
+    case '.google.protobuf.Any':
+      return {
+        '@type': 'type.googleapis.com/google.protobuf.StringValue',
+        value: '',
+      };
+    case '.google.protobuf.Timestamp':
+      return '2024-01-01T00:00:00Z';
+    case '.google.protobuf.Duration':
+      return '3.000s';
+    case '.google.protobuf.FieldMask':
+      return 'name,displayName';
+    case '.google.protobuf.Empty':
+      return {};
+    case '.google.protobuf.Struct':
+      return { exampleKey: 'example_value' };
+    case '.google.protobuf.Value':
+      return 'example_value';
+    case '.google.protobuf.ListValue':
+      return ['value1', 'value2'];
+    case '.google.protobuf.DoubleValue':
+    case '.google.protobuf.FloatValue':
+      return 0;
+    case '.google.protobuf.Int64Value':
+    case '.google.protobuf.UInt64Value':
+      return '0';
+    case '.google.protobuf.Int32Value':
+    case '.google.protobuf.UInt32Value':
+      return 0;
+    case '.google.protobuf.BoolValue':
+      return false;
+    case '.google.protobuf.StringValue':
+      return '';
+    case '.google.protobuf.BytesValue':
+      return '';
+    default:
+      return undefined;
+  }
 }

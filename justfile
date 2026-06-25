@@ -20,7 +20,7 @@ desktop-dev:
 # Build the production native desktop application bundle
 desktop-build:
     node scripts/sync-version.mjs
-    cd desktop && go tool wails build
+    cd desktop && go tool wails build -ldflags="-s -w" -trimpath
 
 # Build the macOS DMG installer from a local desktop build
 desktop-dmg: desktop-build
