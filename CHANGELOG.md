@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/sudorandom/protodocs/compare/v0.1.1...v0.1.2) (2026-06-25)
+
+
+### Bug Fixes
+
+* support wkt when generating 'empty' json template ([1381f70](https://github.com/sudorandom/protodocs/commit/1381f7093e95ed044314c021c01b0823d979d46e))
+
 ## [0.1.1](https://github.com/sudorandom/protodocs/compare/v0.1.0...v0.1.1) (2026-06-24)
 
 
