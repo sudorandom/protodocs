@@ -109,7 +109,7 @@ type Config struct {
 
 // FrontPageSection defines one ordered front page block.
 type FrontPageSection struct {
-	// Type selects the section renderer: markdown, markdown-small, descriptor-stats-panel, or service-list-panel.
+	// Type selects the section renderer: markdown, markdown-small, deployment-diagram-panel, descriptor-stats-panel, type-reference-stats-panel, or service-list-panel.
 	Type string
 	// Markdown is used by markdown and markdown-small sections.
 	Markdown string

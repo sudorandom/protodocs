@@ -40,7 +40,9 @@ front_page_sections:
       Explore the core definitions of Protocol Buffers by visiting the [google/protobuf/descriptor.proto](/#/files/google/protobuf/descriptor.proto) file.
 
       *Select a file or service on the sidebar to explore the schema.*
+  - type: deployment-diagram-panel
   - type: descriptor-stats-panel
+  - type: type-reference-stats-panel
   - type: service-list-panel
   - type: markdown-small
     markdown: |

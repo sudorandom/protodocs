@@ -52,9 +52,52 @@ interface AppConfig {
 }
 
 interface FrontPageSectionConfig {
-  type: 'markdown' | 'markdown-small' | 'descriptor-stats-panel' | 'service-list-panel';
+  type:
+    | 'markdown'
+    | 'markdown-small'
+    | 'deployment-diagram-panel'
+    | 'descriptor-stats-panel'
+    | 'type-reference-stats-panel'
+    | 'service-list-panel';
   markdown?: string;
 }
+
+type TypeReferenceCategory = 'builtin' | 'wkt' | 'custom';
+
+interface TypeReferenceStat {
+  name: string;
+  fullName?: string;
+  count: number;
+  file?: string;
+}
+
+interface TypeReferenceStats {
+  builtin: TypeReferenceStat[];
+  wkt: TypeReferenceStat[];
+  custom: TypeReferenceStat[];
+  totals: Record<TypeReferenceCategory, number>;
+}
+
+const FIELD_TYPE_NAMES: Record<number, string> = {
+  1: 'double',
+  2: 'float',
+  3: 'int64',
+  4: 'uint64',
+  5: 'int32',
+  6: 'fixed64',
+  7: 'fixed32',
+  8: 'bool',
+  9: 'string',
+  10: 'group',
+  11: 'message',
+  12: 'bytes',
+  13: 'uint32',
+  14: 'enum',
+  15: 'sfixed32',
+  16: 'sfixed64',
+  17: 'sint32',
+  18: 'sint64',
+};
 
 const DEFAULT_CONFIG: AppConfig = {
   loadingMethod: 'http',
@@ -393,30 +436,103 @@ export default function App() {
       });
     } else {
       // Normal type reference search
+      const messageIndex = new Map<string, any>();
+      const addMessageToIndex = (message: any, parentFqn: string) => {
+        const messageFqn = `${parentFqn}${message.name}`;
+        messageIndex.set(messageFqn, message);
+        message.nestedType?.forEach((nested: any) => addMessageToIndex(nested, `${messageFqn}.`));
+      };
       schema.file.forEach((f) => {
         const msgFqnPrefix = f.package ? `.${f.package}.` : '.';
-        f.messageType?.forEach((m: any) => {
-          const msgFqn = msgFqnPrefix + m.name;
-          m.field?.forEach((field: any) => {
-            if (field.typeName === fqn) {
-              results.push({
-                path: f.name,
-                contextFqn: msgFqn,
-                text: `message ${m.name} { ... ${field.name} = ${field.number}; }`,
-              });
-            }
-          });
+        f.messageType?.forEach((m: any) => addMessageToIndex(m, msgFqnPrefix));
+      });
+
+      const getFieldTypeLabel = (field: any) => {
+        if (field.typeName) {
+          return field.typeName.split('.').pop() || field.typeName;
+        }
+        return FIELD_TYPE_NAMES[Number(field.type)] || 'unknown';
+      };
+
+      const addFieldReference = (fileName: string, contextFqn: string, messageName: string, field: any) => {
+        results.push({
+          path: fileName,
+          contextFqn,
+          text: `message ${messageName} { ... ${getFieldTypeLabel(field)} ${field.name} = ${field.number}; }`,
         });
+      };
+
+      const addExtensionReference = (fileName: string, contextFqn: string, field: any, matchKind: 'field' | 'extendee') => {
+        results.push({
+          path: fileName,
+          contextFqn,
+          text: matchKind === 'extendee'
+            ? `extend ${field.extendee?.split('.').pop() || field.extendee} { ... }`
+            : `extend ${field.extendee?.split('.').pop() || field.extendee || 'unknown'} { ... ${getFieldTypeLabel(field)} ${field.name} = ${field.number}; }`,
+        });
+      };
+
+      const checkFieldReference = (fileName: string, contextFqn: string, messageName: string, field: any) => {
+        if (field.typeName === fqn) {
+          addFieldReference(fileName, contextFqn, messageName, field);
+          return;
+        }
+
+        const referencedMessage = field.typeName ? messageIndex.get(field.typeName) : null;
+        if (referencedMessage?.options?.mapEntry || referencedMessage?.options?.map_entry) {
+          const keyField = referencedMessage.field?.find((mapField: any) => mapField.number === 1);
+          const valueField = referencedMessage.field?.find((mapField: any) => mapField.number === 2);
+          if (keyField?.typeName === fqn || valueField?.typeName === fqn) {
+            results.push({
+              path: fileName,
+              contextFqn,
+              text: `message ${messageName} { ... map<${getFieldTypeLabel(keyField)}, ${getFieldTypeLabel(valueField)}> ${field.name} = ${field.number}; }`,
+            });
+          }
+        }
+      };
+
+      const checkExtensionReference = (fileName: string, contextFqn: string, field: any) => {
+        if (field.typeName === fqn) {
+          addExtensionReference(fileName, contextFqn, field, 'field');
+        }
+        if (field.extendee === fqn) {
+          addExtensionReference(fileName, contextFqn, field, 'extendee');
+        }
+      };
+
+      const walkMessages = (fileName: string, messageList: any[] = [], parentFqn: string) => {
+        messageList.forEach((m: any) => {
+          const msgFqn = `${parentFqn}${m.name}`;
+          if (!(m.options?.mapEntry || m.options?.map_entry)) {
+            m.field?.forEach((field: any) => checkFieldReference(fileName, msgFqn, m.name, field));
+            m.extension?.forEach((field: any) => checkExtensionReference(fileName, msgFqn, field));
+          }
+          walkMessages(fileName, m.nestedType || [], `${msgFqn}.`);
+        });
+      };
+
+      schema.file.forEach((f) => {
+        const msgFqnPrefix = f.package ? `.${f.package}.` : '.';
+        walkMessages(f.name, f.messageType || [], msgFqnPrefix);
+        f.extension?.forEach((field: any) => checkExtensionReference(f.name, '', field));
         f.service?.forEach((s: any) => {
           const svcFqn = msgFqnPrefix + s.name;
           s.method?.forEach((method: any) => {
-            if (method.inputType === fqn || method.outputType === fqn) {
+            if (method.inputType === fqn) {
               const streamingText = method.clientStreaming ? 'stream ' : '';
+              results.push({
+                path: f.name,
+                contextFqn: svcFqn,
+                text: `rpc ${method.name}(${streamingText}${method.inputType.split('.').pop()}) returns (${method.serverStreaming ? 'stream ' : ''}${method.outputType.split('.').pop()}); // input`,
+              });
+            }
+            if (method.outputType === fqn) {
               const returnStreamingText = method.serverStreaming ? 'stream ' : '';
               results.push({
                 path: f.name,
                 contextFqn: svcFqn,
-                text: `rpc ${method.name}(${streamingText}${fqn.split('.').pop()}) returns (${returnStreamingText}${method.outputType.split('.').pop()});`,
+                text: `rpc ${method.name}(${method.clientStreaming ? 'stream ' : ''}${method.inputType.split('.').pop()}) returns (${returnStreamingText}${method.outputType.split('.').pop()}); // output`,
               });
             }
           });
@@ -782,7 +898,9 @@ export default function App() {
                 .filter((section) =>
                   section.type === 'markdown'
                   || section.type === 'markdown-small'
+                  || section.type === 'deployment-diagram-panel'
                   || section.type === 'descriptor-stats-panel'
+                  || section.type === 'type-reference-stats-panel'
                   || section.type === 'service-list-panel'
                 )
                 .map((section) => ({
@@ -1071,6 +1189,107 @@ export default function App() {
     };
   }, [schema]);
 
+  const typeReferenceStats = useMemo<TypeReferenceStats>(() => {
+    const counts: Record<TypeReferenceCategory, Map<string, TypeReferenceStat>> = {
+      builtin: new Map(),
+      wkt: new Map(),
+      custom: new Map(),
+    };
+    const messageIndex = new Map<string, { message: any; file: string }>();
+
+    const addMessageToIndex = (message: any, parentFqn: string, fileName: string) => {
+      const fqn = `${parentFqn}${message.name}`;
+      messageIndex.set(fqn, { message, file: fileName });
+      message.nestedType?.forEach((nested: any) => addMessageToIndex(nested, `${fqn}.`, fileName));
+    };
+
+    schema.file.forEach((file) => {
+      const pkgPrefix = file.package ? `.${file.package}.` : '.';
+      file.messageType?.forEach((message: any) => addMessageToIndex(message, pkgPrefix, file.name));
+    });
+
+    const increment = (category: TypeReferenceCategory, name: string, fullName?: string, file?: string) => {
+      const key = fullName || name;
+      const current = counts[category].get(key);
+      if (current) {
+        current.count++;
+        return;
+      }
+      counts[category].set(key, { name, fullName, count: 1, file });
+    };
+
+    const countNamedType = (typeName: string) => {
+      const shortName = typeName.split('.').pop() || typeName;
+      if (typeName.startsWith('.google.protobuf.')) {
+        increment('wkt', shortName, typeName, messageIndex.get(typeName)?.file);
+        return;
+      }
+      increment('custom', shortName, typeName, messageIndex.get(typeName)?.file || typeIndex[typeName]?.file);
+    };
+
+    const countFieldType = (field: any) => {
+      if (field.typeName) {
+        const referencedMessage = messageIndex.get(field.typeName)?.message;
+        if (referencedMessage?.options?.mapEntry || referencedMessage?.options?.map_entry) {
+          increment('builtin', 'map');
+          referencedMessage.field?.forEach((mapField: any) => countFieldType(mapField));
+          return;
+        }
+        countNamedType(field.typeName);
+        return;
+      }
+
+      const typeName = FIELD_TYPE_NAMES[Number(field.type)];
+      if (typeName) {
+        increment('builtin', typeName);
+      }
+    };
+
+    const walkMessages = (messageList: any[] = []) => {
+      messageList.forEach((message) => {
+        if (!(message.options?.mapEntry || message.options?.map_entry)) {
+          message.field?.forEach((field: any) => countFieldType(field));
+          message.extension?.forEach((field: any) => {
+            countFieldType(field);
+            if (field.extendee) countNamedType(field.extendee);
+          });
+        }
+        walkMessages(message.nestedType || []);
+      });
+    };
+
+    schema.file.forEach((file) => {
+      walkMessages(file.messageType || []);
+      file.extension?.forEach((field: any) => {
+        countFieldType(field);
+        if (field.extendee) countNamedType(field.extendee);
+      });
+      file.service?.forEach((service: any) => {
+        service.method?.forEach((method: any) => {
+          if (method.inputType) countNamedType(method.inputType);
+          if (method.outputType) countNamedType(method.outputType);
+        });
+      });
+    });
+
+    const top = (category: TypeReferenceCategory) => (
+      Array.from(counts[category].values())
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+        .slice(0, 3)
+    );
+
+    return {
+      builtin: top('builtin'),
+      wkt: top('wkt'),
+      custom: top('custom'),
+      totals: {
+        builtin: Array.from(counts.builtin.values()).reduce((sum, stat) => sum + stat.count, 0),
+        wkt: Array.from(counts.wkt.values()).reduce((sum, stat) => sum + stat.count, 0),
+        custom: Array.from(counts.custom.values()).reduce((sum, stat) => sum + stat.count, 0),
+      },
+    };
+  }, [schema, typeIndex]);
+
   const frontPageServices = useMemo(() => {
     const services: Array<{ packageName: string; file: string; name: string; fqn: string; description: string; methodCount: number }> = [];
     schema.file.forEach((file) => {
@@ -1109,6 +1328,71 @@ export default function App() {
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ExternalLink }}>
             {section.markdown || ''}
           </ReactMarkdown>
+        </section>
+      );
+    }
+
+    if (section.type === 'deployment-diagram-panel') {
+      const deploymentModes = [
+        {
+          title: 'Desktop App',
+          subtitle: 'Load local descriptors, server reflection, or the BSR.',
+          marker: 'APP',
+          accent: 'bg-syn-primitive',
+        },
+        {
+          title: 'Static Website',
+          subtitle: 'Ship a static website with descriptor files.',
+          marker: 'WEB',
+          accent: 'bg-syn-string',
+        },
+        {
+          title: 'Launched from CLI',
+          subtitle: 'Serve docs locally with proxy support.',
+          marker: 'CLI',
+          accent: 'bg-syn-keyword',
+        },
+        {
+          title: 'Embedded into Go Services',
+          subtitle: 'Mount ProtoDocs inside existing Go services.',
+          marker: 'GO',
+          accent: 'bg-app-accent',
+        },
+      ];
+
+      return (
+        <section key={index} className="border border-app-border bg-app-panel rounded-lg overflow-hidden">
+          <div className="px-5 py-4 border-b border-app-border/60 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold text-app-textBright">Ways to Run ProtoDocs</h2>
+              <p className="mt-1 text-xs text-app-textMuted">
+                Four ways to run ProtoDocs, from local inspection to hosted documentation.
+              </p>
+            </div>
+            <div className="text-[11px] font-mono text-app-textMuted">4 modes</div>
+          </div>
+
+          <div className="p-4 md:p-5 bg-app-code/45">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {deploymentModes.map((mode) => (
+                <div key={mode.title} className="rounded-lg border border-app-border bg-app-base/45 p-4 min-w-0">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className={`shrink-0 h-10 w-10 rounded-lg ${mode.accent} text-white flex items-center justify-center text-[11px] font-bold font-mono shadow-sm`}>
+                      {mode.marker}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-bold text-app-textBright leading-tight break-words">
+                        {mode.title}
+                      </h3>
+                      <p className="mt-1 text-xs leading-relaxed text-app-textMuted">
+                        {mode.subtitle}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
       );
     }
@@ -1209,6 +1493,128 @@ export default function App() {
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+      );
+    }
+
+    if (section.type === 'type-reference-stats-panel') {
+      const groups: Array<{
+        key: TypeReferenceCategory;
+        title: string;
+        description: string;
+        accent: string;
+        items: TypeReferenceStat[];
+      }> = [
+        {
+          key: 'builtin',
+          title: 'Built-in Types',
+          description: 'Scalar, bytes, string, and map references.',
+          accent: 'bg-emerald-500',
+          items: typeReferenceStats.builtin,
+        },
+        {
+          key: 'wkt',
+          title: 'Well-Known Types',
+          description: 'References under google.protobuf.',
+          accent: 'bg-sky-500',
+          items: typeReferenceStats.wkt,
+        },
+        {
+          key: 'custom',
+          title: 'Custom Types',
+          description: 'Project messages and enums used by fields and RPCs.',
+          accent: 'bg-violet-500',
+          items: typeReferenceStats.custom,
+        },
+      ];
+      const totalReferences = typeReferenceStats.totals.builtin + typeReferenceStats.totals.wkt + typeReferenceStats.totals.custom;
+
+      const renderReferenceItem = (item: TypeReferenceStat, rank: number) => {
+        const canNavigate = !!(item.fullName && item.file);
+        const content = (
+          <>
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="shrink-0 w-6 h-6 rounded bg-app-hoverBg border border-app-border/70 text-[10px] font-bold text-app-textMuted flex items-center justify-center">
+                {rank + 1}
+              </span>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-app-textBright truncate">{item.name}</div>
+                {item.fullName && (
+                  <div className="mt-0.5 text-[10px] font-mono text-app-textMuted truncate">{item.fullName.replace(/^\./, '')}</div>
+                )}
+              </div>
+            </div>
+            <div className="shrink-0 text-[11px] font-mono text-app-accent tabular-nums">
+              {item.count.toLocaleString()}
+            </div>
+          </>
+        );
+
+        if (canNavigate) {
+          return (
+            <button
+              key={item.fullName || item.name}
+              type="button"
+              onClick={() => goToElement(item.file!, item.fullName!)}
+              className="w-full flex items-center justify-between gap-3 rounded-lg border border-app-border/60 bg-app-base/35 px-3 py-2.5 hover:bg-app-hoverBg transition-colors cursor-pointer text-left"
+            >
+              {content}
+            </button>
+          );
+        }
+
+        return (
+          <div
+            key={item.fullName || item.name}
+            className="flex items-center justify-between gap-3 rounded-lg border border-app-border/60 bg-app-base/35 px-3 py-2.5"
+          >
+            {content}
+          </div>
+        );
+      };
+
+      return (
+        <section key={index} className="border border-app-border bg-app-panel rounded-lg overflow-hidden">
+          <div className="px-5 py-4 border-b border-app-border/60 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold text-app-textBright">Most Referenced Types</h2>
+              <p className="mt-1 text-xs text-app-textMuted">
+                Top field, extension, and RPC signature references grouped by type category.
+              </p>
+            </div>
+            <div className="text-[11px] font-mono text-app-textMuted">
+              {totalReferences.toLocaleString()} references
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-app-border/50">
+            {groups.map((group) => (
+              <div key={group.key} className="p-5 min-w-0">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2.5 w-2.5 rounded-full ${group.accent} shrink-0`} />
+                      <h3 className="text-xs font-bold text-app-textBright uppercase tracking-wide truncate">{group.title}</h3>
+                    </div>
+                    <p className="mt-1 text-xs text-app-textMuted leading-relaxed">{group.description}</p>
+                  </div>
+                  <div className="shrink-0 text-[11px] font-mono text-app-textMuted">
+                    {typeReferenceStats.totals[group.key].toLocaleString()}
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {group.items.length > 0 ? (
+                    group.items.map((item, rank) => renderReferenceItem(item, rank))
+                  ) : (
+                    <div className="rounded-lg border border-app-border/60 bg-app-base/35 px-3 py-6 text-center text-xs text-app-textMuted font-mono">
+                      No references found.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       );

@@ -24,13 +24,17 @@ message FrontPageSection {
   // Options are:
   // - "markdown": Renders markdown as primary page content.
   // - "markdown-small": Renders markdown as compact footer-style content.
+  // - "deployment-diagram-panel": Renders an overview of ProtoDocs deployment modes.
   // - "descriptor-stats-panel": Renders aggregate counts from loaded descriptors.
+  // - "type-reference-stats-panel": Renders top referenced types by category.
   // - "service-list-panel": Renders all services with a short description snippet.
   string type = 1 [(buf.validate.field).string = {
     in: [
       "markdown",
       "markdown-small",
+      "deployment-diagram-panel",
       "descriptor-stats-panel",
+      "type-reference-stats-panel",
       "service-list-panel"
     ]
   }];

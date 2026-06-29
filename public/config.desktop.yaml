@@ -14,6 +14,7 @@ front_page_sections:
 
       This workspace is generated from the descriptor set currently loaded in the desktop app. Use the panels below to scan the shape of the schema, then jump into files or services from the sidebar.
   - type: descriptor-stats-panel
+  - type: type-reference-stats-panel
   - type: service-list-panel
   - type: markdown-small
     markdown: |
