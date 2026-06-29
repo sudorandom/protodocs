@@ -1313,6 +1313,92 @@ export default function App() {
 
   const renderFrontPageSection = (section: FrontPageSectionConfig, index: number) => {
     if (section.type === 'markdown') {
+      if (section.markdown?.trim().startsWith('# Welcome to ProtoDocs')) {
+        const features = [
+          ['Browse Files & Packages', 'Clean file and package hierarchy with merged common path prefixes.', 'bg-syn-primitive'],
+          ['Analyze Services & RPCs', 'RPC signatures, custom method options, and live request tools.', 'bg-syn-string'],
+          ['Inspect Schema Types', 'Messages, enums, oneofs, nested types, and custom options with comments.', 'bg-syn-keyword'],
+          ['Navigate References', 'Pinned tooltips, definition jumps, and usage search across loaded files.', 'bg-app-accent'],
+        ];
+
+        return (
+          <section key={index} className="border border-app-border bg-app-panel rounded-lg overflow-hidden">
+            <div className="p-5 md:p-7 border-b border-app-border/60">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6 items-start">
+                <div className="min-w-0">
+                  <h1 className="text-3xl md:text-4xl font-bold text-app-textBright leading-tight">
+                    Welcome to ProtoDocs
+                  </h1>
+                  <p className="mt-4 max-w-2xl text-base leading-8 text-app-textMain">
+                    ProtoDocs turns compiled binary descriptors, live server reflection, and BSR modules into human-readable,
+                    cross-linked, syntax-highlighted documentation.
+                  </p>
+                </div>
+
+                <a
+                  href="https://github.com/sudorandom/protodocs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group rounded-lg border border-app-border bg-app-code/65 p-5 hover:bg-app-hoverBg transition-colors min-w-0"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <svg className="h-12 w-12 text-app-textBright shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" clipRule="evenodd" d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.93.58.11.79-.25.79-.56v-2.15c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.23-1.28-5.23-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .98-.31 3.18 1.18A11.1 11.1 0 0 1 12 6.04c.98 0 1.96.13 2.88.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.69 5.39-5.25 5.68.42.36.79 1.07.79 2.16v3.14c0 .31.21.67.8.56A11.52 11.52 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
+                    </svg>
+                    <div className="min-w-0 text-right">
+                      <div className="text-sm font-bold text-app-textBright group-hover:text-app-accent transition-colors">
+                        GitHub Repository
+                      </div>
+                      <div className="mt-1 text-[11px] font-mono text-app-textMuted truncate">
+                        sudorandom/protodocs
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-5 border-t border-app-border/60 pt-4 flex items-center justify-between gap-3 text-xs text-app-textMuted">
+                    <span>Open source</span>
+                    <span className="font-mono text-app-accent">View on GitHub</span>
+                  </div>
+                </a>
+              </div>
+            </div>
+
+            <div className="divide-y divide-app-border/50">
+              <div className="p-5 md:p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {features.map(([title, description, accent]) => (
+                    <div key={title} className="rounded-lg border border-app-border/70 bg-app-base/35 p-4 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2.5 w-2.5 rounded-full ${accent} shrink-0`} />
+                        <h2 className="text-sm font-bold text-app-textBright leading-snug">{title}</h2>
+                      </div>
+                      <p className="mt-2 text-xs leading-relaxed text-app-textMuted">{description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-5 md:p-6 bg-app-code/35">
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_minmax(280px,360px)] gap-5 md:items-center">
+                  <div>
+                  <h2 className="text-sm font-bold text-app-textBright">Core Schema Definitions</h2>
+                  <p className="mt-2 text-xs leading-relaxed text-app-textMuted">
+                    Start with the canonical Protocol Buffers descriptor schema, then use the sidebar to explore loaded files and services.
+                  </p>
+                  </div>
+                  <a
+                    href="/#/files/google/protobuf/descriptor.proto"
+                    className="inline-flex items-center justify-between gap-3 rounded-lg border border-app-border bg-app-base/45 px-4 py-3 text-xs font-semibold text-app-textBright hover:bg-app-hoverBg transition-colors min-w-0"
+                  >
+                    <span className="truncate font-mono">google/protobuf/descriptor.proto</span>
+                    <span className="shrink-0 text-app-accent">Open</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+      }
+
       return (
         <section key={index} className="prose dark:prose-invert max-w-none text-app-textMain">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ExternalLink }}>
