@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3](https://github.com/sudorandom/protodocs/compare/v0.1.2...v0.1.3) (2026-06-29)
+
+
+### Bug Fixes
+
+* add a couple new sections ([0cf8f48](https://github.com/sudorandom/protodocs/commit/0cf8f4807e7c588881b1e2bff99d80baf84c7b10))
+* add a new section for the live website ([c629265](https://github.com/sudorandom/protodocs/commit/c629265e58f98b39c0f60259b1bd7796edaa0ab6))
+
 ## [0.1.2](https://github.com/sudorandom/protodocs/compare/v0.1.1...v0.1.2) (2026-06-25)
 
 
