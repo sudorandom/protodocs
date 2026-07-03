@@ -896,6 +896,8 @@ type Handler struct {
 	fileServer      http.Handler
 	dynamicConfig   []byte
 	descriptorBytes []byte
+	injectedHTML    []byte // index.html with window.__PROTODOCS_CONFIG__ pre-injected
+	preloadPaths    []string // descriptor URLs to preload
 }
 
 // NewHandler creates a new http.Handler for serving ProtoDocs documentation.
@@ -915,8 +917,9 @@ func NewHandler(cfg Config) (http.Handler, error) {
 		staticFS = spaFileSystem{fs: embedded}
 	}
 
-	// Build dynamic config if any configuration is specified
 	var dynamicConfig []byte
+	var injectedHTML []byte
+	var preloadPaths []string
 	hasConfig := cfg.Title != "" ||
 		cfg.LogoText != "" ||
 		cfg.LogoURL != "" ||
@@ -1002,6 +1005,58 @@ func NewHandler(cfg Config) (http.Handler, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate dynamic configuration: %w", err)
 		}
+
+		// Collect descriptor paths for Link: preload headers (Option C in Go mode)
+		preloadPaths = append(preloadPaths, appCfg.DescriptorFiles...)
+
+		// Build injected index.html with window.__PROTODOCS_CONFIG__ pre-embedded (Option D)
+		if indexFile, ferr := staticFS.Open("index.html"); ferr == nil {
+			if indexBytes, rerr := io.ReadAll(indexFile); rerr == nil {
+				type jsConfig struct {
+					LoadingMethod    string              `json:"loadingMethod,omitempty"`
+					DescriptorFiles  []string            `json:"descriptorFiles,omitempty"`
+					ReflectionURL    string              `json:"reflectionUrl,omitempty"`
+					LogoText         string              `json:"logoText,omitempty"`
+					LogoURL          string              `json:"logoUrl,omitempty"`
+					LogoURLLight     string              `json:"logoUrlLight,omitempty"`
+					LogoURLDark      string              `json:"logoUrlDark,omitempty"`
+					LogoURLCyberpunk string              `json:"logoUrlCyberpunk,omitempty"`
+					Title            string              `json:"title,omitempty"`
+					BackToText       string              `json:"backToText,omitempty"`
+					BackToURL        string              `json:"backToUrl,omitempty"`
+					DefaultTab       string              `json:"defaultTab,omitempty"`
+					Proxy            bool                `json:"proxy,omitempty"`
+					Protocols        []string            `json:"protocols,omitempty"`
+					PrioritizedPaths []string            `json:"prioritizedPaths,omitempty"`
+					HighlightedFiles []string            `json:"highlightedFiles,omitempty"`
+					ServiceEndpoints map[string][]string `json:"serviceEndpoints,omitempty"`
+				}
+				jsCfg := jsConfig{
+					LoadingMethod:    cfg.LoadingMethod,
+					DescriptorFiles:  appCfg.DescriptorFiles,
+					ReflectionURL:    cfg.ReflectionURL,
+					LogoText:         cfg.LogoText,
+					LogoURL:          cfg.LogoURL,
+					LogoURLLight:     cfg.LogoURLLight,
+					LogoURLDark:      cfg.LogoURLDark,
+					LogoURLCyberpunk: cfg.LogoURLCyberpunk,
+					Title:            cfg.Title,
+					BackToText:       cfg.BackToText,
+					BackToURL:        cfg.BackToURL,
+					DefaultTab:       cfg.DefaultTab,
+					Proxy:            cfg.Proxy,
+					Protocols:        cfg.Protocols,
+					PrioritizedPaths: cfg.PrioritizedPaths,
+					HighlightedFiles: cfg.HighlightedFiles,
+					ServiceEndpoints: cfg.ServiceEndpoints,
+				}
+				if configJSON, jerr := json.Marshal(jsCfg); jerr == nil {
+					scriptTag := `<script>window.__PROTODOCS_CONFIG__ = ` + string(configJSON) + `;</script>`
+					injectedHTML = []byte(strings.Replace(string(indexBytes), `</head>`, scriptTag+`</head>`, 1))
+				}
+			}
+			_ = indexFile.Close()
+		}
 	}
 
 	// Normalize prefix
@@ -1063,6 +1118,8 @@ func NewHandler(cfg Config) (http.Handler, error) {
 		fileServer:      http.FileServer(staticFS),
 		dynamicConfig:   dynamicConfig,
 		descriptorBytes: descriptorBytes,
+		injectedHTML:    injectedHTML,
+		preloadPaths:    preloadPaths,
 	}
 
 	return h, nil
@@ -1149,7 +1206,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Serve static file
+		// Serve static file — but use the injected index.html for HTML page requests
+		// so the browser gets window.__PROTODOCS_CONFIG__ without a round-trip to /config.yaml.
+		ext := filepath.Ext(path)
+		isHTMLRequest := ext == "" || ext == ".html"
+		if isHTMLRequest && len(h.injectedHTML) > 0 {
+			h.serveInjectedHTML(w, r)
+			return
+		}
 		r2 := new(http.Request)
 		*r2 = *r
 		r2.URL = new(url.URL)
@@ -1157,6 +1221,25 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		r2.URL.Path = path
 		h.fileServer.ServeHTTP(w, r2)
 	}
+}
+
+// serveInjectedHTML writes the pre-built index.html (with window.__PROTODOCS_CONFIG__ injected)
+// and emits Link preload headers for each descriptor file so the browser starts fetching them
+// during HTML parse — before any JavaScript runs.
+func (h *Handler) serveInjectedHTML(w http.ResponseWriter, r *http.Request) {
+	hdr := w.Header()
+	hdr.Set("Content-Type", "text/html; charset=utf-8")
+	hdr.Set("Cache-Control", "no-cache")
+
+	// Emit HTTP Link preload header for each descriptor file (Option C for Go mode)
+	for _, p := range h.preloadPaths {
+		// Only preload paths we actually serve (skip absolute URLs / reflection endpoints)
+		if strings.HasPrefix(p, "/") {
+			hdr.Add("Link", fmt.Sprintf(`<%s>; rel=preload; as=fetch; crossorigin`, p))
+		}
+	}
+
+	_, _ = w.Write(h.injectedHTML)
 }
 
 func (h *Handler) serveBSRDescriptor(w http.ResponseWriter, r *http.Request) {

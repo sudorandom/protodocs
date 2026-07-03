@@ -247,9 +247,46 @@ export default function Sidebar({
       {/* Sidebar List Content */}
       <div className="flex-1 overflow-y-auto py-2">
         {loading && (
-          <div className="px-6 py-8 text-xs text-app-textMuted flex flex-col items-center justify-center gap-3 text-center">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-app-accent"></div>
-            <span>Loading Schema...</span>
+          <div className="px-4 py-3 space-y-4">
+            {/* Skeleton directory group 1 */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 px-0 py-1">
+                <div className="skeleton w-3 h-3 rounded-sm" />
+                <div className="skeleton h-2.5 rounded w-24" />
+              </div>
+              {[80, 64, 72].map((w, i) => (
+                <div key={i} className="flex items-center gap-2 pl-4 py-1.5">
+                  <div className="skeleton w-3.5 h-3.5 rounded-sm shrink-0" />
+                  <div className={`skeleton h-2.5 rounded`} style={{ width: `${w}%` }} />
+                </div>
+              ))}
+            </div>
+            {/* Skeleton directory group 2 */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 px-0 py-1">
+                <div className="skeleton w-3 h-3 rounded-sm" />
+                <div className="skeleton h-2.5 rounded w-32" />
+              </div>
+              {[55, 70, 60, 75].map((w, i) => (
+                <div key={i} className="flex items-center gap-2 pl-4 py-1.5">
+                  <div className="skeleton w-3.5 h-3.5 rounded-sm shrink-0" />
+                  <div className={`skeleton h-2.5 rounded`} style={{ width: `${w}%` }} />
+                </div>
+              ))}
+            </div>
+            {/* Skeleton directory group 3 */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 px-0 py-1">
+                <div className="skeleton w-3 h-3 rounded-sm" />
+                <div className="skeleton h-2.5 rounded w-20" />
+              </div>
+              {[65, 58].map((w, i) => (
+                <div key={i} className="flex items-center gap-2 pl-4 py-1.5">
+                  <div className="skeleton w-3.5 h-3.5 rounded-sm shrink-0" />
+                  <div className={`skeleton h-2.5 rounded`} style={{ width: `${w}%` }} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

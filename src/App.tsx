@@ -104,7 +104,7 @@ const DEFAULT_CONFIG: AppConfig = {
   descriptorFiles: [],
   reflectionUrl: 'https://demo.connectrpc.com',
   logoUrl: '',
-  logoText: 'ProtoDocs',
+  logoText: 'protodocs.dev',
   frontPageSections: [],
   defaultTab: 'services',
 };
@@ -863,92 +863,125 @@ export default function App() {
           activeConfig.proxy = true;
         }
 
-        // 1. Fetch config.yaml first as the base config
-        try {
-          const res = await fetch(resolveUrl('/config.yaml?t=' + new Date().getTime()));
-          if (res.ok) {
-            const yamlText = await res.text();
-            const yamlObj = YAML.parse(yamlText);
-            const pbConfig = fromJson(ConfigSchema, yamlObj, { ignoreUnknownFields: true });
-            
-            if (pbConfig.descriptorFiles && pbConfig.descriptorFiles.length > 0 && !localIsDesktop) {
-              activeConfig.loadingMethod = 'http';
-              activeConfig.descriptorFiles = pbConfig.descriptorFiles;
-            }
-            if (pbConfig.title) {
-              activeConfig.logoText = pbConfig.title;
-            }
-            if (pbConfig.logoText) {
-              activeConfig.logoText = pbConfig.logoText;
-            }
-            if (pbConfig.logoUrl) {
-              activeConfig.logoUrl = pbConfig.logoUrl;
-            }
-            if (pbConfig.logoUrlLight) {
-              activeConfig.logoUrlLight = pbConfig.logoUrlLight;
-            }
-            if (pbConfig.logoUrlDark) {
-              activeConfig.logoUrlDark = pbConfig.logoUrlDark;
-            }
-            if (pbConfig.logoUrlCyberpunk) {
-              activeConfig.logoUrlCyberpunk = pbConfig.logoUrlCyberpunk;
-            }
-            if (pbConfig.frontPageSections && pbConfig.frontPageSections.length > 0) {
-              activeConfig.frontPageSections = pbConfig.frontPageSections
-                .filter((section) =>
-                  section.type === 'markdown'
-                  || section.type === 'markdown-small'
-                  || section.type === 'deployment-diagram-panel'
-                  || section.type === 'descriptor-stats-panel'
-                  || section.type === 'type-reference-stats-panel'
-                  || section.type === 'service-list-panel'
-                )
-                .map((section) => ({
-                  type: section.type as FrontPageSectionConfig['type'],
-                  markdown: section.markdown,
-                }));
-            }
-            if (pbConfig.serverUrl) {
-              activeConfig.reflectionUrl = pbConfig.serverUrl;
-            } else if (pbConfig.reflectionUrl) {
-              activeConfig.reflectionUrl = pbConfig.reflectionUrl;
-            }
-            if (pbConfig.serviceEndpoints && Object.keys(pbConfig.serviceEndpoints).length > 0) {
-              const converted: Record<string, string[]> = {};
-              for (const [key, val] of Object.entries(pbConfig.serviceEndpoints)) {
-                if (val && val.endpoints) {
-                  converted[key] = val.endpoints;
+        // 1. Load config — prefer the JS global injected by the Go handler into the HTML
+        //    (zero network cost: the browser already has it). Fall back to fetching
+        //    config.yaml for plain static hosting and local dev.
+        const injected = (window as any).__PROTODOCS_CONFIG__ as Record<string, any> | undefined;
+        if (injected) {
+          // Map the JSON config (camelCase, matching jsConfig struct in handler.go) to activeConfig
+          if (injected.descriptorFiles?.length > 0 && !localIsDesktop) {
+            activeConfig.loadingMethod = 'http';
+            activeConfig.descriptorFiles = injected.descriptorFiles;
+          }
+          if (injected.loadingMethod) activeConfig.loadingMethod = injected.loadingMethod as any;
+          if (injected.reflectionUrl) activeConfig.reflectionUrl = injected.reflectionUrl;
+          if (injected.title) activeConfig.logoText = injected.title;
+          if (injected.logoText) activeConfig.logoText = injected.logoText;
+          if (injected.logoUrl) activeConfig.logoUrl = injected.logoUrl;
+          if (injected.logoUrlLight) activeConfig.logoUrlLight = injected.logoUrlLight;
+          if (injected.logoUrlDark) activeConfig.logoUrlDark = injected.logoUrlDark;
+          if (injected.logoUrlCyberpunk) activeConfig.logoUrlCyberpunk = injected.logoUrlCyberpunk;
+          if (injected.backToText) activeConfig.backToText = injected.backToText;
+          if (injected.backToUrl) activeConfig.backToUrl = injected.backToUrl;
+          if (injected.defaultTab) activeConfig.defaultTab = injected.defaultTab as any;
+          if (injected.proxy) {
+            activeConfig.proxy = injected.proxy;
+            await checkProxyAvailable();
+          }
+          if (injected.protocols?.length > 0) activeConfig.protocols = injected.protocols;
+          if (injected.prioritizedPaths?.length > 0) activeConfig.prioritizedPaths = injected.prioritizedPaths;
+          if (injected.highlightedFiles?.length > 0) activeConfig.highlightedFiles = injected.highlightedFiles;
+          if (injected.serviceEndpoints && Object.keys(injected.serviceEndpoints).length > 0) {
+            activeConfig.serviceEndpoints = injected.serviceEndpoints;
+          }
+        } else {
+          // Fallback: fetch config.yaml (static hosting / local dev)
+          try {
+            const res = await fetch(resolveUrl('/config.yaml?t=' + new Date().getTime()));
+            if (res.ok) {
+              const yamlText = await res.text();
+              const yamlObj = YAML.parse(yamlText);
+              const pbConfig = fromJson(ConfigSchema, yamlObj, { ignoreUnknownFields: true });
+
+              if (pbConfig.descriptorFiles && pbConfig.descriptorFiles.length > 0 && !localIsDesktop) {
+                activeConfig.loadingMethod = 'http';
+                activeConfig.descriptorFiles = pbConfig.descriptorFiles;
+              }
+              if (pbConfig.title) {
+                activeConfig.logoText = pbConfig.title;
+              }
+              if (pbConfig.logoText) {
+                activeConfig.logoText = pbConfig.logoText;
+              }
+              if (pbConfig.logoUrl) {
+                activeConfig.logoUrl = pbConfig.logoUrl;
+              }
+              if (pbConfig.logoUrlLight) {
+                activeConfig.logoUrlLight = pbConfig.logoUrlLight;
+              }
+              if (pbConfig.logoUrlDark) {
+                activeConfig.logoUrlDark = pbConfig.logoUrlDark;
+              }
+              if (pbConfig.logoUrlCyberpunk) {
+                activeConfig.logoUrlCyberpunk = pbConfig.logoUrlCyberpunk;
+              }
+              if (pbConfig.frontPageSections && pbConfig.frontPageSections.length > 0) {
+                activeConfig.frontPageSections = pbConfig.frontPageSections
+                  .filter((section) =>
+                    section.type === 'markdown'
+                    || section.type === 'markdown-small'
+                    || section.type === 'deployment-diagram-panel'
+                    || section.type === 'descriptor-stats-panel'
+                    || section.type === 'type-reference-stats-panel'
+                    || section.type === 'service-list-panel'
+                  )
+                  .map((section) => ({
+                    type: section.type as FrontPageSectionConfig['type'],
+                    markdown: section.markdown,
+                  }));
+              }
+              if (pbConfig.serverUrl) {
+                activeConfig.reflectionUrl = pbConfig.serverUrl;
+              } else if (pbConfig.reflectionUrl) {
+                activeConfig.reflectionUrl = pbConfig.reflectionUrl;
+              }
+              if (pbConfig.serviceEndpoints && Object.keys(pbConfig.serviceEndpoints).length > 0) {
+                const converted: Record<string, string[]> = {};
+                for (const [key, val] of Object.entries(pbConfig.serviceEndpoints)) {
+                  if (val && val.endpoints) {
+                    converted[key] = val.endpoints;
+                  }
+                }
+                activeConfig.serviceEndpoints = converted;
+              }
+              if (pbConfig.prioritizedPaths && pbConfig.prioritizedPaths.length > 0) {
+                activeConfig.prioritizedPaths = pbConfig.prioritizedPaths;
+              }
+              if (pbConfig.highlightedFiles && pbConfig.highlightedFiles.length > 0) {
+                activeConfig.highlightedFiles = pbConfig.highlightedFiles;
+              }
+              if (pbConfig.backToText) {
+                activeConfig.backToText = pbConfig.backToText;
+              }
+              if (pbConfig.backToUrl) {
+                activeConfig.backToUrl = pbConfig.backToUrl;
+              }
+              if (pbConfig.defaultTab) {
+                activeConfig.defaultTab = pbConfig.defaultTab as any;
+              }
+              if (pbConfig.proxy !== undefined) {
+                activeConfig.proxy = pbConfig.proxy;
+                if (pbConfig.proxy) {
+                  await checkProxyAvailable();
                 }
               }
-              activeConfig.serviceEndpoints = converted;
-            }
-            if (pbConfig.prioritizedPaths && pbConfig.prioritizedPaths.length > 0) {
-              activeConfig.prioritizedPaths = pbConfig.prioritizedPaths;
-            }
-            if (pbConfig.highlightedFiles && pbConfig.highlightedFiles.length > 0) {
-              activeConfig.highlightedFiles = pbConfig.highlightedFiles;
-            }
-            if (pbConfig.backToText) {
-              activeConfig.backToText = pbConfig.backToText;
-            }
-            if (pbConfig.backToUrl) {
-              activeConfig.backToUrl = pbConfig.backToUrl;
-            }
-            if (pbConfig.defaultTab) {
-              activeConfig.defaultTab = pbConfig.defaultTab as any;
-            }
-            if (pbConfig.proxy !== undefined) {
-              activeConfig.proxy = pbConfig.proxy;
-              if (pbConfig.proxy) {
-                await checkProxyAvailable();
+              if (pbConfig.protocols && pbConfig.protocols.length > 0) {
+                activeConfig.protocols = pbConfig.protocols;
               }
             }
-            if (pbConfig.protocols && pbConfig.protocols.length > 0) {
-              activeConfig.protocols = pbConfig.protocols;
-            }
+          } catch (e) {
+            console.warn('config.yaml not found or failed to parse, using defaults.', e);
           }
-        } catch (e) {
-          console.warn('config.yaml not found or failed to parse, using defaults.', e);
         }
 
         // 2. Override with URL search params
@@ -1044,14 +1077,15 @@ export default function App() {
 
   // Update document title dynamically based on active file and logo text
   useEffect(() => {
-    const baseTitle = config.logoText || 'ProtoDocs';
+    if (loading) return; // keep index.html title while fetching
+    const baseTitle = config.logoText || 'protodocs.dev';
     if (activeFile) {
       const filename = activeFile.split('/').pop() || activeFile;
       document.title = `${filename} | ${baseTitle}`;
     } else {
       document.title = baseTitle;
     }
-  }, [activeFile, config.logoText]);
+  }, [activeFile, config.logoText, loading]);
 
   // Update hash when active file changes manually
   useEffect(() => {
@@ -1963,7 +1997,30 @@ export default function App() {
       )}
 
       {/* Sidebar with grouped directories and popup theme selector */}
-      <Suspense fallback={<div className="w-64 h-full bg-app-surface border-r border-app-border animate-pulse" />}>
+      <Suspense fallback={
+        <div className="w-72 border-r border-app-border bg-app-panel flex flex-col shrink-0 h-full">
+          <div className="h-14 flex items-center px-6 border-b border-app-border shrink-0">
+            <div className="skeleton h-5 rounded w-28" />
+          </div>
+          <div className="flex items-center px-4 py-2 border-b border-app-border shrink-0">
+            <div className="skeleton h-7 rounded w-full" />
+          </div>
+          <div className="flex-1 px-4 py-3 space-y-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 py-1">
+                <div className="skeleton w-3 h-3 rounded-sm" />
+                <div className="skeleton h-2.5 rounded w-24" />
+              </div>
+              {[80, 64, 72].map((w, i) => (
+                <div key={i} className="flex items-center gap-2 pl-4 py-1.5">
+                  <div className="skeleton w-3.5 h-3.5 rounded-sm shrink-0" />
+                  <div className="skeleton h-2.5 rounded" style={{ width: `${w}%` }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      }>
         <Sidebar
           logoUrl={activeLogoUrl}
           logoText={config.logoText}
@@ -2215,10 +2272,89 @@ export default function App() {
         {/* Content Area - Fixed width & overflow-x-hidden ensures no horizontal stretching */}
         <main ref={contentAreaRef} className="flex-1 overflow-y-auto overflow-x-hidden p-8 xl:pr-40 bg-app-code transition-colors duration-200 relative select-text w-full">
           {loading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-app-code z-10 text-app-textMuted font-mono">
-              <div className="flex flex-col items-center gap-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-app-accent"></div>
-                <span className="text-sm">Fetching and indexing Schema descriptors...</span>
+            <div className="absolute inset-0 bg-app-code z-10 p-8 xl:pr-40">
+              <div className="max-w-4xl mx-auto w-full space-y-8 animate-fadeIn">
+
+                {/* File header skeleton */}
+                <div className="space-y-2.5 border-b border-app-border pb-6 font-mono">
+                  <div className="skeleton-dark h-3.5 rounded w-36" />
+                  <div className="skeleton-dark h-3.5 rounded w-28" />
+                  <div className="flex gap-3 pt-1">
+                    <div className="skeleton-dark h-3 rounded w-20" />
+                    <div className="skeleton-dark h-3 rounded w-48" />
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="skeleton-dark h-3 rounded w-20" />
+                    <div className="skeleton-dark h-3 rounded w-56" />
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="skeleton-dark h-3 rounded w-20" />
+                    <div className="skeleton-dark h-3 rounded w-40" />
+                  </div>
+                </div>
+
+                {/* First block skeleton (service/message) */}
+                <div className="border border-app-border rounded-lg overflow-hidden">
+                  <div className="bg-app-panel px-5 py-4 border-b border-app-border flex items-center gap-3">
+                    <div className="skeleton w-20 h-4 rounded" />
+                    <div className="skeleton w-40 h-4 rounded" />
+                    <div className="ml-auto skeleton w-16 h-5 rounded-full" />
+                  </div>
+                  <div className="p-5 space-y-4">
+                    {[
+                      [60, 85],
+                      [70, 90],
+                      [50, 75],
+                    ].map(([a, b], i) => (
+                      <div key={i} className="space-y-2 border-b border-app-border/50 pb-4 last:border-0 last:pb-0">
+                        <div className="flex items-center gap-3">
+                          <div className="skeleton-dark h-3 rounded" style={{ width: `${a}px` }} />
+                          <div className="skeleton-dark h-3 rounded" style={{ width: `${b}px` }} />
+                          <div className="skeleton-dark h-3 rounded w-16" />
+                        </div>
+                        <div className="pl-4 space-y-1.5">
+                          <div className="skeleton-dark h-2.5 rounded w-3/4" />
+                          <div className="skeleton-dark h-2.5 rounded w-1/2" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Second block skeleton */}
+                <div className="border border-app-border rounded-lg overflow-hidden">
+                  <div className="bg-app-panel px-5 py-4 border-b border-app-border flex items-center gap-3">
+                    <div className="skeleton w-24 h-4 rounded" />
+                    <div className="skeleton w-52 h-4 rounded" />
+                  </div>
+                  <div className="p-5 space-y-3">
+                    {[90, 70, 80, 60].map((w, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <div className="skeleton-dark h-3 rounded w-12 shrink-0" />
+                        <div className="skeleton-dark h-3 rounded" style={{ width: `${w}px` }} />
+                        <div className="skeleton-dark h-3 rounded w-8" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Third block skeleton */}
+                <div className="border border-app-border rounded-lg overflow-hidden">
+                  <div className="bg-app-panel px-5 py-4 border-b border-app-border flex items-center gap-3">
+                    <div className="skeleton w-16 h-4 rounded" />
+                    <div className="skeleton w-36 h-4 rounded" />
+                  </div>
+                  <div className="p-5 space-y-3">
+                    {[75, 85, 65].map((w, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <div className="skeleton-dark h-3 rounded w-10 shrink-0" />
+                        <div className="skeleton-dark h-3 rounded" style={{ width: `${w}px` }} />
+                        <div className="skeleton-dark h-3 rounded w-6" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               </div>
             </div>
           )}

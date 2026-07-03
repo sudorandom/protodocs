@@ -9,7 +9,7 @@ interface ProtoDocsLogoProps {
 
 export default function ProtoDocsLogo({
   logoUrl,
-  logoText = 'ProtoDocs',
+  logoText = 'protodocs.dev',
   showText = true,
   iconClassName = 'w-6 h-6',
   imageClassName = iconClassName,
