@@ -237,25 +237,19 @@ export default function App() {
     return index;
   }, [schema]);
 
-  // Navigate and scroll to an element and update URL Hash
-  const goToElement = useCallback((file: string, elementId: string) => {
-    setActiveFile(file);
-    setActiveTooltip(null);
-    setSearchQuery('');
-    setIsSearchOpen(false);
-    setIsMobileSearchExpanded(false);
-    setIsSidebarOpen(false);
-
-    // Update location hash
-    const newHash = `#/files/${file}?symbol=${elementId}`;
-    if (window.location.hash !== newHash) {
-      window.location.hash = newHash;
-    }
-
-    // Delay to allow file content tab to switch & render
-    setTimeout(() => {
+  // Polls the DOM until `elementId` appears (Suspense lazy components may not be mounted yet),
+  // then scrolls to it and adds the highlight flash. Falls back to the closest ancestor ID.
+  // Retries up to maxAttempts × intervalMs (~2 seconds by default) before giving up.
+  const scrollToElementWhenReady = useCallback((
+    elementId: string,
+    maxAttempts = 40,
+    intervalMs = 50,
+  ) => {
+    let attempts = 0;
+    const tryScroll = () => {
+      attempts++;
       let el = document.getElementById(elementId);
-      // Fallback for nested types: find the closest ancestor ID that exists in the DOM
+      // Fallback for nested types: find the closest ancestor ID in the DOM
       if (!el) {
         let currentId = elementId;
         while (currentId) {
@@ -271,9 +265,31 @@ export default function App() {
         el.classList.remove('highlight-flash');
         void el.offsetWidth; // trigger reflow
         el.classList.add('highlight-flash');
+      } else if (attempts < maxAttempts) {
+        setTimeout(tryScroll, intervalMs);
       }
-    }, 100);
+    };
+    // Small initial delay for React to commit the state change before first check
+    setTimeout(tryScroll, 50);
   }, []);
+
+  // Navigate and scroll to an element and update URL Hash
+  const goToElement = useCallback((file: string, elementId: string) => {
+    setActiveFile(file);
+    setActiveTooltip(null);
+    setSearchQuery('');
+    setIsSearchOpen(false);
+    setIsMobileSearchExpanded(false);
+    setIsSidebarOpen(false);
+
+    // Update location hash
+    const newHash = `#/files/${file}?symbol=${elementId}`;
+    if (window.location.hash !== newHash) {
+      window.location.hash = newHash;
+    }
+
+    scrollToElementWhenReady(elementId);
+  }, [scrollToElementWhenReady]);
 
   // Navigate to symbol definition
   const goToDefinition = (fqn: string) => {
@@ -585,13 +601,7 @@ export default function App() {
         if (filepath && loadedSchema.file.some((f: any) => f.name === filepath)) {
           setActiveFile(filepath);
           if (symbol) {
-            setTimeout(() => {
-              const el = document.getElementById(symbol);
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                el.classList.add('highlight-flash');
-              }
-            }, 200);
+            scrollToElementWhenReady(symbol);
           }
         } else {
           setActiveFile('');
@@ -605,7 +615,7 @@ export default function App() {
       setLoading(false);
       document.body.classList.remove('loading');
     }
-  }, []);
+  }, [scrollToElementWhenReady]);
 
   const handleFilesUploaded = useCallback(async (files: File[]) => {
     setLoading(true);
