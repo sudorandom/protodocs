@@ -896,7 +896,7 @@ type Handler struct {
 	fileServer      http.Handler
 	dynamicConfig   []byte
 	descriptorBytes []byte
-	injectedHTML    []byte // index.html with window.__PROTODOCS_CONFIG__ pre-injected
+	injectedHTML    []byte   // index.html with window.__PROTODOCS_CONFIG__ pre-injected
 	preloadPaths    []string // descriptor URLs to preload
 }
 

@@ -2283,86 +2283,208 @@ export default function App() {
         <main ref={contentAreaRef} className="flex-1 overflow-y-auto overflow-x-hidden p-8 xl:pr-40 bg-app-code transition-colors duration-200 relative select-text w-full">
           {loading && (
             <div className="absolute inset-0 bg-app-code z-10 p-8 xl:pr-40">
-              <div className="max-w-4xl mx-auto w-full space-y-8 animate-fadeIn">
+              <div className="max-w-4xl mx-auto w-full space-y-6 font-mono text-sm text-app-textMuted/45 leading-relaxed animate-fadeIn select-none">
 
-                {/* File header skeleton */}
-                <div className="space-y-2.5 border-b border-app-border pb-6 font-mono">
-                  <div className="skeleton-dark h-3.5 rounded w-36" />
-                  <div className="skeleton-dark h-3.5 rounded w-28" />
-                  <div className="flex gap-3 pt-1">
-                    <div className="skeleton-dark h-3 rounded w-20" />
-                    <div className="skeleton-dark h-3 rounded w-48" />
+                {/* File level comments */}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-app-textMuted/30">
+                    <span>//</span>
+                    <div className="skeleton-dark h-3.5 w-72 rounded opacity-40" />
                   </div>
-                  <div className="flex gap-3">
-                    <div className="skeleton-dark h-3 rounded w-20" />
-                    <div className="skeleton-dark h-3 rounded w-56" />
+                  <div className="flex items-center gap-2 text-app-textMuted/30">
+                    <span>//</span>
+                    <div className="skeleton-dark h-3.5 w-96 rounded opacity-40" />
                   </div>
-                  <div className="flex gap-3">
-                    <div className="skeleton-dark h-3 rounded w-20" />
-                    <div className="skeleton-dark h-3 rounded w-40" />
+                  <div className="flex items-center gap-2 text-app-textMuted/30">
+                    <span>//</span>
+                    <div className="skeleton-dark h-3.5 w-64 rounded opacity-40" />
                   </div>
                 </div>
 
-                {/* First block skeleton (service/message) */}
-                <div className="border border-app-border rounded-lg overflow-hidden">
-                  <div className="bg-app-panel px-5 py-4 border-b border-app-border flex items-center gap-3">
-                    <div className="skeleton w-20 h-4 rounded" />
-                    <div className="skeleton w-40 h-4 rounded" />
-                    <div className="ml-auto skeleton w-16 h-5 rounded-full" />
+                {/* Syntax and package */}
+                <div className="space-y-1 pt-2">
+                  <div className="flex items-center gap-2">
+                    <div className="skeleton-dark h-3.5 w-14 rounded opacity-75" />
+                    <span>=</span>
+                    <div className="skeleton-dark h-3.5 w-16 rounded opacity-60" />
+                    <span>;</span>
                   </div>
-                  <div className="p-5 space-y-4">
-                    {[
-                      [60, 85],
-                      [70, 90],
-                      [50, 75],
-                    ].map(([a, b], i) => (
-                      <div key={i} className="space-y-2 border-b border-app-border/50 pb-4 last:border-0 last:pb-0">
-                        <div className="flex items-center gap-3">
-                          <div className="skeleton-dark h-3 rounded" style={{ width: `${a}px` }} />
-                          <div className="skeleton-dark h-3 rounded" style={{ width: `${b}px` }} />
-                          <div className="skeleton-dark h-3 rounded w-16" />
-                        </div>
-                        <div className="pl-4 space-y-1.5">
-                          <div className="skeleton-dark h-2.5 rounded w-3/4" />
-                          <div className="skeleton-dark h-2.5 rounded w-1/2" />
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <div className="skeleton-dark h-3.5 w-16 rounded opacity-75" />
+                    <div className="skeleton-dark h-3.5 w-24 rounded opacity-60" />
+                    <span>;</span>
                   </div>
                 </div>
 
-                {/* Second block skeleton */}
-                <div className="border border-app-border rounded-lg overflow-hidden">
-                  <div className="bg-app-panel px-5 py-4 border-b border-app-border flex items-center gap-3">
-                    <div className="skeleton w-24 h-4 rounded" />
-                    <div className="skeleton w-52 h-4 rounded" />
+                {/* Imports */}
+                <div className="space-y-1 pt-2">
+                  <div className="flex items-center gap-2">
+                    <div className="skeleton-dark h-3.5 w-12 rounded opacity-75" />
+                    <div className="skeleton-dark h-3.5 w-56 rounded opacity-60" />
+                    <span>;</span>
                   </div>
-                  <div className="p-5 space-y-3">
-                    {[90, 70, 80, 60].map((w, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <div className="skeleton-dark h-3 rounded w-12 shrink-0" />
-                        <div className="skeleton-dark h-3 rounded" style={{ width: `${w}px` }} />
-                        <div className="skeleton-dark h-3 rounded w-8" />
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <div className="skeleton-dark h-3.5 w-12 rounded opacity-75" />
+                    <div className="skeleton-dark h-3.5 w-44 rounded opacity-60" />
+                    <span>;</span>
                   </div>
                 </div>
 
-                {/* Third block skeleton */}
-                <div className="border border-app-border rounded-lg overflow-hidden">
-                  <div className="bg-app-panel px-5 py-4 border-b border-app-border flex items-center gap-3">
-                    <div className="skeleton w-16 h-4 rounded" />
-                    <div className="skeleton w-36 h-4 rounded" />
+                {/* File options */}
+                <div className="space-y-1 pt-2">
+                  <div className="flex items-center gap-2">
+                    <div className="skeleton-dark h-3.5 w-12 rounded opacity-75" />
+                    <div className="skeleton-dark h-3.5 w-20 rounded opacity-60" />
+                    <span>=</span>
+                    <div className="skeleton-dark h-3.5 w-32 rounded opacity-60" />
+                    <span>;</span>
                   </div>
-                  <div className="p-5 space-y-3">
-                    {[75, 85, 65].map((w, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <div className="skeleton-dark h-3 rounded w-10 shrink-0" />
-                        <div className="skeleton-dark h-3 rounded" style={{ width: `${w}px` }} />
-                        <div className="skeleton-dark h-3 rounded w-6" />
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <div className="skeleton-dark h-3.5 w-12 rounded opacity-75" />
+                    <div className="skeleton-dark h-3.5 w-16 rounded opacity-60" />
+                    <span>=</span>
+                    <div className="skeleton-dark h-3.5 w-24 rounded opacity-60" />
+                    <span>;</span>
                   </div>
+                </div>
+
+                {/* Service block */}
+                <div className="space-y-1.5 pt-6">
+                  <div className="flex items-center gap-2 text-app-textMuted/30">
+                    <span>//</span>
+                    <div className="skeleton-dark h-3.5 w-80 rounded opacity-40" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="skeleton-dark h-3.5 w-14 rounded opacity-75" />
+                    <div className="skeleton-dark h-3.5 w-36 rounded opacity-90" />
+                    <span>{"{"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 pl-6">
+                    <div className="skeleton-dark h-3.5 w-8 rounded opacity-75" />
+                    <div className="skeleton-dark h-3.5 w-24 rounded opacity-60" />
+                    <span>(</span>
+                    <div className="skeleton-dark h-3.5 w-28 rounded opacity-60" />
+                    <span>)</span>
+                    <div className="skeleton-dark h-3.5 w-16 rounded opacity-75" />
+                    <span>(</span>
+                    <div className="skeleton-dark h-3.5 w-28 rounded opacity-60" />
+                    <span>)</span>
+                    <span>;</span>
+                  </div>
+                  <div className="flex items-center gap-2 pl-6">
+                    <div className="skeleton-dark h-3.5 w-8 rounded opacity-75" />
+                    <div className="skeleton-dark h-3.5 w-20 rounded opacity-60" />
+                    <span>(</span>
+                    <div className="skeleton-dark h-3.5 w-24 rounded opacity-60" />
+                    <span>)</span>
+                    <div className="skeleton-dark h-3.5 w-16 rounded opacity-75" />
+                    <span>(</span>
+                    <div className="skeleton-dark h-3.5 w-24 rounded opacity-60" />
+                    <span>)</span>
+                    <span>{"{"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 pl-12">
+                    <div className="skeleton-dark h-3.5 w-12 rounded opacity-75" />
+                    <span>(</span>
+                    <div className="skeleton-dark h-3.5 w-28 rounded opacity-60" />
+                    <span>)</span>
+                    <span>=</span>
+                    <span>{"{"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 pl-18">
+                    <div className="skeleton-dark h-3.5 w-8 rounded opacity-60" />
+                    <span>:</span>
+                    <div className="skeleton-dark h-3.5 w-24 rounded opacity-60" />
+                  </div>
+                  <div className="pl-12">{"};"}</div>
+                  <div className="pl-6">{"}"}</div>
+                  <div>{"}"}</div>
+                </div>
+
+                {/* Message block */}
+                <div className="space-y-1.5 pt-6">
+                  <div className="flex items-center gap-2 text-app-textMuted/30">
+                    <span>//</span>
+                    <div className="skeleton-dark h-3.5 w-64 rounded opacity-40" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="skeleton-dark h-3.5 w-16 rounded opacity-75" />
+                    <div className="skeleton-dark h-3.5 w-40 rounded opacity-90" />
+                    <span>{"{"}</span>
+                  </div>
+
+                  {/* Message option */}
+                  <div className="flex items-center gap-2 pl-6">
+                    <div className="skeleton-dark h-3.5 w-12 rounded opacity-75" />
+                    <div className="skeleton-dark h-3.5 w-16 rounded opacity-60" />
+                    <span>=</span>
+                    <div className="skeleton-dark h-3.5 w-20 rounded opacity-60" />
+                    <span>;</span>
+                  </div>
+
+                  {/* Regular field */}
+                  <div className="flex items-center gap-2 pl-6">
+                    <div className="skeleton-dark h-3.5 w-16 rounded opacity-65" />
+                    <div className="skeleton-dark h-3.5 w-20 rounded opacity-60" />
+                    <span>=</span>
+                    <span className="text-app-textMuted/50">1</span>
+                    <span>;</span>
+                  </div>
+
+                  {/* Repeated field */}
+                  <div className="flex items-center gap-2 pl-6">
+                    <div className="skeleton-dark h-3.5 w-16 rounded opacity-75" />
+                    <div className="skeleton-dark h-3.5 w-24 rounded opacity-60" />
+                    <div className="skeleton-dark h-3.5 w-16 rounded opacity-60" />
+                    <span>=</span>
+                    <span className="text-app-textMuted/50">2</span>
+                    <span>;</span>
+                  </div>
+
+                  {/* Oneof block */}
+                  <div className="flex items-center gap-2 pl-6">
+                    <div className="skeleton-dark h-3.5 w-12 rounded opacity-75" />
+                    <div className="skeleton-dark h-3.5 w-16 rounded opacity-60" />
+                    <span>{"{"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 pl-12">
+                    <div className="skeleton-dark h-3.5 w-24 rounded opacity-65" />
+                    <div className="skeleton-dark h-3.5 w-20 rounded opacity-60" />
+                    <span>=</span>
+                    <span className="text-app-textMuted/50">3</span>
+                    <span>;</span>
+                  </div>
+                  <div className="flex items-center gap-2 pl-12">
+                    <div className="skeleton-dark h-3.5 w-16 rounded opacity-65" />
+                    <div className="skeleton-dark h-3.5 w-24 rounded opacity-60" />
+                    <span>=</span>
+                    <span className="text-app-textMuted/50">4</span>
+                    <span>;</span>
+                  </div>
+                  <div className="pl-6">{"}"}</div>
+                  <div>{"}"}</div>
+                </div>
+
+                {/* Enum block */}
+                <div className="space-y-1.5 pt-6">
+                  <div className="flex items-center gap-2">
+                    <div className="skeleton-dark h-3.5 w-12 rounded opacity-75" />
+                    <div className="skeleton-dark h-3.5 w-28 rounded opacity-90" />
+                    <span>{"{"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 pl-6">
+                    <div className="skeleton-dark h-3.5 w-32 rounded opacity-60" />
+                    <span>=</span>
+                    <span className="text-app-textMuted/50">0</span>
+                    <span>;</span>
+                  </div>
+                  <div className="flex items-center gap-2 pl-6">
+                    <div className="skeleton-dark h-3.5 w-24 rounded opacity-60" />
+                    <span>=</span>
+                    <span className="text-app-textMuted/50">1</span>
+                    <span>;</span>
+                  </div>
+                  <div>{"}"}</div>
                 </div>
 
               </div>
