@@ -488,8 +488,16 @@ export default function App() {
         });
       };
 
+      const fieldMatchesType = (field: any, target: string) => {
+        if (!field) return false;
+        if (field.typeName) {
+          return field.typeName === target;
+        }
+        return FIELD_TYPE_NAMES[Number(field.type)] === target;
+      };
+
       const checkFieldReference = (fileName: string, contextFqn: string, messageName: string, field: any) => {
-        if (field.typeName === fqn) {
+        if (fieldMatchesType(field, fqn)) {
           addFieldReference(fileName, contextFqn, messageName, field);
           return;
         }
@@ -498,7 +506,17 @@ export default function App() {
         if (referencedMessage?.options?.mapEntry || referencedMessage?.options?.map_entry) {
           const keyField = referencedMessage.field?.find((mapField: any) => mapField.number === 1);
           const valueField = referencedMessage.field?.find((mapField: any) => mapField.number === 2);
-          if (keyField?.typeName === fqn || valueField?.typeName === fqn) {
+
+          if (fqn === 'map') {
+            results.push({
+              path: fileName,
+              contextFqn,
+              text: `message ${messageName} { ... map<${getFieldTypeLabel(keyField)}, ${getFieldTypeLabel(valueField)}> ${field.name} = ${field.number}; }`,
+            });
+            return;
+          }
+
+          if (fieldMatchesType(keyField, fqn) || fieldMatchesType(valueField, fqn)) {
             results.push({
               path: fileName,
               contextFqn,
@@ -509,7 +527,7 @@ export default function App() {
       };
 
       const checkExtensionReference = (fileName: string, contextFqn: string, field: any) => {
-        if (field.typeName === fqn) {
+        if (fieldMatchesType(field, fqn)) {
           addExtensionReference(fileName, contextFqn, field, 'field');
         }
         if (field.extendee === fqn) {
@@ -1661,7 +1679,6 @@ export default function App() {
       const totalReferences = typeReferenceStats.totals.builtin + typeReferenceStats.totals.wkt + typeReferenceStats.totals.custom;
 
       const renderReferenceItem = (item: TypeReferenceStat, rank: number) => {
-        const canNavigate = !!(item.fullName && item.file);
         const content = (
           <>
             <div className="flex items-center gap-3 min-w-0">
@@ -1681,26 +1698,15 @@ export default function App() {
           </>
         );
 
-        if (canNavigate) {
-          return (
-            <button
-              key={item.fullName || item.name}
-              type="button"
-              onClick={() => goToElement(item.file!, item.fullName!)}
-              className="w-full flex items-center justify-between gap-3 rounded-lg border border-app-border/60 bg-app-base/35 px-3 py-2.5 hover:bg-app-hoverBg transition-colors cursor-pointer text-left"
-            >
-              {content}
-            </button>
-          );
-        }
-
         return (
-          <div
+          <button
             key={item.fullName || item.name}
-            className="flex items-center justify-between gap-3 rounded-lg border border-app-border/60 bg-app-base/35 px-3 py-2.5"
+            type="button"
+            onClick={() => findReferences(item.fullName || item.name)}
+            className="w-full flex items-center justify-between gap-3 rounded-lg border border-app-border/60 bg-app-base/35 px-3 py-2.5 hover:bg-app-hoverBg transition-colors cursor-pointer text-left"
           >
             {content}
-          </div>
+          </button>
         );
       };
 

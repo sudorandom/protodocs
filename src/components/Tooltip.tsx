@@ -3,6 +3,12 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import ExternalLink from './ExternalLink';
 
+const BUILTIN_PRIMITIVES = new Set([
+  'double', 'float', 'int64', 'uint64', 'int32', 'fixed64', 'fixed32',
+  'bool', 'string', 'bytes', 'uint32', 'sfixed32', 'sfixed64', 'sint32',
+  'sint64', 'map'
+]);
+
 export interface TooltipState {
   x: number;
   y: number;
@@ -166,7 +172,7 @@ export default function Tooltip({
         )}
       </div>
 
-      {activeTooltip.isPinned && activeTooltip.category !== 'primitive' && (
+      {activeTooltip.isPinned && (activeTooltip.category !== 'primitive' || BUILTIN_PRIMITIVES.has(activeTooltip.fqn)) && (
         <div className="mt-3.5 pt-3 border-t border-app-border flex flex-col gap-1.5">
           {activeTooltip.hasDefinition && (
             <button
