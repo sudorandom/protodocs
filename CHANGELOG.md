@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/sudorandom/protodocs/compare/v0.1.3...v0.1.4) (2026-07-04)
+
+
+### Bug Fixes
+
+* go to definition now properly scrolls after loading a new file ([0a28594](https://github.com/sudorandom/protodocs/commit/0a285945ca4a7f4e5033dc5fa29fb0b3106c83f9))
+
 ## [0.1.3](https://github.com/sudorandom/protodocs/compare/v0.1.2...v0.1.3) (2026-06-29)
 
 
