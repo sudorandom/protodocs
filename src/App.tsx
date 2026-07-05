@@ -1388,7 +1388,7 @@ export default function App() {
             <div className="p-5 md:p-7 border-b border-app-border/60">
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6 items-start">
                 <div className="min-w-0">
-                  <h1 className="text-3xl md:text-4xl font-bold text-app-textBright leading-tight">
+                  <h1 className="text-3xl md:text-4xl font-bold font-display text-app-textBright leading-tight">
                     Welcome to ProtoDocs
                   </h1>
                   <p className="mt-4 max-w-2xl text-base leading-8 text-app-textMain">

@@ -1,6 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Outfit:wght@100..900&display=swap');
 @import "tailwindcss";
 
 @theme {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Outfit", sans-serif;
+
   --color-app-base: var(--bg-base);
   --color-app-panel: var(--bg-panel);
   --color-app-code: var(--bg-code);
@@ -161,6 +165,12 @@
 /* Base Prose Styles */
 .prose {
   color: var(--tw-prose-body);
+}
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-family: var(--font-display);
 }
 .prose h1 {
   font-size: 2.5em;
