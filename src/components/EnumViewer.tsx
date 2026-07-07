@@ -29,6 +29,7 @@ interface EnumViewerProps {
     category: 'primitive' | 'wkt' | 'custom' | 'option' | 'enum_value',
     shortName: string
   ) => void;
+  onElementContextMenu?: (e: React.MouseEvent, file: string, symbol: string) => void;
 }
 
 export default function EnumViewer({
@@ -41,6 +42,7 @@ export default function EnumViewer({
   onMouseEnter,
   onMouseLeave,
   onPinClick,
+  onElementContextMenu,
 }: EnumViewerProps) {
   const fqn = parentFqn
     ? `${parentFqn}.${enumObj.name}`
@@ -49,7 +51,16 @@ export default function EnumViewer({
     : `.${enumObj.name}`;
 
   return (
-    <div id={fqn} data-indent={indent} className={`proto-block ${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}>
+    <div
+      id={fqn}
+      data-indent={indent}
+      className={`proto-block ${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onElementContextMenu?.(e, file.name, fqn);
+      }}
+    >
       {enumObj.description && (
         <div className="text-syn-comment mb-1 whitespace-pre-wrap font-mono">
           {cleanComment(enumObj.description).split('\n').map((line: string) => `${'  '.repeat(indent)}// ${line}`).join('\n')}
@@ -98,7 +109,16 @@ export default function EnumViewer({
         {enumObj.value?.map((v: any) => {
           const valueFqn = `${fqn}.${v.name}`;
           return (
-            <div key={v.name} id={valueFqn} className="mb-2 last:mb-0">
+            <div
+              key={v.name}
+              id={valueFqn}
+              className="mb-2 last:mb-0"
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onElementContextMenu?.(e, file.name, valueFqn);
+              }}
+            >
               {v.description && (
                 <div className="text-syn-comment whitespace-pre-wrap mb-0.5 select-text font-mono">
                   {cleanComment(v.description).split('\n').map((line: string) => `${'  '.repeat(indent + 1)}// ${line}`).join('\n')}

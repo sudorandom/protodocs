@@ -37,6 +37,7 @@ interface MessageViewerProps {
   registry?: any;
   allowedProtocols?: string[];
   expandedDecoderFqn?: string | null;
+  onElementContextMenu?: (e: React.MouseEvent, file: string, symbol: string) => void;
 }
 
 export default function MessageViewer({
@@ -53,6 +54,7 @@ export default function MessageViewer({
   registry,
   allowedProtocols,
   expandedDecoderFqn,
+  onElementContextMenu,
 }: MessageViewerProps) {
   const fqn = parentFqn
     ? `${parentFqn}.${message.name}`
@@ -151,7 +153,12 @@ export default function MessageViewer({
     <div
       id={fqn}
       data-indent={indent}
-      className={`proto-block relative ${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors group p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}
+      className={`proto-block ${nested ? 'mb-2' : 'mb-8'} font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text`}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onElementContextMenu?.(e, file.name, fqn);
+      }}
     >
       {message.description && (
         <div className="text-syn-comment mb-1 whitespace-pre-wrap font-mono">
@@ -232,7 +239,16 @@ export default function MessageViewer({
                   {item.fields.map((f: any) => {
                     const fieldFqn = `${fqn}.${f.name}`;
                     return (
-                      <div key={f.name} id={fieldFqn} className="mb-2 last:mb-0">
+                      <div
+                        key={f.name}
+                        id={fieldFqn}
+                        className="mb-2 last:mb-0"
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onElementContextMenu?.(e, file.name, fieldFqn);
+                        }}
+                      >
                         {f.description && (
                           <div className="text-syn-comment whitespace-pre-wrap mb-0.5 select-text font-mono">
                             {cleanComment(f.description).split('\n').map((line: string) => `${'  '.repeat(indent + 2)}// ${line}`).join('\n')}
@@ -283,7 +299,16 @@ export default function MessageViewer({
             const isMap = (f.type === 11 || f.type === 'TYPE_MESSAGE') && lastPart && mapEntries[lastPart];
 
             return (
-              <div key={f.name} id={fieldFqn} className="mb-2 last:mb-0">
+              <div
+                key={f.name}
+                id={fieldFqn}
+                className="mb-2 last:mb-0"
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onElementContextMenu?.(e, file.name, fieldFqn);
+                }}
+              >
                 {f.description && (
                   <div className="text-syn-comment whitespace-pre-wrap mb-0.5 select-text font-mono">
                     {cleanComment(f.description).split('\n').map((line: string) => `${'  '.repeat(indent + 1)}// ${line}`).join('\n')}
@@ -360,11 +385,13 @@ export default function MessageViewer({
             <ExtensionGroupViewer
               extendee={extendee}
               fields={fields}
+              file={file}
               parentFqn={fqn}
               typeIndex={typeIndex}
               onMouseEnter={onMouseEnter}
               onMouseLeave={onMouseLeave}
               onPinClick={onPinClick}
+              onElementContextMenu={onElementContextMenu}
             />
           </div>
         ))}
@@ -383,6 +410,7 @@ export default function MessageViewer({
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
             onPinClick={onPinClick}
+            onElementContextMenu={onElementContextMenu}
           />
         </div>
       ))}
@@ -404,6 +432,7 @@ export default function MessageViewer({
             registry={registry}
             allowedProtocols={allowedProtocols}
             expandedDecoderFqn={expandedDecoderFqn}
+            onElementContextMenu={onElementContextMenu}
           />
         </div>
       ))}

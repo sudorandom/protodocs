@@ -35,6 +35,7 @@ interface ServiceViewerProps {
   customHeaders: { key: string; value: string }[];
   setCustomHeaders: (headers: { key: string; value: string }[]) => void;
   onOpenDecoderModal?: (fqn: string) => void;
+  onElementContextMenu?: (e: React.MouseEvent, file: string, symbol: string) => void;
 }
 
 export default function ServiceViewer({
@@ -49,12 +50,22 @@ export default function ServiceViewer({
   customHeaders,
   setCustomHeaders,
   onOpenDecoderModal,
+  onElementContextMenu,
 }: ServiceViewerProps) {
   const fqn = file.package ? `.${file.package}.${service.name}` : `.${service.name}`;
   const [expandedMethod, setExpandedMethod] = useState<string | null>(null);
 
   return (
-    <div id={fqn} data-indent={0} className="proto-block mb-8 font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text">
+    <div
+      id={fqn}
+      data-indent={0}
+      className="proto-block mb-8 font-mono text-sm rounded transition-colors p-3 hover:bg-slate-800/10 border border-transparent hover:border-slate-800/20 select-text"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onElementContextMenu?.(e, file.name, fqn);
+      }}
+    >
       {service.description && (
         <div className="text-syn-comment mb-1 whitespace-pre-wrap font-mono">
           {cleanComment(service.description).split('\n').map((line: string) => `// ${line}`).join('\n')}
@@ -103,7 +114,16 @@ export default function ServiceViewer({
         {service.method?.map((m: any) => {
           const methodFqn = `${fqn}.${m.name}`;
           return (
-            <div key={m.name} id={methodFqn} className="mb-3.5 mt-2 font-mono">
+            <div
+              key={m.name}
+              id={methodFqn}
+              className="mb-3.5 mt-2 font-mono"
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onElementContextMenu?.(e, file.name, methodFqn);
+              }}
+            >
               {m.description && (
                 <div className="text-syn-comment mb-0.5 whitespace-pre-wrap font-mono">
                   {cleanComment(m.description).split('\n').map((line: string) => `  // ${line}`).join('\n')}

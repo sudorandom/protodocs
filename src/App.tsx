@@ -10,6 +10,7 @@ import { loadSchemaFromReflection } from './lib/reflection-client';
 import { checkProxyAvailable, resolveUrl, setDesktopProxyUrl } from './lib/proxy';
 import type { TooltipState } from './components/Tooltip';
 import type { ReferencePanelState } from './components/ReferencePanel';
+import ContextMenu, { type ContextMenuState } from './components/ContextMenu';
 import { formatOptionKey, formatOptionValue } from './lib/options-formatter-helpers';
 import OptionLink from './components/OptionLink';
 import ExternalLink from './components/ExternalLink';
@@ -193,6 +194,7 @@ export default function App() {
   };
   const [referencePanel, setReferencePanel] = useState<ReferencePanelState | null>(null);
   const [activeTooltip, setActiveTooltip] = useState<TooltipState | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isDragging, setIsDragging] = useState(false);
@@ -1827,6 +1829,17 @@ export default function App() {
     return results.slice(0, 10);
   }, [searchQuery, schema, typeIndex]);
 
+  const handleElementContextMenu = useCallback((e: React.MouseEvent, file: string, symbol: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      file,
+      symbol,
+    });
+  }, []);
+
   // Tooltip interaction handlers
   const handlePinClick = (e: React.MouseEvent, fqn: string, description: any, category: 'primitive' | 'wkt' | 'custom' | 'option' | 'enum_value', shortName: string) => {
     e.stopPropagation();
@@ -2682,6 +2695,7 @@ export default function App() {
                         customHeaders={customHeaders}
                         setCustomHeaders={setCustomHeaders}
                         onOpenDecoderModal={handleOpenDecoder}
+                        onElementContextMenu={handleElementContextMenu}
                       />
                     ))}
 
@@ -2698,6 +2712,7 @@ export default function App() {
                         registry={registry}
                         allowedProtocols={config.protocols}
                         expandedDecoderFqn={expandedDecoderFqn}
+                        onElementContextMenu={handleElementContextMenu}
                       />
                     ))}
 
@@ -2710,6 +2725,7 @@ export default function App() {
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                         onPinClick={handlePinClick}
+                        onElementContextMenu={handleElementContextMenu}
                       />
                     ))}
 
@@ -2718,11 +2734,13 @@ export default function App() {
                         key={extendee}
                         extendee={extendee}
                         fields={fields}
+                        file={currentFileObj}
                         parentFqn={currentFileObj.package ? `.${currentFileObj.package}` : ''}
                         typeIndex={typeIndex}
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                         onPinClick={handlePinClick}
+                        onElementContextMenu={handleElementContextMenu}
                       />
                     ))}
                   </Suspense>
@@ -2785,6 +2803,9 @@ export default function App() {
           typeIndex={typeIndex}
         />
       </Suspense>
+
+      {/* Custom Context Menu */}
+      <ContextMenu state={contextMenu} onClose={() => setContextMenu(null)} />
 
       {/* QuickBrowse outline outline catalog */}
       <Suspense fallback={null}>

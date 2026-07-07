@@ -7,6 +7,7 @@ import { cleanComment } from '../lib/proto-reconstructor';
 interface ExtensionGroupViewerProps {
   extendee: string;
   fields: any[];
+  file: any;
   parentFqn?: string;
   typeIndex: Record<string, any>;
   onMouseEnter: (
@@ -24,16 +25,19 @@ interface ExtensionGroupViewerProps {
     category: 'primitive' | 'wkt' | 'custom' | 'option' | 'enum_value',
     shortName: string
   ) => void;
+  onElementContextMenu?: (e: React.MouseEvent, file: string, symbol: string) => void;
 }
 
 export default function ExtensionGroupViewer({
   extendee,
   fields,
+  file,
   parentFqn,
   typeIndex,
   onMouseEnter,
   onMouseLeave,
   onPinClick,
+  onElementContextMenu,
 }: ExtensionGroupViewerProps) {
   // Strip leading dot from extendee for display
   const displayExtendee = extendee.startsWith('.') ? extendee.substring(1) : extendee;
@@ -49,7 +53,12 @@ export default function ExtensionGroupViewer({
         {fields.map((f: any) => {
           const extensionFqn = parentFqn ? `${parentFqn}.${f.name}` : `.${f.name}`;
           return (
-            <div key={f.name} id={extensionFqn} className="mb-2 last:mb-0">
+            <div
+              key={f.name}
+              id={extensionFqn}
+              className="mb-2 last:mb-0"
+              onContextMenu={(e) => onElementContextMenu?.(e, file.name, extensionFqn)}
+            >
               {f.description && (
                 <div className="text-syn-comment whitespace-pre-wrap mb-0.5 select-text font-mono">
                   {cleanComment(f.description).split('\n').map((line: string) => `  // ${line}`).join('\n')}

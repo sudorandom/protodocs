@@ -52,6 +52,29 @@ export default function Tooltip({
   }, [activeTooltip, typeIndex]);
 
   const [copiedFqn, setCopiedFqn] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const symbolFile = useMemo(() => {
+    if (!activeTooltip || !typeIndex) return null;
+    let info = typeIndex[activeTooltip.fqn];
+    if (!info) {
+      // Resolve parent for nested items
+      const parts = activeTooltip.fqn.split('.');
+      if (parts.length > 1) {
+        const parentFqn = parts.slice(0, -1).join('.');
+        info = typeIndex[parentFqn];
+      }
+    }
+    return info?.file || null;
+  }, [activeTooltip, typeIndex]);
+
+  const handleCopyLink = () => {
+    if (!activeTooltip || !symbolFile) return;
+    const url = `${window.location.origin}${window.location.pathname}${window.location.search}#/files/${symbolFile}?symbol=${activeTooltip.fqn}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
 
   const handleCopyFqn = (fqn: string) => {
     navigator.clipboard.writeText(fqn);
@@ -206,6 +229,20 @@ export default function Tooltip({
             </div>
             {copiedFqn && <span className="text-[10px] text-green-400 font-semibold select-none mr-1">Copied!</span>}
           </button>
+          {symbolFile && (
+            <button
+              onClick={handleCopyLink}
+              className="text-left px-2.5 py-1.5 text-xs font-medium text-app-textBright hover:bg-app-accentBg hover:text-app-accent rounded transition-colors cursor-pointer flex items-center justify-between"
+            >
+              <div className="flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                </svg>
+                <span>Copy Link to Element</span>
+              </div>
+              {copiedLink && <span className="text-[10px] text-green-400 font-semibold select-none mr-1">Copied!</span>}
+            </button>
+          )}
           {isMessage && onOpenDecoderDrawer && (
             <button
               onClick={() => {
