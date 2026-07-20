@@ -34,6 +34,7 @@ export function generateMockJson(
 
     const isRepeated = f.label === 3;
     let val: any = null;
+    let isMap = false;
 
     if (f.typeName) {
       // Message or Enum
@@ -42,6 +43,12 @@ export function generateMockJson(
         // Enum: use first enum value name if available
         const firstVal = ref.obj.value?.[0];
         val = firstVal ? firstVal.name : 0;
+      } else if (ref && ref.kind === 'message' && (ref.obj.options?.mapEntry || ref.obj.options?.map_entry)) {
+        isMap = true;
+        // Recursively build nested map entry
+        const entryMock = generateMockJson(f.typeName, typeIndex, new Set(visited));
+        const keyVal = entryMock.key !== undefined ? entryMock.key : '';
+        val = { [String(keyVal)]: entryMock.value };
       } else {
         // Recursively build nested message
         val = generateMockJson(f.typeName, typeIndex, new Set(visited));
@@ -80,7 +87,7 @@ export function generateMockJson(
       }
     }
 
-    mock[f.name] = isRepeated ? [val] : val;
+    mock[f.name] = (isRepeated && !isMap) ? [val] : val;
   });
 
   return mock;

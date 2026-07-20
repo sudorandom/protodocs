@@ -107,4 +107,83 @@ describe('generateMockJson', () => {
       expect(generateMockJson(typeName, {})).toEqual(expected);
     });
   });
+
+  it('should generate maps as JSON objects instead of repeated message entry arrays', () => {
+    const typeIndex = {
+      '.example.MyMessage': {
+        kind: 'message',
+        obj: {
+          name: 'MyMessage',
+          field: [
+            { name: 'service_endpoints', typeName: '.example.MyMessage.ServiceEndpointsEntry', label: 3 },
+          ],
+        },
+      },
+      '.example.MyMessage.ServiceEndpointsEntry': {
+        kind: 'message',
+        obj: {
+          name: 'ServiceEndpointsEntry',
+          options: {
+            mapEntry: true,
+          },
+          field: [
+            { name: 'key', number: 1, type: 9 }, // string
+            { name: 'value', number: 2, typeName: '.example.Endpoints' },
+          ],
+        },
+      },
+      '.example.Endpoints': {
+        kind: 'message',
+        obj: {
+          name: 'Endpoints',
+          field: [
+            { name: 'endpoints', type: 9, label: 3 },
+          ],
+        },
+      },
+    };
+
+    const mock = generateMockJson('.example.MyMessage', typeIndex);
+    expect(mock).toEqual({
+      service_endpoints: {
+        '': {
+          endpoints: [''],
+        },
+      },
+    });
+  });
+
+  it('should generate maps with numeric keys correctly converted to strings', () => {
+    const typeIndex = {
+      '.example.MyMessage': {
+        kind: 'message',
+        obj: {
+          name: 'MyMessage',
+          field: [
+            { name: 'numeric_map', typeName: '.example.MyMessage.NumericMapEntry', label: 3 },
+          ],
+        },
+      },
+      '.example.MyMessage.NumericMapEntry': {
+        kind: 'message',
+        obj: {
+          name: 'NumericMapEntry',
+          options: {
+            map_entry: true,
+          },
+          field: [
+            { name: 'key', number: 1, type: 5 }, // int32
+            { name: 'value', number: 2, type: 9 }, // string
+          ],
+        },
+      },
+    };
+
+    const mock = generateMockJson('.example.MyMessage', typeIndex);
+    expect(mock).toEqual({
+      numeric_map: {
+        '0': '',
+      },
+    });
+  });
 });
