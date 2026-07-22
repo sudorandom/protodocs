@@ -27,7 +27,7 @@ desktop-dmg: desktop-build
     scripts/create-macos-dmg.sh desktop/build/bin/ProtoDocs.app protodocs-desktop-darwin.dmg
 
 lint: build
-    pnpm lint
+    pnpm check
     golangci-lint run
 
 # Format TS and Go source code

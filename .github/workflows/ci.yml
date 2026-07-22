@@ -28,8 +28,8 @@ jobs:
     - name: Install browsers for playwright
       run: npx playwright install
 
-    - name: Run lint
-      run: just lint
+    - name: Run check
+      run: pnpm check
 
     - name: Run tests
       run: just test

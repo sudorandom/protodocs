@@ -38,15 +38,17 @@ export default defineConfig(({ mode }) => ({
   },
   test: {
     globals: true,
-    environment: 'node',
-    include: ['src/**/*.test.ts'],
+    environment: 'happy-dom',
+    include: ['src/**/*.test.{ts,tsx}'],
   },
   build: {
     rollupOptions: {
       output: {
         manualChunks(id: string) {
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) return 'vendor-react';
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router')) return 'vendor-react';
           if (id.includes('node_modules/@bufbuild/protobuf')) return 'vendor-buf';
+          if (id.includes('node_modules/@connectrpc')) return 'vendor-connect';
+          if (id.includes('node_modules/yaml')) return 'vendor-yaml';
           if (id.includes('node_modules/react-markdown') || id.includes('node_modules/remark-gfm')) return 'vendor-markdown';
           return undefined;
         }

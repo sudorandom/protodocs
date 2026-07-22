@@ -731,7 +731,23 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *ProxyHandler) ServeWs(w http.ResponseWriter, r *http.Request) {
-	c, err := upgrader.Upgrade(w, r, nil)
+	wsUpgrader := websocket.Upgrader{
+		CheckOrigin: func(req *http.Request) bool {
+			origin := req.Header.Get("Origin")
+			if origin == "" {
+				return true
+			}
+			u, err := url.Parse(origin)
+			if err != nil {
+				return false
+			}
+			if strings.EqualFold(u.Host, req.Host) {
+				return true
+			}
+			return p.isHostAllowed(u.Host)
+		},
+	}
+	c, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("upgrade error: %v", err)
 		return

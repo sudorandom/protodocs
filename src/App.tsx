@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import YAML from 'yaml';
 import { loadDescriptorsFromUrls, loadDescriptorsFromBytesList } from './lib/descriptor-loader';
 import { loadBsrDescriptorBytes } from './lib/bsr-loader';
-import UploadZone from './components/UploadZone';
+const UploadZone = lazy(() => import('./components/UploadZone'));
 import { loadSchemaFromReflection } from './lib/reflection-client';
 import { checkProxyAvailable, resolveUrl, setDesktopProxyUrl } from './lib/proxy';
 import type { TooltipState } from './components/Tooltip';

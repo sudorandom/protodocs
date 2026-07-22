@@ -7,7 +7,7 @@ import { formatOptionValue, formatOptionKey } from '../lib/options-formatter-hel
 import EnumViewer from './EnumViewer';
 import KeywordLink from './KeywordLink';
 import { cleanComment } from '../lib/proto-reconstructor';
-import PayloadDecoder from './PayloadDecoder';
+const PayloadDecoder = React.lazy(() => import('./PayloadDecoder'));
 
 interface MessageViewerProps {
   message: any;
