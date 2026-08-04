@@ -7,6 +7,7 @@ require (
 	buf.build/gen/go/connectrpc/eliza/protocolbuffers/go v1.36.11-20230913231627-233fca715f49.1
 	buf.build/go/protovalidate v0.11.0
 	buf.build/go/protoyaml v0.7.0
+	github.com/bufbuild/protocompile v0.14.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0

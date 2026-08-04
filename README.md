@@ -134,11 +134,17 @@ Alternatively, you can run or install it directly using Go:
 
 ```sh
 # Run directly without manual installation
-go run github.com/sudorandom/protodocs/cmd/protodocs [options] [descriptor-files...]
+go run github.com/sudorandom/protodocs/cmd/protodocs [options] [paths...]
 
 # Or install it to your local environment
 go install github.com/sudorandom/protodocs/cmd/protodocs@latest
 ```
+
+Each positional path can be one of:
+* A compiled descriptor set (`.binpb` or `.pb`), produced by `buf build` or `protoc -o`.
+* A directory containing a `buf.yaml` or `buf.work.yaml`, built with the [buf CLI](https://buf.build/docs/installation) (must be on your `PATH`).
+* A directory of `.proto` files, compiled with the directory as the import root.
+* A single `.proto` file, compiled with its directory as the import root.
 
 Options include:
 * `--addr`: Host/port to serve on (default: `127.0.0.1:8080`).

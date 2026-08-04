@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/sudorandom/protodocs"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
 
@@ -105,19 +104,23 @@ Browse the loaded protobuf descriptors as linked reference documentation. Use th
 		}
 	}
 
-	// Load positional descriptor files from disk into memory
+	// Load positional descriptor paths (descriptor files, .proto files,
+	// proto directories, or buf modules) from disk into memory.
 	if len(descriptorFiles) > 0 {
 		mergedSet := &descriptorpb.FileDescriptorSet{}
+		seenFiles := make(map[string]bool)
 		for _, path := range descriptorFiles {
-			bytes, err := os.ReadFile(path)
+			fds, err := protodocs.LoadDescriptorsFromPath(context.Background(), path)
 			if err != nil {
-				log.Fatalf("Failed to read descriptor file %s: %v", path, err)
+				log.Fatalf("Failed to load descriptors from %s: %v", path, err)
 			}
-			var fds descriptorpb.FileDescriptorSet
-			if err := proto.Unmarshal(bytes, &fds); err != nil {
-				log.Fatalf("Failed to parse descriptor file %s: %v", path, err)
+			for _, file := range fds.File {
+				if seenFiles[file.GetName()] {
+					continue
+				}
+				seenFiles[file.GetName()] = true
+				mergedSet.File = append(mergedSet.File, file)
 			}
-			mergedSet.File = append(mergedSet.File, fds.File...)
 		}
 		cfg.Descriptors = mergedSet
 	}
