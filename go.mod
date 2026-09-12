@@ -1,6 +1,6 @@
 module github.com/sudorandom/protodocs
 
-go 1.26.3
+go 1.27
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250425153114-8976f5be98c1.1
