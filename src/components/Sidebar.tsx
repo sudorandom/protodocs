@@ -19,6 +19,11 @@ interface SidebarProps {
   onCloseSidebar: () => void;
   prioritizedPaths?: string[];
   highlightedFiles?: string[];
+  viewMode?: 'doc' | 'graph';
+  activeService?: string;
+  onOpenInGraph?: (file?: string, symbol?: string, service?: string) => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 const IconFile = () => (
@@ -79,6 +84,11 @@ export default function Sidebar({
   onCloseSidebar,
   prioritizedPaths,
   highlightedFiles,
+  viewMode,
+  activeService,
+  onOpenInGraph,
+  isCollapsed = false,
+  onToggleCollapse,
 }: SidebarProps) {
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
 
@@ -150,51 +160,71 @@ export default function Sidebar({
 
   return (
     <div
-      className={`w-72 border-r border-app-border bg-app-panel flex flex-col transition-all duration-300 shrink-0 select-none fixed top-14 md:top-0 bottom-0 left-0 z-40 md:relative md:translate-x-0 md:flex ${
+      className={`bg-app-panel flex flex-col transition-all duration-200 ease-in-out shrink-0 select-none fixed top-14 md:top-0 bottom-0 left-0 z-40 md:relative overflow-hidden ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } ${
+        isCollapsed
+          ? 'md:w-0 md:border-r-0 md:opacity-0 md:pointer-events-none'
+          : 'md:w-72 md:translate-x-0 md:border-r md:border-app-border md:opacity-100'
       }`}
     >
-      
-      {/* Top Header */}
-      <div className="h-14 flex items-center justify-between px-6 border-b border-app-border shrink-0 relative">
-        <div
-          onClick={() => {
-            window.location.hash = '#/';
-            setActiveFile('');
-            onCloseSidebar();
-          }}
-          className="flex items-center gap-2 truncate cursor-pointer hover:opacity-85 transition-opacity"
-        >
-          <ProtoDocsLogo logoUrl={logoUrl} logoText={logoText} iconClassName="w-6 h-6" imageClassName="max-h-8 w-auto" />
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {/* Theme Switcher Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsThemeMenuOpen(!isThemeMenuOpen);
+      <div className="w-72 h-full flex flex-col flex-1 shrink-0 overflow-hidden">
+        {/* Top Header */}
+        <div className="h-14 flex items-center justify-between px-6 border-b border-app-border shrink-0 relative">
+          <div
+            onClick={() => {
+              window.location.hash = '#/';
+              setActiveFile('');
+              onCloseSidebar();
             }}
-            title={`Select Theme (Current: ${theme})`}
-            className={`text-app-textMuted hover:text-app-textBright p-1.5 rounded-lg hover:bg-app-hoverBg transition-colors flex items-center justify-center ${
-              isThemeMenuOpen ? 'bg-app-hoverBg text-app-textBright' : ''
-            }`}
+            className="flex items-center gap-2 truncate cursor-pointer hover:opacity-85 transition-opacity"
           >
-            {getThemeIcon(theme, "w-5 h-5")}
-          </button>
+            <ProtoDocsLogo logoUrl={logoUrl} logoText={logoText} iconClassName="w-6 h-6" imageClassName="max-h-8 w-auto" />
+          </div>
+          
+          <div className="flex items-center gap-1.5">
+            {/* Collapse Button for desktop */}
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="hidden md:flex text-app-textMuted hover:text-app-textBright p-1.5 rounded-lg hover:bg-app-hoverBg transition-colors items-center justify-center cursor-pointer"
+                title="Collapse Sidebar (Ctrl+B / ⌘B)"
+                aria-label="Collapse Sidebar"
+              >
+                <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <rect width="18" height="18" x="3" y="3" rx="2" />
+                  <path d="M9 3v18" />
+                </svg>
+              </button>
+            )}
 
-          {/* Close Button for mobile */}
-          <button
-            type="button"
-            onClick={onCloseSidebar}
-            className="md:hidden text-app-textMuted hover:text-app-textBright p-1.5 rounded-lg hover:bg-app-hoverBg transition-colors flex items-center justify-center cursor-pointer"
-            title="Close Sidebar"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+            {/* Theme Switcher Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsThemeMenuOpen(!isThemeMenuOpen);
+              }}
+              title={`Select Theme (Current: ${theme})`}
+              className={`text-app-textMuted hover:text-app-textBright p-1.5 rounded-lg hover:bg-app-hoverBg transition-colors flex items-center justify-center ${
+                isThemeMenuOpen ? 'bg-app-hoverBg text-app-textBright' : ''
+              }`}
+            >
+              {getThemeIcon(theme, "w-5 h-5")}
+            </button>
+
+            {/* Close Button for mobile */}
+            <button
+              type="button"
+              onClick={onCloseSidebar}
+              className="md:hidden text-app-textMuted hover:text-app-textBright p-1.5 rounded-lg hover:bg-app-hoverBg transition-colors flex items-center justify-center cursor-pointer"
+              title="Close Sidebar"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
 
         {/* Theme Dropdown Menu */}
         {isThemeMenuOpen && (
@@ -363,27 +393,39 @@ export default function Sidebar({
                     {pkg}
                   </span>
                 </div>
-                {services.map((svc) => (
-                  <div
-                    key={svc.name}
-                    onClick={() => {
-                      onGoToElement(svc.file, `.${pkg}.${svc.name}`);
-                      onCloseSidebar();
-                    }}
-                    className="flex items-center px-6 py-1.5 text-xs cursor-pointer group transition-colors hover:bg-app-hoverBg hover:text-app-textBright"
-                  >
-                    <IconServer />
-                    <span className="ml-2.5 truncate" title={svc.name}>
-                      {svc.name}
-                    </span>
-                  </div>
-                ))}
+                {services.map((svc) => {
+                  const svcId = `.${pkg}.${svc.name}`;
+                  const isActive = viewMode === 'graph' ? activeService === svcId : false;
+                  return (
+                    <div
+                      key={svc.name}
+                      onClick={() => {
+                        if (viewMode === 'graph' && onOpenInGraph) {
+                          onOpenInGraph(svc.file, undefined, svcId);
+                        } else {
+                          onGoToElement(svc.file, svcId);
+                        }
+                        onCloseSidebar();
+                      }}
+                      className={`flex items-center px-6 py-1.5 text-xs cursor-pointer group transition-colors ${
+                        isActive
+                          ? 'bg-app-accentBg text-app-accent border-r-2 border-app-accent font-semibold'
+                          : 'hover:bg-app-hoverBg hover:text-app-textBright'
+                      }`}
+                    >
+                      <IconServer />
+                      <span className="ml-2.5 truncate" title={svc.name}>
+                        {svc.name}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             );
           })
         )}
       </div>
-
+      </div>
     </div>
   );
 }

@@ -30,6 +30,7 @@ const EnumViewer = lazy(() => import('./components/EnumViewer'));
 const ExtensionGroupViewer = lazy(() => import('./components/ExtensionGroupViewer'));
 const QuickBrowse = lazy(() => import('./components/QuickBrowse'));
 const Minimap = lazy(() => import('./components/Minimap'));
+const SchemaGraphView = lazy(() => import('./components/graph/SchemaGraphView'));
 const APP_VERSION = __PROTODOCS_VERSION__;
 
 interface AppConfig {
@@ -113,18 +114,38 @@ const DEFAULT_CONFIG: AppConfig = {
 interface ParsedHash {
   filepath: string;
   symbol: string;
+  view: 'doc' | 'graph';
+  service?: string;
 }
 
-// Parses location hash: #/files/google/protobuf/any.proto?symbol=.google.protobuf.Any
+// Parses location hash: #/files/path/to.proto?symbol=.My.Symbol or #/graph or #/files/...&view=graph
 function parseHash(hash: string): ParsedHash {
   const cleanHash = hash.replace(/^#/, '');
+  if (cleanHash.startsWith('/graph')) {
+    const sub = cleanHash.substring(6).replace(/^\/+/, '');
+    const [filePathPart, queryPart] = sub.split('?');
+    const params = new URLSearchParams(queryPart || '');
+    const filepath = filePathPart || params.get('file') || '';
+    const service = params.get('service') || '';
+    if (!filepath && !service) {
+      return { filepath: '', symbol: '', view: 'doc' };
+    }
+    return {
+      filepath,
+      symbol: params.get('symbol') || '',
+      view: 'graph',
+      service,
+    };
+  }
   if (!cleanHash.startsWith('/files/')) {
-    return { filepath: '', symbol: '' };
+    return { filepath: '', symbol: '', view: 'doc' };
   }
   const [filePathPart, queryPart] = cleanHash.substring(7).split('?');
   const params = new URLSearchParams(queryPart || '');
   const symbol = params.get('symbol') || '';
-  return { filepath: filePathPart, symbol };
+  const view = params.get('view') === 'graph' ? 'graph' : 'doc';
+  const service = params.get('service') || '';
+  return { filepath: filePathPart, symbol, view, service };
 }
 
 export default function App() {
@@ -149,7 +170,22 @@ export default function App() {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [schema, setSchema] = useState<{ file: any[] }>({ file: [] });
   const [isSchemaLoaderOpen, setIsSchemaLoaderOpen] = useState(false);
-  const [activeFile, setActiveFile] = useState<string>('');
+  const [activeFile, setActiveFile] = useState<string>(() => {
+    const { filepath } = parseHash(typeof window !== 'undefined' ? window.location.hash : '');
+    return filepath || '';
+  });
+  const [viewMode, setViewMode] = useState<'doc' | 'graph'>(() => {
+    const { view } = parseHash(typeof window !== 'undefined' ? window.location.hash : '');
+    return view || 'doc';
+  });
+  const [graphInitialSymbol, setGraphInitialSymbol] = useState<string>(() => {
+    const { symbol } = parseHash(typeof window !== 'undefined' ? window.location.hash : '');
+    return symbol || '';
+  });
+  const [graphInitialService, setGraphInitialService] = useState<string>(() => {
+    const { service } = parseHash(typeof window !== 'undefined' ? window.location.hash : '');
+    return service || '';
+  });
   const [isDownloadOpen, setIsDownloadOpen] = useState<boolean>(false);
   const [isQuickBrowseOpen, setIsQuickBrowseOpen] = useState<boolean>(false);
 
@@ -179,6 +215,24 @@ export default function App() {
   const [searchSelectedIndex, setSearchSelectedIndex] = useState<number>(-1);
   const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState<boolean>(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('protodocs_sidebar_collapsed') === 'true';
+    }
+    return false;
+  });
+
+  const toggleSidebar = useCallback(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setIsSidebarOpen((prev) => !prev);
+    } else {
+      setIsSidebarCollapsed((prev) => {
+        const next = !prev;
+        localStorage.setItem('protodocs_sidebar_collapsed', String(next));
+        return next;
+      });
+    }
+  }, []);
   const [customHeaders, setCustomHeadersState] = useState<{ key: string; value: string }[]>(() => {
     try {
       const saved = localStorage.getItem('protodocs_custom_headers');
@@ -277,6 +331,7 @@ export default function App() {
 
   // Navigate and scroll to an element and update URL Hash
   const goToElement = useCallback((file: string, elementId: string) => {
+    setViewMode('doc');
     setActiveFile(file);
     setActiveTooltip(null);
     setSearchQuery('');
@@ -292,6 +347,27 @@ export default function App() {
 
     scrollToElementWhenReady(elementId);
   }, [scrollToElementWhenReady]);
+
+  // Navigate to graph view focusing on an element or service
+  const handleOpenInGraph = useCallback((file?: string, symbol?: string, service?: string) => {
+    if (service) {
+      setGraphInitialService(service);
+      setActiveFile('');
+      window.location.hash = `#/graph?service=${encodeURIComponent(service)}`;
+    } else if (file) {
+      setActiveFile(file);
+      setGraphInitialService('');
+      if (symbol) {
+        setGraphInitialSymbol(symbol);
+        window.location.hash = `#/files/${file}?symbol=${encodeURIComponent(symbol)}&view=graph`;
+      } else {
+        window.location.hash = `#/files/${file}?view=graph`;
+      }
+    } else {
+      window.location.hash = `#/graph`;
+    }
+    setViewMode('graph');
+  }, []);
 
   // Navigate to symbol definition
   const goToDefinition = (fqn: string) => {
@@ -1090,10 +1166,23 @@ export default function App() {
   // Listen to hash change for back/forward browser navigation
   useEffect(() => {
     const handleHashChange = () => {
-      const { filepath, symbol } = parseHash(window.location.hash);
+      const { filepath, symbol, view, service } = parseHash(window.location.hash);
+      if (view === 'graph' && !filepath && !service) {
+        setViewMode('doc');
+        window.location.hash = '#/';
+        return;
+      }
+      setViewMode(view);
+      setGraphInitialService(service || '');
+      setGraphInitialSymbol(symbol || '');
+
       if (filepath && schema.file.some((f) => f.name === filepath)) {
-        if (symbol) {
-          goToElement(filepath, symbol);
+        if (view === 'doc') {
+          if (symbol) {
+            goToElement(filepath, symbol);
+          } else {
+            setActiveFile(filepath);
+          }
         } else {
           setActiveFile(filepath);
         }
@@ -1105,32 +1194,55 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [schema, goToElement]);
 
-  // Update document title dynamically based on active file and logo text
+  // Update document title dynamically based on active file, logo text, and view mode
   useEffect(() => {
     if (loading) return; // keep index.html title while fetching
     const baseTitle = config.logoText || 'protodocs.dev';
+    const viewSuffix = viewMode === 'graph' ? ' (Graph)' : '';
     if (activeFile) {
       const filename = activeFile.split('/').pop() || activeFile;
-      document.title = `${filename} | ${baseTitle}`;
+      document.title = `${filename}${viewSuffix} | ${baseTitle}`;
+    } else if (viewMode === 'graph' && graphInitialService) {
+      const serviceName = graphInitialService.split('.').pop() || graphInitialService;
+      document.title = `${serviceName} (Graph) | ${baseTitle}`;
     } else {
-      document.title = baseTitle;
+      document.title = viewMode === 'graph' ? `Graph | ${baseTitle}` : baseTitle;
     }
-  }, [activeFile, config.logoText, loading]);
+  }, [activeFile, config.logoText, loading, viewMode, graphInitialService]);
 
-  // Update hash when active file changes manually
+  // Update hash when active file or viewMode changes manually
   useEffect(() => {
     if (loading) return;
-    const { filepath } = parseHash(window.location.hash);
-    if (activeFile) {
-      if (filepath !== activeFile) {
-        window.location.hash = `#/files/${activeFile}`;
+    const { filepath, view, service } = parseHash(window.location.hash);
+    if (viewMode === 'graph') {
+      let targetHash = '#/';
+      if (activeFile) {
+        targetHash = `#/files/${activeFile}?view=graph`;
+      } else if (graphInitialService) {
+        targetHash = `#/graph?service=${encodeURIComponent(graphInitialService)}`;
+      } else {
+        setViewMode('doc');
+        window.location.hash = '#/';
+        return;
+      }
+      if (
+        window.location.hash !== targetHash &&
+        (filepath !== activeFile || view !== 'graph' || service !== graphInitialService)
+      ) {
+        window.location.hash = targetHash;
       }
     } else {
-      if (window.location.hash && window.location.hash !== '#/' && window.location.hash !== '#') {
-        window.location.hash = '#/';
+      if (activeFile) {
+        if (filepath !== activeFile || view === 'graph') {
+          window.location.hash = `#/files/${activeFile}`;
+        }
+      } else {
+        if (window.location.hash && window.location.hash !== '#/' && window.location.hash !== '#' && !window.location.hash.startsWith('#/graph')) {
+          window.location.hash = '#/';
+        }
       }
     }
-  }, [activeFile, loading]);
+  }, [activeFile, viewMode, graphInitialService, loading]);
 
   // Scroll content area back to top when switching files/pages
   useEffect(() => {
@@ -1148,6 +1260,25 @@ export default function App() {
     window.addEventListener('click', handleClick);
     return () => window.removeEventListener('click', handleClick);
   }, []);
+
+  // Keyboard shortcut: Cmd+B / Ctrl+B to toggle sidebar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      ) {
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleSidebar]);
 
   // Reset search selection index when query changes
   useEffect(() => {
@@ -2027,28 +2158,30 @@ export default function App() {
 
       {/* Sidebar with grouped directories and popup theme selector */}
       <Suspense fallback={
-        <div className="w-72 border-r border-app-border bg-app-panel flex flex-col shrink-0 h-full">
-          <div className="h-14 flex items-center px-6 border-b border-app-border shrink-0">
-            <div className="skeleton h-5 rounded w-28" />
-          </div>
-          <div className="flex items-center px-4 py-2 border-b border-app-border shrink-0">
-            <div className="skeleton h-7 rounded w-full" />
-          </div>
-          <div className="flex-1 px-4 py-3 space-y-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 py-1">
-                <div className="skeleton w-3 h-3 rounded-sm" />
-                <div className="skeleton h-2.5 rounded w-24" />
-              </div>
-              {[80, 64, 72].map((w, i) => (
-                <div key={i} className="flex items-center gap-2 pl-4 py-1.5">
-                  <div className="skeleton w-3.5 h-3.5 rounded-sm shrink-0" />
-                  <div className="skeleton h-2.5 rounded" style={{ width: `${w}%` }} />
+        isSidebarCollapsed ? null : (
+          <div className="w-72 border-r border-app-border bg-app-panel flex flex-col shrink-0 h-full">
+            <div className="h-14 flex items-center px-6 border-b border-app-border shrink-0">
+              <div className="skeleton h-5 rounded w-28" />
+            </div>
+            <div className="flex items-center px-4 py-2 border-b border-app-border shrink-0">
+              <div className="skeleton h-7 rounded w-full" />
+            </div>
+            <div className="flex-1 px-4 py-3 space-y-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 py-1">
+                  <div className="skeleton w-3 h-3 rounded-sm" />
+                  <div className="skeleton h-2.5 rounded w-24" />
                 </div>
-              ))}
+                {[80, 64, 72].map((w, i) => (
+                  <div key={i} className="flex items-center gap-2 pl-4 py-1.5">
+                    <div className="skeleton w-3.5 h-3.5 rounded-sm shrink-0" />
+                    <div className="skeleton h-2.5 rounded" style={{ width: `${w}%` }} />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        )
       }>
         <Sidebar
           logoUrl={activeLogoUrl}
@@ -2068,6 +2201,11 @@ export default function App() {
           onCloseSidebar={() => setIsSidebarOpen(false)}
           prioritizedPaths={config.prioritizedPaths}
           highlightedFiles={config.highlightedFiles}
+          viewMode={viewMode}
+          activeService={graphInitialService}
+          onOpenInGraph={handleOpenInGraph}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={toggleSidebar}
         />
       </Suspense>
 
@@ -2077,15 +2215,21 @@ export default function App() {
         {/* Top Navbar */}
         <div className="h-14 border-b border-app-border flex items-center px-6 justify-between bg-app-base z-10 transition-colors duration-200 shrink-0">
           <div className="min-w-0 flex-1 flex items-center gap-3 mr-4 text-xs text-app-textMuted truncate font-mono select-text">
-            {/* Hamburger Button for mobile/small screen sidebar toggle */}
+            {/* Sidebar toggle button (mobile drawer & desktop collapse/expand) */}
             <button
               type="button"
-              onClick={() => setIsSidebarOpen(true)}
-              className="md:hidden text-app-textMuted hover:text-app-textBright p-1.5 rounded-lg hover:bg-app-hoverBg cursor-pointer transition-colors"
-              title="Open Sidebar"
+              onClick={toggleSidebar}
+              className="text-app-textMuted hover:text-app-textBright p-1.5 rounded-lg hover:bg-app-hoverBg cursor-pointer transition-colors flex items-center justify-center shrink-0"
+              title={
+                isSidebarCollapsed
+                  ? 'Expand Sidebar (Ctrl+B / ⌘B)'
+                  : 'Collapse Sidebar (Ctrl+B / ⌘B)'
+              }
+              aria-label={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
             >
-              <svg className="w-5.5 h-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <rect width="18" height="18" x="3" y="3" rx="2" />
+                <path d="M9 3v18" />
               </svg>
             </button>
 
@@ -2114,6 +2258,60 @@ export default function App() {
               ))}
             </div>
           </div>
+
+          {/* View Mode Toggle: Document vs Graph (only offered when viewing a protobuf file or service) */}
+          {(activeFile || graphInitialService) && (
+            <div className="flex items-center bg-app-panel border border-app-border rounded-lg p-0.5 shrink-0 select-none mr-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeFile) {
+                    window.location.hash = `#/files/${activeFile}`;
+                  } else if (graphInitialService && typeIndex[graphInitialService]?.file) {
+                    const svcFile = typeIndex[graphInitialService].file;
+                    setActiveFile(svcFile);
+                    window.location.hash = `#/files/${svcFile}?symbol=${encodeURIComponent(graphInitialService)}`;
+                  } else {
+                    window.location.hash = `#/`;
+                  }
+                  setViewMode('doc');
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  viewMode === 'doc'
+                    ? 'bg-app-base text-app-textBright shadow-sm border border-app-border/80'
+                    : 'text-app-textMuted hover:text-app-textBright'
+                }`}
+                title="Document Specification View"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+                <span>Doc</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeFile) {
+                    window.location.hash = `#/files/${activeFile}?view=graph`;
+                  } else if (graphInitialService) {
+                    window.location.hash = `#/graph?service=${encodeURIComponent(graphInitialService)}`;
+                  }
+                  setViewMode('graph');
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  viewMode === 'graph'
+                    ? 'bg-app-base text-app-accent shadow-sm border border-app-border/80 font-bold'
+                    : 'text-app-textMuted hover:text-app-textBright'
+                }`}
+                title="Interactive Schema Graph View"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
+                </svg>
+                <span>Graph</span>
+              </button>
+            </div>
+          )}
 
           {/* Search container */}
           <div className="shrink-0 flex items-center gap-4">
@@ -2298,8 +2496,48 @@ export default function App() {
           </div>
         </div>
 
-        {/* Content Area - Fixed width & overflow-x-hidden ensures no horizontal stretching */}
-        <main ref={contentAreaRef} className="flex-1 overflow-y-auto overflow-x-hidden p-8 xl:pr-40 bg-app-code transition-colors duration-200 relative select-text w-full">
+        {/* Content Area */}
+        {viewMode === 'graph' ? (
+          <div className="flex-1 min-h-0 relative w-full h-full overflow-hidden bg-app-code">
+            <Suspense
+              fallback={
+                <div className="flex-1 h-full flex items-center justify-center p-12 text-app-textMuted font-mono text-sm">
+                  Loading Schema Graph...
+                </div>
+              }
+            >
+              <SchemaGraphView
+                schema={schema}
+                typeIndex={typeIndex}
+                activeFile={activeFile}
+                theme={theme}
+                initialSymbol={graphInitialSymbol}
+                initialService={graphInitialService}
+                onGoToSource={(file, symbol) => {
+                  setViewMode('doc');
+                  goToElement(file, symbol);
+                }}
+                onSelectFile={(file) => {
+                  setActiveFile(file);
+                  setGraphInitialService('');
+                  const targetHash = `#/files/${file}?view=graph`;
+                  if (window.location.hash !== targetHash) {
+                    window.location.hash = targetHash;
+                  }
+                }}
+                onSelectService={(service) => {
+                  setActiveFile('');
+                  setGraphInitialService(service);
+                  const targetHash = `#/graph?service=${encodeURIComponent(service)}`;
+                  if (window.location.hash !== targetHash) {
+                    window.location.hash = targetHash;
+                  }
+                }}
+              />
+            </Suspense>
+          </div>
+        ) : (
+          <main ref={contentAreaRef} className="flex-1 overflow-y-auto overflow-x-hidden p-8 xl:pr-40 bg-app-code transition-colors duration-200 relative select-text w-full">
           {loading && (
             <div className="absolute inset-0 bg-app-code z-10 p-8 xl:pr-40">
               <div className="max-w-4xl mx-auto w-full space-y-6 font-mono text-sm text-app-textMuted/45 leading-relaxed animate-fadeIn select-none">
@@ -2749,16 +2987,19 @@ export default function App() {
             )}
           </div>
         </main>
+        )}
 
         {/* Minimap Viewport Navigation */}
-        <Suspense fallback={null}>
-          <Minimap
-            contentRef={contentAreaRef}
-            activeFile={activeFile}
-            schema={schema}
-            theme={theme}
-          />
-        </Suspense>
+        {viewMode === 'doc' && activeFile && (
+          <Suspense fallback={null}>
+            <Minimap
+              contentRef={contentAreaRef}
+              activeFile={activeFile}
+              schema={schema}
+              theme={theme}
+            />
+          </Suspense>
+        )}
 
         {isSchemaLoaderOpen && (
           <div className="fixed inset-0 z-[100] bg-app-base/85 backdrop-blur-md">
@@ -2805,7 +3046,11 @@ export default function App() {
       </Suspense>
 
       {/* Custom Context Menu */}
-      <ContextMenu state={contextMenu} onClose={() => setContextMenu(null)} />
+      <ContextMenu
+        state={contextMenu}
+        onClose={() => setContextMenu(null)}
+        onOpenInGraph={(file, symbol) => handleOpenInGraph(file, symbol)}
+      />
 
       {/* QuickBrowse outline outline catalog */}
       <Suspense fallback={null}>

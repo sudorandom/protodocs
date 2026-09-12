@@ -7,6 +7,7 @@
 ## Features
 
 *   Browse a list of packages
+*   Interactive Schema Graph view (visual flowchart topology of services, messages, enums, and dependencies)
 *   View detailed information about messages and services
 *   See the source code of your `.proto` files
 *   Expandable and collapsible sections for easy navigation
