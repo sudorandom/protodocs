@@ -34,6 +34,9 @@ jobs:
     - name: Run tests
       run: just test
 
+    - name: Run govulncheck
+      run: just govulncheck
+
     - name: Run Playwright tests
       run: just playwright
 
