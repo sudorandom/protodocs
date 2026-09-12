@@ -8,7 +8,9 @@ import {
   useNodesState,
   useEdgesState,
   useReactFlow,
+  useUpdateNodeInternals,
   ReactFlowProvider,
+  MarkerType,
   type Node,
   type Edge,
 } from '@xyflow/react';
@@ -302,10 +304,23 @@ function SchemaGraphFlow({
         }
       }
 
+      const isRpcIn = e.data?.type === 'rpc-in';
+      const edgeClassName = isRpcIn ? 'edge-flow-in' : 'edge-flow-out';
+
+      const markerConfig = {
+        type: MarkerType.ArrowClosed,
+        color: strokeColor,
+        width: 12,
+        height: 12,
+      };
+
       return {
         ...e,
+        className: edgeClassName,
         animated: !!e.animated || isHighlighted,
         zIndex: isHighlighted ? 10 : 1,
+        markerStart: isRpcIn ? markerConfig : undefined,
+        markerEnd: !isRpcIn ? markerConfig : undefined,
         style: {
           stroke: strokeColor,
           strokeWidth: isHighlighted ? 2.5 : 1.5,
@@ -323,6 +338,16 @@ function SchemaGraphFlow({
     setNodes(decoratedNodes);
     setEdges(decoratedEdges);
   }, [decoratedNodes, decoratedEdges, setNodes, setEdges]);
+
+  // Update node handle bounds whenever layoutDirection changes
+  const updateNodeInternals = useUpdateNodeInternals();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const nodeIds = decoratedNodes.map((n) => n.id);
+      updateNodeInternals(nodeIds);
+    }, 40);
+    return () => clearTimeout(timer);
+  }, [layoutDirection, decoratedNodes, updateNodeInternals]);
 
   // Fit view once on load or when scope changes
   const hasFitInitially = useRef(false);

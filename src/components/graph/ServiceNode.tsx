@@ -1,5 +1,5 @@
-import { memo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { memo, useEffect } from 'react';
+import { Handle, Position, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
 import type { SchemaNodeData } from '../../lib/schema-graph';
 
 function ServiceNodeComponent({ data, selected }: NodeProps) {
@@ -10,6 +10,11 @@ function ServiceNodeComponent({ data, selected }: NodeProps) {
 
   const isDimmed = nodeData.isDimmed;
   const isHighlighted = nodeData.isHighlighted;
+
+  const updateNodeInternals = useUpdateNodeInternals();
+  useEffect(() => {
+    updateNodeInternals(nodeData.id);
+  }, [nodeData.id, isHorizontal, updateNodeInternals]);
 
   return (
     <div
@@ -116,14 +121,17 @@ function ServiceNodeComponent({ data, selected }: NodeProps) {
                       {method.inputTypeName}
                     </button>
                   </div>
-                  {/* Dedicated Source Handle for this method's Request */}
-                  <Handle
-                    type="source"
-                    position={sourcePos}
-                    id={`method-${method.name}-in`}
-                    style={isHorizontal ? { right: -21, top: '50%', transform: 'translateY(-50%)' } : undefined}
-                    className="!w-2.5 !h-2.5 !bg-purple-400 !border-2 !border-app-panel hover:!scale-125 transition-transform z-10"
-                  />
+                  {/* Dedicated Source Handle for this method's Request in horizontal mode */}
+                  {isHorizontal && (
+                    <Handle
+                      type="source"
+                      position={Position.Right}
+                      id={`method-${method.name}-in`}
+                      style={{ right: -21, top: '50%', transform: 'translateY(-50%)' }}
+                      className="!w-2.5 !h-2.5 !bg-purple-400 !border-2 !border-app-panel hover:!scale-125 transition-transform z-10"
+                      title={`${method.name} request (${method.inputTypeName})`}
+                    />
+                  )}
                 </div>
 
                 {/* Response Row */}
@@ -142,20 +150,53 @@ function ServiceNodeComponent({ data, selected }: NodeProps) {
                       {method.outputTypeName}
                     </button>
                   </div>
-                  {/* Dedicated Source Handle for this method's Response */}
-                  <Handle
-                    type="source"
-                    position={sourcePos}
-                    id={`method-${method.name}-out`}
-                    style={isHorizontal ? { right: -21, top: '50%', transform: 'translateY(-50%)' } : undefined}
-                    className="!w-2.5 !h-2.5 !bg-emerald-400 !border-2 !border-app-panel hover:!scale-125 transition-transform z-10"
-                  />
+                  {/* Dedicated Source Handle for this method's Response in horizontal mode */}
+                  {isHorizontal && (
+                    <Handle
+                      type="source"
+                      position={Position.Right}
+                      id={`method-${method.name}-out`}
+                      style={{ right: -21, top: '50%', transform: 'translateY(-50%)' }}
+                      className="!w-2.5 !h-2.5 !bg-emerald-400 !border-2 !border-app-panel hover:!scale-125 transition-transform z-10"
+                      title={`${method.name} response (${method.outputTypeName})`}
+                    />
+                  )}
                 </div>
               </div>
             </div>
           ))
         )}
       </div>
+
+      {/* Dedicated Source Handles for methods in vertical (TB) mode distributed along the bottom */}
+      {!isHorizontal &&
+        (nodeData.methods || [])
+          .flatMap((method) => [
+            {
+              id: `method-${method.name}-in`,
+              color: '!bg-purple-400',
+              title: `${method.name} request (${method.inputTypeName})`,
+            },
+            {
+              id: `method-${method.name}-out`,
+              color: '!bg-emerald-400',
+              title: `${method.name} response (${method.outputTypeName})`,
+            },
+          ])
+          .map((h, idx, all) => {
+            const leftPercent = ((idx + 1) / (all.length + 1)) * 100;
+            return (
+              <Handle
+                key={h.id}
+                type="source"
+                position={Position.Bottom}
+                id={h.id}
+                style={{ left: `${leftPercent}%` }}
+                className={`!w-2.5 !h-2.5 ${h.color} !border-2 !border-app-panel hover:!scale-125 transition-transform z-10`}
+                title={h.title}
+              />
+            );
+          })}
 
       {/* Fallback central source handle */}
       <Handle

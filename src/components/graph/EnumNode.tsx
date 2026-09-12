@@ -1,5 +1,5 @@
-import { memo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { memo, useEffect } from 'react';
+import { Handle, Position, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
 import type { SchemaNodeData } from '../../lib/schema-graph';
 
 function EnumNodeComponent({ data, selected }: NodeProps) {
@@ -10,6 +10,11 @@ function EnumNodeComponent({ data, selected }: NodeProps) {
 
   const isDimmed = nodeData.isDimmed;
   const isHighlighted = nodeData.isHighlighted;
+
+  const updateNodeInternals = useUpdateNodeInternals();
+  useEffect(() => {
+    updateNodeInternals(nodeData.id);
+  }, [nodeData.id, isHorizontal, updateNodeInternals]);
 
   return (
     <div

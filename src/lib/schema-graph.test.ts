@@ -317,4 +317,67 @@ describe('schema-graph', () => {
     expect(fieldEdge?.targetHandle).toBe('target-left');
     expect(fieldEdge?.label).toBeUndefined();
   });
+
+  it('correctly centers service and assigns dedicated handles in vertical (TB) layout', () => {
+    const multiMethodService = [
+      {
+        name: 'gnmi/gnmi.proto',
+        package: 'gnmi',
+        service: [
+          {
+            name: 'gNMI',
+            method: [
+              { name: 'Capabilities', inputType: '.gnmi.CapabilityRequest', outputType: '.gnmi.CapabilityResponse' },
+              { name: 'Get', inputType: '.gnmi.GetRequest', outputType: '.gnmi.GetResponse' },
+            ],
+          },
+        ],
+        messageType: [
+          { name: 'CapabilityRequest', field: [] },
+          { name: 'CapabilityResponse', field: [] },
+          { name: 'GetRequest', field: [] },
+          { name: 'GetResponse', field: [{ name: 'cap', number: 1, type: 11, typeName: '.gnmi.CapabilityRequest' }] },
+        ],
+      },
+    ];
+
+    const graph = buildFullSchemaGraph(multiMethodService);
+    const layout = computeDagreLayout(graph.nodes, graph.edges, 'TB');
+
+    // Service node is in Layer 0
+    const serviceNode = layout.nodes.find((n) => n.id === '.gnmi.gNMI');
+    expect(serviceNode).toBeDefined();
+    expect(serviceNode?.position.y).toBe(0);
+
+    // Layer 1 nodes are positioned below Layer 0
+    const layer1Nodes = layout.nodes.filter((n) => n.id !== '.gnmi.gNMI');
+    expect(layer1Nodes.length).toBe(4);
+    layer1Nodes.forEach((n) => {
+      expect(n.position.y).toBeGreaterThan(0);
+    });
+
+    // Service node should be centered above the children
+    const minChildX = Math.min(...layer1Nodes.map((n) => n.position.x));
+    const maxChildRight = Math.max(...layer1Nodes.map((n) => n.position.x + (n.width || 300)));
+    const childCenterX = (minChildX + maxChildRight) / 2;
+    const serviceCenterX = serviceNode!.position.x + (serviceNode!.width || 300) / 2;
+    expect(Math.abs(serviceCenterX - childCenterX)).toBeLessThan(50);
+
+    // Verify handles in TB mode: dedicated method handles are preserved
+    const capInEdge = layout.edges.find((e) => e.id === '.gnmi.gNMI->.gnmi.CapabilityRequest:Capabilities:in');
+    expect(capInEdge).toBeDefined();
+    expect(capInEdge?.sourceHandle).toBe('method-Capabilities-in');
+    expect(capInEdge?.targetHandle).toBe('target-in');
+
+    const capOutEdge = layout.edges.find((e) => e.id === '.gnmi.gNMI->.gnmi.CapabilityResponse:Capabilities:out');
+    expect(capOutEdge).toBeDefined();
+    expect(capOutEdge?.sourceHandle).toBe('method-Capabilities-out');
+    expect(capOutEdge?.targetHandle).toBe('target-out');
+
+    // Field reference edge in TB mode connects to target-top
+    const fieldEdge = layout.edges.find((e) => e.id === '.gnmi.GetResponse->.gnmi.CapabilityRequest:cap');
+    expect(fieldEdge).toBeDefined();
+    expect(fieldEdge?.sourceHandle).toBe('field-cap');
+    expect(fieldEdge?.targetHandle).toBe('target-top');
+  });
 });

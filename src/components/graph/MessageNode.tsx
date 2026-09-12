@@ -1,5 +1,5 @@
-import { memo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { memo, useEffect } from 'react';
+import { Handle, Position, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
 import type { SchemaNodeData } from '../../lib/schema-graph';
 
 function MessageNodeComponent({ data, selected }: NodeProps) {
@@ -10,6 +10,11 @@ function MessageNodeComponent({ data, selected }: NodeProps) {
 
   const isDimmed = nodeData.isDimmed;
   const isHighlighted = nodeData.isHighlighted;
+
+  const updateNodeInternals = useUpdateNodeInternals();
+  useEffect(() => {
+    updateNodeInternals(nodeData.id);
+  }, [nodeData.id, isHorizontal, updateNodeInternals]);
 
   return (
     <div
@@ -25,31 +30,34 @@ function MessageNodeComponent({ data, selected }: NodeProps) {
         nodeData.onSelectNode?.(nodeData.id);
       }}
     >
-      {/* Target handle for RPC Request edges (upper) */}
+      {/* Target handle for RPC Request edges */}
       <Handle
         type="target"
         position={targetPos}
         id="target-in"
-        style={isHorizontal ? { top: '35%' } : undefined}
+        style={isHorizontal ? { top: '35%' } : { left: '30%' }}
         className="!w-2.5 !h-2.5 !bg-purple-400 !border-2 !border-app-panel transition-transform hover:!scale-125 z-10"
+        title="RPC Request target"
       />
 
-      {/* Target handle for RPC Response edges (lower) */}
+      {/* Target handle for RPC Response edges */}
       <Handle
         type="target"
         position={targetPos}
         id="target-out"
-        style={isHorizontal ? { top: '65%' } : undefined}
+        style={isHorizontal ? { top: '65%' } : { left: '70%' }}
         className="!w-2.5 !h-2.5 !bg-emerald-400 !border-2 !border-app-panel transition-transform hover:!scale-125 z-10"
+        title="RPC Response target"
       />
 
-      {/* Default Target handle (center) for Field References */}
+      {/* Default Target handle for Field References */}
       <Handle
         type="target"
         position={targetPos}
         id={isHorizontal ? 'target-left' : 'target-top'}
-        style={isHorizontal ? { top: '50%' } : undefined}
+        style={isHorizontal ? { top: '50%' } : { left: '50%' }}
         className="!w-2.5 !h-2.5 !bg-blue-400 !border-2 !border-app-panel transition-transform hover:!scale-125 z-10"
+        title="Type reference target"
       />
 
       {/* Node Header */}
@@ -131,14 +139,15 @@ function MessageNodeComponent({ data, selected }: NodeProps) {
                     )}
                   </div>
 
-                  {/* Handle for this referenced field */}
-                  {hasLink && (
+                  {/* Handle for this referenced field in horizontal mode */}
+                  {isHorizontal && hasLink && (
                     <Handle
                       type="source"
-                      position={sourcePos}
+                      position={Position.Right}
                       id={`field-${field.name}`}
-                      style={isHorizontal ? { right: -17, top: '50%', transform: 'translateY(-50%)' } : undefined}
+                      style={{ right: -17, top: '50%', transform: 'translateY(-50%)' }}
                       className="!w-2.5 !h-2.5 !bg-blue-400 !border-2 !border-app-panel hover:!scale-125 transition-transform z-10"
+                      title={`Field: ${field.name}`}
                     />
                   )}
                 </div>
@@ -152,6 +161,25 @@ function MessageNodeComponent({ data, selected }: NodeProps) {
           </>
         )}
       </div>
+
+      {/* Dedicated Source Handles for referenced fields in vertical (TB) mode distributed along the bottom */}
+      {!isHorizontal &&
+        (nodeData.fields || [])
+          .filter((f) => !!f.typeName && (f.isMessage || f.isEnum))
+          .map((field, idx, all) => {
+            const leftPercent = ((idx + 1) / (all.length + 1)) * 100;
+            return (
+              <Handle
+                key={field.name}
+                type="source"
+                position={Position.Bottom}
+                id={`field-${field.name}`}
+                style={{ left: `${leftPercent}%` }}
+                className="!w-2.5 !h-2.5 !bg-blue-400 !border-2 !border-app-panel hover:!scale-125 transition-transform z-10"
+                title={`Field: ${field.name}`}
+              />
+            );
+          })}
 
       {/* Fallback central output handle */}
       <Handle

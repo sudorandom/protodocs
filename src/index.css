@@ -372,3 +372,35 @@
   animation: shimmer 1.4s ease-in-out infinite;
   border-radius: 0.25rem;
 }
+
+/* Edge animated dots direction matching protobuf / gRPC behavior */
+@keyframes dashdraw-forward {
+  0% {
+    stroke-dashoffset: 10px;
+  }
+  100% {
+    stroke-dashoffset: 0px;
+  }
+}
+
+@keyframes dashdraw-reverse {
+  0% {
+    stroke-dashoffset: 0px;
+  }
+  100% {
+    stroke-dashoffset: 10px;
+  }
+}
+
+/* rpc-in requests flow into the Service */
+.react-flow__edge.edge-flow-in.animated path.react-flow__edge-path,
+.react-flow__edge.edge-reverse.animated path.react-flow__edge-path {
+  stroke-dasharray: 5;
+  animation: 0.5s linear infinite dashdraw-reverse !important;
+}
+
+/* rpc-out responses and field references flow outward */
+.react-flow__edge.edge-flow-out.animated path.react-flow__edge-path {
+  stroke-dasharray: 5;
+  animation: 0.5s linear infinite dashdraw-forward !important;
+}

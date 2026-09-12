@@ -842,17 +842,124 @@ export function computeDagreLayout(
       Math.max(...layer.map((n) => nodeDimMap.get(n.id)?.height || 100), 100)
     );
 
-    let currentY = 0;
-    layers.forEach((layer, r) => {
-      const rowHeight = layerHeights[r];
+    // 1. Lay out layer 1 horizontally (children of layer 0)
+    if (layers.length > 1) {
       let currentX = 0;
-      layer.forEach((node) => {
+      const y = (layerHeights[0] || 100) + rankSpacing;
+      layers[1].forEach((node) => {
+        const dims = nodeDimMap.get(node.id) || { width: 300, height: 100 };
+        positions.set(node.id, { x: currentX, y });
+        currentX += dims.width + nodeSpacing;
+      });
+    }
+
+    // 2. Lay out layer 0 centered horizontally against its children in layer 1
+    let currentL0X = 0;
+    layers[0].forEach((root) => {
+      const dims = nodeDimMap.get(root.id) || { width: 300, height: 100 };
+      const outs = outEdges.get(root.id) || [];
+      const childBounds = outs
+        .map((e) => {
+          const pos = positions.get(e.target);
+          const cdims = nodeDimMap.get(e.target);
+          if (!pos || !cdims) return null;
+          return { left: pos.x, right: pos.x + cdims.width };
+        })
+        .filter((b): b is { left: number; right: number } => b !== null);
+
+      let targetX = currentL0X;
+      if (childBounds.length > 0) {
+        const minChildX = Math.min(...childBounds.map((b) => b.left));
+        const maxChildRight = Math.max(...childBounds.map((b) => b.right));
+        const childCenter = (minChildX + maxChildRight) / 2;
+        targetX = Math.max(currentL0X, childCenter - dims.width / 2);
+      }
+
+      positions.set(root.id, { x: Math.round(targetX), y: 0 });
+      currentL0X = targetX + dims.width + nodeSpacing;
+    });
+
+    // If only layer 0 exists
+    if (layers.length === 1) {
+      let currentX = 0;
+      layers[0].forEach((node) => {
+        const dims = nodeDimMap.get(node.id) || { width: 300, height: 100 };
+        positions.set(node.id, { x: currentX, y: 0 });
+        currentX += dims.width + nodeSpacing;
+      });
+    }
+
+    // 3. Lay out layers 2 through maxRank centered relative to their incoming parents
+    let currentY = (layerHeights[0] || 100) + rankSpacing;
+    for (let r = 2; r <= maxRank; r++) {
+      currentY += (layerHeights[r - 1] || 100) + rankSpacing;
+
+      // Sort nodes in layer r by average X center of their parents in previous layers
+      layers[r].sort((a, b) => {
+        const getParentCenterX = (nodeId: string) => {
+          const ins = inEdges.get(nodeId) || [];
+          const parentCenters: number[] = [];
+          ins.forEach((e) => {
+            const parentPos = positions.get(e.source);
+            const parentDim = nodeDimMap.get(e.source);
+            if (parentPos && parentDim) {
+              parentCenters.push(parentPos.x + parentDim.width / 2);
+            }
+          });
+          if (parentCenters.length === 0) return 0;
+          return parentCenters.reduce((s, x) => s + x, 0) / parentCenters.length;
+        };
+        const centerA = getParentCenterX(a.id);
+        const centerB = getParentCenterX(b.id);
+        if (centerA !== centerB) return centerA - centerB;
+        return a.name.localeCompare(b.name);
+      });
+
+      // Compute total width of layer r
+      const layerTotalWidth =
+        layers[r].reduce((sum, n) => {
+          const dims = nodeDimMap.get(n.id) || { width: 300, height: 100 };
+          return sum + dims.width;
+        }, 0) + Math.max(0, layers[r].length - 1) * nodeSpacing;
+
+      // Find average center of all parents of layer r
+      const parentXs: number[] = [];
+      layers[r].forEach((n) => {
+        const ins = inEdges.get(n.id) || [];
+        ins.forEach((e) => {
+          const parentPos = positions.get(e.source);
+          const parentDim = nodeDimMap.get(e.source);
+          if (parentPos && parentDim) {
+            parentXs.push(parentPos.x + parentDim.width / 2);
+          }
+        });
+      });
+
+      let startX = 0;
+      if (parentXs.length > 0) {
+        const avgParentCenter = parentXs.reduce((sum, x) => sum + x, 0) / parentXs.length;
+        startX = Math.max(0, Math.round(avgParentCenter - layerTotalWidth / 2));
+      }
+
+      let currentX = startX;
+      layers[r].forEach((node) => {
         const dims = nodeDimMap.get(node.id) || { width: 300, height: 100 };
         positions.set(node.id, { x: currentX, y: currentY });
         currentX += dims.width + nodeSpacing;
       });
-      currentY += rowHeight + rankSpacing;
-    });
+    }
+
+    // Normalize coordinates so minX = 0, minY = 0
+    const allPositions = Array.from(positions.values());
+    if (allPositions.length > 0) {
+      const minX = Math.min(...allPositions.map((p) => p.x));
+      const minY = Math.min(...allPositions.map((p) => p.y));
+      if (minX !== 0 || minY !== 0) {
+        positions.forEach((pos, id) => {
+          positions.set(id, { x: pos.x - minX, y: pos.y - minY });
+        });
+      }
+    }
   }
 
   // 6. Build laid out nodes
@@ -876,23 +983,19 @@ export function computeDagreLayout(
   // 7. Build laid out edges with exact method/field source handles
   const laidOutEdges: LaidOutEdge[] = edges.map((e) => {
     let sourceHandle = direction === 'LR' ? 'source-right' : 'source-bottom';
-    if (direction === 'LR') {
-      if (e.type === 'rpc-in' && e.methodName) {
-        sourceHandle = `method-${e.methodName}-in`;
-      } else if (e.type === 'rpc-out' && e.methodName) {
-        sourceHandle = `method-${e.methodName}-out`;
-      } else if (e.type === 'field-ref' && e.fieldName) {
-        sourceHandle = `field-${e.fieldName}`;
-      }
+    if (e.type === 'rpc-in' && e.methodName) {
+      sourceHandle = `method-${e.methodName}-in`;
+    } else if (e.type === 'rpc-out' && e.methodName) {
+      sourceHandle = `method-${e.methodName}-out`;
+    } else if (e.type === 'field-ref' && e.fieldName) {
+      sourceHandle = `field-${e.fieldName}`;
     }
 
     let targetHandle = direction === 'LR' ? 'target-left' : 'target-top';
-    if (direction === 'LR') {
-      if (e.type === 'rpc-in') {
-        targetHandle = 'target-in';
-      } else if (e.type === 'rpc-out') {
-        targetHandle = 'target-out';
-      }
+    if (e.type === 'rpc-in') {
+      targetHandle = 'target-in';
+    } else if (e.type === 'rpc-out') {
+      targetHandle = 'target-out';
     }
 
     return {
