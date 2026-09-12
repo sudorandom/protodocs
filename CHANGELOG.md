@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/sudorandom/protodocs/compare/v0.2.0...v0.2.1) (2026-09-12)
+
+
+### Bug Fixes
+
+* conn points on vertical graph layout ([7716bb7](https://github.com/sudorandom/protodocs/commit/7716bb7592fd6a23e9eb66315ee113c048786085))
+
 ## [0.2.0](https://github.com/sudorandom/protodocs/compare/v0.1.6...v0.2.0) (2026-09-12)
 
 
