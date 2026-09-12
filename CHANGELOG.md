@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/sudorandom/protodocs/compare/v0.2.1...v0.2.2) (2026-09-12)
+
+
+### Bug Fixes
+
+* fix display on cycles ([fd41594](https://github.com/sudorandom/protodocs/commit/fd41594eb77413a1e88318804359a02306eb02f3))
+
 ## [0.2.1](https://github.com/sudorandom/protodocs/compare/v0.2.0...v0.2.1) (2026-09-12)
 
 
