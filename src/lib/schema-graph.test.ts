@@ -380,4 +380,68 @@ describe('schema-graph', () => {
     expect(fieldEdge?.sourceHandle).toBe('field-cap');
     expect(fieldEdge?.targetHandle).toBe('target-top');
   });
+
+  it('handles cyclic dependencies and self-referential messages without exploding ranks or coordinates', () => {
+    const cyclicSchema = [
+      {
+        name: 'test/cyclic.proto',
+        package: 'test.cyclic',
+        service: [
+          {
+            name: 'CyclicService',
+            method: [
+              { name: 'Process', inputType: '.test.cyclic.RootRequest', outputType: '.test.cyclic.RootResponse' },
+            ],
+          },
+        ],
+        messageType: [
+          {
+            name: 'RootRequest',
+            field: [{ name: 'val', number: 1, type: 11, typeName: '.test.cyclic.Value' }],
+          },
+          { name: 'RootResponse', field: [] },
+          {
+            name: 'Value',
+            field: [{ name: 'list_value', number: 1, type: 11, typeName: '.test.cyclic.ListValue' }],
+          },
+          {
+            name: 'ListValue',
+            field: [{ name: 'values', number: 1, type: 11, typeName: '.test.cyclic.Value' }],
+          },
+          {
+            name: 'SelfNode',
+            field: [{ name: 'next', number: 1, type: 11, typeName: '.test.cyclic.SelfNode' }],
+          },
+        ],
+      },
+    ];
+
+    const graph = buildFullSchemaGraph(cyclicSchema);
+    const lrLayout = computeDagreLayout(graph.nodes, graph.edges, 'LR');
+    const tbLayout = computeDagreLayout(graph.nodes, graph.edges, 'TB');
+
+    // All nodes should be positioned within a reasonable, bounded coordinate space
+    lrLayout.nodes.forEach((n) => {
+      // In LR layout, max x should be <= 4 ranks * 480px = ~2000px, definitely nowhere near 25000px
+      expect(n.position.x).toBeLessThan(2500);
+      expect(n.position.x).toBeGreaterThanOrEqual(0);
+      expect(n.position.y).toBeGreaterThanOrEqual(0);
+    });
+
+    tbLayout.nodes.forEach((n) => {
+      // In TB layout, max y should be <= 4 ranks * ~300px = ~1500px, definitely nowhere near 15000px
+      expect(n.position.y).toBeLessThan(2000);
+      expect(n.position.x).toBeGreaterThanOrEqual(0);
+      expect(n.position.y).toBeGreaterThanOrEqual(0);
+    });
+
+    // Check that Value and ListValue are placed in adjacent layers, not 50 layers apart
+    const valLR = lrLayout.nodes.find((n) => n.id === '.test.cyclic.Value');
+    const listValLR = lrLayout.nodes.find((n) => n.id === '.test.cyclic.ListValue');
+    expect(valLR).toBeDefined();
+    expect(listValLR).toBeDefined();
+    // In LR layout, distance between Value and ListValue along X should be exactly 1 rank (480px)
+    expect(Math.abs(listValLR!.position.x - valLR!.position.x)).toBe(480);
+  });
 });
+

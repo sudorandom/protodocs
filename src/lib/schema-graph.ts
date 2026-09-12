@@ -605,10 +605,52 @@ export function computeDagreLayout(
   });
 
   // 1. Assign topological ranks (layers)
+  // Identify back-edges using DFS from root nodes so cycles don't cause infinite rank expansion.
+  const backEdges = new Set<RawGraphEdge>();
+  const visited = new Set<string>();
+  const inStack = new Set<string>();
+
+  const dfs = (nodeId: string) => {
+    visited.add(nodeId);
+    inStack.add(nodeId);
+
+    const outs = outEdges.get(nodeId) || [];
+    for (const e of outs) {
+      if (!nodeMap.has(e.target)) continue;
+      if (e.source === e.target) {
+        backEdges.add(e);
+      } else if (inStack.has(e.target)) {
+        backEdges.add(e);
+      } else if (!visited.has(e.target)) {
+        dfs(e.target);
+      }
+    }
+
+    inStack.delete(nodeId);
+  };
+
+  // Traverse roots first: services first, then nodes without incoming edges, then any remaining nodes
+  const rootOrder = [
+    ...nodes.filter((n) => n.kind === 'service'),
+    ...nodes.filter((n) => n.kind !== 'service' && (!inEdges.has(n.id) || inEdges.get(n.id)!.length === 0)),
+  ];
+  rootOrder.forEach((n) => {
+    if (!visited.has(n.id)) {
+      dfs(n.id);
+    }
+  });
+  nodes.forEach((n) => {
+    if (!visited.has(n.id)) {
+      dfs(n.id);
+    }
+  });
+
+  // Assign base ranks
   const ranks = new Map<string, number>();
   nodes.forEach((n) => {
-    // Services or nodes without incoming edges are root layer 0
-    if (n.kind === 'service' || !inEdges.has(n.id) || inEdges.get(n.id)!.length === 0) {
+    // Services or nodes without incoming edges in the DAG get rank 0
+    const nonBackIns = (inEdges.get(n.id) || []).filter((e) => !backEdges.has(e));
+    if (n.kind === 'service' || nonBackIns.length === 0) {
       ranks.set(n.id, 0);
     }
   });
@@ -620,13 +662,15 @@ export function computeDagreLayout(
     }
   });
 
-  // Forward relaxation for target layers (with cycle limit)
+  // Forward relaxation for target layers on DAG edges
+  const dagEdges = edges.filter((e) => !backEdges.has(e) && nodeMap.has(e.source) && nodeMap.has(e.target));
   let changed = true;
   let iters = 0;
-  while (changed && iters < 25) {
+  const maxIters = nodes.length + 1;
+  while (changed && iters < maxIters) {
     changed = false;
     iters++;
-    edges.forEach((e) => {
+    dagEdges.forEach((e) => {
       // If target is a direct RPC message, pin it to Layer 1 to prevent crossing intermediate layers
       if (serviceRpcTypes.has(e.target)) return;
 
@@ -635,11 +679,8 @@ export function computeDagreLayout(
         const tgtRank = ranks.get(e.target);
         const minRank = srcRank + 1;
         if (tgtRank === undefined || tgtRank < minRank) {
-          // Prevent back-edges from blowing up ranks indefinitely
-          if (tgtRank === undefined || tgtRank <= srcRank) {
-            ranks.set(e.target, minRank);
-            changed = true;
-          }
+          ranks.set(e.target, minRank);
+          changed = true;
         }
       }
     });
@@ -648,6 +689,17 @@ export function computeDagreLayout(
   // Fallback for any unassigned nodes
   nodes.forEach((n) => {
     if (!ranks.has(n.id)) ranks.set(n.id, 0);
+  });
+
+  // Compact ranks so there are no empty intermediate layers
+  const usedRanks = Array.from(new Set(ranks.values())).sort((a, b) => a - b);
+  const rankMapping = new Map<number, number>();
+  usedRanks.forEach((r, idx) => {
+    rankMapping.set(r, idx);
+  });
+  nodes.forEach((n) => {
+    const oldRank = ranks.get(n.id) ?? 0;
+    ranks.set(n.id, rankMapping.get(oldRank) ?? 0);
   });
 
   // Group nodes by layer
@@ -787,6 +839,7 @@ export function computeDagreLayout(
           const ins = inEdges.get(nodeId) || [];
           const parentCenters: number[] = [];
           ins.forEach((e) => {
+            if ((ranks.get(e.source) ?? 0) >= r) return;
             const parentPos = positions.get(e.source);
             const parentDim = nodeDimMap.get(e.source);
             if (parentPos && parentDim) {
@@ -814,6 +867,7 @@ export function computeDagreLayout(
       layers[r].forEach((n) => {
         const ins = inEdges.get(n.id) || [];
         ins.forEach((e) => {
+          if ((ranks.get(e.source) ?? 0) >= r) return;
           const parentPos = positions.get(e.source);
           const parentDim = nodeDimMap.get(e.source);
           if (parentPos && parentDim) {
@@ -900,6 +954,7 @@ export function computeDagreLayout(
           const ins = inEdges.get(nodeId) || [];
           const parentCenters: number[] = [];
           ins.forEach((e) => {
+            if ((ranks.get(e.source) ?? 0) >= r) return;
             const parentPos = positions.get(e.source);
             const parentDim = nodeDimMap.get(e.source);
             if (parentPos && parentDim) {
@@ -927,6 +982,7 @@ export function computeDagreLayout(
       layers[r].forEach((n) => {
         const ins = inEdges.get(n.id) || [];
         ins.forEach((e) => {
+          if ((ranks.get(e.source) ?? 0) >= r) return;
           const parentPos = positions.get(e.source);
           const parentDim = nodeDimMap.get(e.source);
           if (parentPos && parentDim) {
@@ -948,17 +1004,17 @@ export function computeDagreLayout(
         currentX += dims.width + nodeSpacing;
       });
     }
+  }
 
-    // Normalize coordinates so minX = 0, minY = 0
-    const allPositions = Array.from(positions.values());
-    if (allPositions.length > 0) {
-      const minX = Math.min(...allPositions.map((p) => p.x));
-      const minY = Math.min(...allPositions.map((p) => p.y));
-      if (minX !== 0 || minY !== 0) {
-        positions.forEach((pos, id) => {
-          positions.set(id, { x: pos.x - minX, y: pos.y - minY });
-        });
-      }
+  // Normalize coordinates so minX = 0, minY = 0
+  const allPositions = Array.from(positions.values());
+  if (allPositions.length > 0) {
+    const minX = Math.min(...allPositions.map((p) => p.x));
+    const minY = Math.min(...allPositions.map((p) => p.y));
+    if (minX !== 0 || minY !== 0) {
+      positions.forEach((pos, id) => {
+        positions.set(id, { x: pos.x - minX, y: pos.y - minY });
+      });
     }
   }
 
