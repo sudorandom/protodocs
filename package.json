@@ -2,6 +2,7 @@
   "name": "app",
   "private": true,
   "version": "0.2.0",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "sync-version": "node scripts/sync-version.mjs",
