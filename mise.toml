@@ -3,6 +3,6 @@ buf = "latest"
 just = "latest"
 node = "latest"
 "npm:pnpm" = "11.3.0"
-go = "latest"
+go = "1.27"
 "golangci-lint" = "latest"
 

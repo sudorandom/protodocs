@@ -29,6 +29,11 @@ desktop-dmg: desktop-build
 lint: build
     pnpm check
     golangci-lint run
+    go tool govulncheck ./...
+
+# Run Go vulnerability check
+govulncheck:
+    go tool govulncheck ./...
 
 # Format TS and Go source code
 fmt:
